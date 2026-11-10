@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "test": "node --test tests/domain.test.ts tests/systems.test.ts tests/input.test.ts tests/events.test.ts",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "perf": "node tests/perf/render-perf.mjs"
   },
   "dependencies": {
     "three": "^0.187.0"

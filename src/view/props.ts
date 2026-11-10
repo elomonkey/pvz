@@ -39,6 +39,7 @@ import {
   sphere,
   UNIT_BOX,
   UNIT_SPHERE,
+  woodTexture,
 } from './primitives';
 
 export interface CellVisual {
@@ -231,7 +232,7 @@ export function createShelf(index: number, scene: THREE.Scene): ShelfVisual {
   }
 
   const shadow = contactShadow(width / 2 + 0.05, SHELF_D / 2 + 0.05, 0.14);
-  shadow.position.set(0, 0.011, 0.05);
+  shadow.position.set(0, 0.032, 0.05);
   group.add(shadow);
 
   const labels: CSS2DObject[] = [];
@@ -294,6 +295,7 @@ export function createCounter(scene: THREE.Scene): THREE.Group {
     radius: 0.04,
   });
   top.position.y = 1.045;
+  top.material = new THREE.MeshLambertMaterial({ map: woodTexture(KIT_COLORS.woodLight, 2, 1) });
   group.add(top);
 
   const trim = roundedBox(COUNTER.w + 0.2, 0.04, COUNTER.d + 0.16, KIT_COLORS.cream, {
@@ -438,7 +440,7 @@ export function createCounter(scene: THREE.Scene): THREE.Group {
   group.add(staffSign);
 
   const shadow = contactShadow(COUNTER.w / 2 + 0.06, COUNTER.d / 2 + 0.04, 0.14);
-  shadow.position.set(0, 0.011, 0.02);
+  shadow.position.set(0, 0.032, 0.02);
   group.add(shadow);
 
   const counterParts = group.children.filter(

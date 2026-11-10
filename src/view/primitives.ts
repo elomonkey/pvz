@@ -68,7 +68,7 @@ export function createParcelTopDecal(): THREE.Mesh {
 
 export const PARCEL_VERTEX_MATERIAL = new THREE.MeshLambertMaterial({
   vertexColors: true,
-  flatShading: true,
+  flatShading: false,
 });
 const PARCEL_GEOMETRY_CACHE = new Map<string, THREE.BufferGeometry>();
 
@@ -122,6 +122,13 @@ export function createParcelGeometry(color: string): THREE.BufferGeometry {
   if (!merged) {
     return roundedBoxGeometry(0.34, 0.28, 0.25, 0.035);
   }
+  const positions = merged.getAttribute('position');
+  const colors = merged.getAttribute('color');
+  for (let i = 0; i < positions.count; i++) {
+    const height = THREE.MathUtils.clamp((positions.getY(i) + 0.14) / 0.28, 0, 1);
+    const shade = 0.83 + 0.17 * Math.sqrt(height);
+    colors.setXYZ(i, colors.getX(i) * shade, colors.getY(i) * shade, colors.getZ(i) * shade);
+  }
   PARCEL_GEOMETRY_CACHE.set(color, merged);
   return merged;
 }
@@ -168,6 +175,79 @@ export function cachedGeometry(key: string, create: () => THREE.BufferGeometry):
 }
 
 export const HEAD_CY = 0.02;
+
+const WOOD_TEXTURE_CACHE = new Map<string, THREE.CanvasTexture>();
+const FABRIC_TEXTURE_CACHE = new Map<string, THREE.CanvasTexture>();
+
+/** Shared deterministic weave, without animated noise or a postprocess. */
+export function fabricTexture(base: string): THREE.CanvasTexture {
+  const cached = FABRIC_TEXTURE_CACHE.get(base);
+  if (cached) return cached;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, 128, 128);
+    let seed = 173;
+    for (let y = 0; y < 128; y += 2) {
+      for (let x = 0; x < 128; x += 2) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        ctx.fillStyle = seed & 0x80000000
+          ? 'rgba(255,248,232,0.045)' : 'rgba(35,43,42,0.035)';
+        ctx.fillRect(x, y, 1, 2);
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(4, 4);
+  texture.anisotropy = 4;
+  FABRIC_TEXTURE_CACHE.set(base, texture);
+  return texture;
+}
+
+/** Small, deterministic oak grain; shared by surfaces, with no external assets. */
+export function woodTexture(base: string, repeatX = 1, repeatY = 1): THREE.CanvasTexture {
+  const key = `${base}|${repeatX}|${repeatY}`;
+  const cached = WOOD_TEXTURE_CACHE.get(key);
+  if (cached) return cached;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, 256, 256);
+    for (let board = 0; board < 4; board++) {
+      ctx.fillStyle = board % 2 ? 'rgba(255,248,229,0.08)' : 'rgba(110,76,45,0.035)';
+      ctx.fillRect(0, board * 64, 256, 64);
+      ctx.fillStyle = 'rgba(100,72,48,0.12)';
+      ctx.fillRect(0, board * 64, 256, 1);
+      ctx.fillRect((board * 97) % 256, board * 64, 1, 64);
+    }
+    for (let line = 0; line < 100; line++) {
+      const y = (line * 31.73) % 256;
+      ctx.strokeStyle = line % 3 ? 'rgba(116,80,46,0.055)' : 'rgba(255,251,235,0.12)';
+      ctx.lineWidth = 0.5 + (line % 3) * 0.25;
+      ctx.beginPath();
+      for (let x = 0; x <= 256; x += 4) {
+        const gy = y + Math.sin(x * Math.PI / 128 + line) * (0.5 + line % 4);
+        if (x === 0) ctx.moveTo(x, gy);
+        else ctx.lineTo(x, gy);
+      }
+      ctx.stroke();
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.anisotropy = 4;
+  WOOD_TEXTURE_CACHE.set(key, texture);
+  return texture;
+}
 
 /**
  * Оболочка-шапочка по эллипсоиду черепа.
@@ -267,17 +347,42 @@ export function cone(radius: number, height: number, color: string, segments = 6
   return new THREE.Mesh(geometry, mat(color));
 }
 
+let contactShadowTexture: THREE.CanvasTexture | null = null;
+const CONTACT_MATERIAL_CACHE = new Map<number, THREE.MeshBasicMaterial>();
+
 export function contactShadow(width: number, depth: number, opacity = 0.16): THREE.Mesh {
-  const geometry = new THREE.CircleGeometry(1, 20);
-  const material = new THREE.MeshBasicMaterial({
-    color: '#1a2430',
-    transparent: true,
-    opacity,
-    depthWrite: false,
-  });
+  if (!contactShadowTexture) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const gradient = ctx.createRadialGradient(32, 32, 3, 32, 32, 32);
+      gradient.addColorStop(0, 'rgba(55,43,33,0.95)');
+      gradient.addColorStop(0.35, 'rgba(55,43,33,0.65)');
+      gradient.addColorStop(0.7, 'rgba(55,43,33,0.2)');
+      gradient.addColorStop(1, 'rgba(55,43,33,0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 64, 64);
+    }
+    contactShadowTexture = new THREE.CanvasTexture(canvas);
+    contactShadowTexture.colorSpace = THREE.SRGBColorSpace;
+  }
+  const geometry = cachedGeometry('soft-contact-plane', () => new THREE.PlaneGeometry(2, 2));
+  let material = CONTACT_MATERIAL_CACHE.get(opacity);
+  if (!material) {
+    material = new THREE.MeshBasicMaterial({
+      map: contactShadowTexture,
+      transparent: true,
+      opacity: Math.min(1, opacity * 2.2),
+      depthWrite: false,
+    });
+    CONTACT_MATERIAL_CACHE.set(opacity, material);
+  }
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData.visualContact = true;
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 0.012;
+  // Rugs top out at ~0.02; ground contacts must remain visible above them.
+  mesh.position.y = 0.032;
   mesh.scale.set(width, depth, 1);
   mesh.raycast = () => {};
   return mesh;
@@ -345,7 +450,15 @@ export function signPlane(
     fontSize: 70,
     ...options,
   });
-  const material = new THREE.MeshBasicMaterial({ map: texture });
+  const material = new THREE.MeshLambertMaterial({ map: texture });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+  const backing = new THREE.Mesh(
+    roundedBoxGeometry(width + 0.035, height + 0.035, 0.045, 0.012),
+    mat(options.border ?? '#b69c7f'),
+  );
+  backing.position.z = -0.027;
+  backing.userData.plaqueBacking = true;
+  backing.raycast = () => {};
+  mesh.add(backing);
   return mesh;
 }

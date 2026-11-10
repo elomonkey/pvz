@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-import { SHELF_DEFS, type DecorOwnership } from '../data';
+import { PALETTE, SHELF_DEFS, type DecorOwnership } from '../data';
 import { createEnvironment } from './environment';
+import { mergeColoredGeometries, VERTEX_COLOR_MATERIAL } from './kit';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   createCounter,
   createCounterCat,
@@ -23,18 +25,20 @@ export interface World {
 }
 
 export function createWorld(scene: THREE.Scene): World {
-  const ambient = new THREE.AmbientLight(0xfff6e8, 0.36);
+  const ambient = new THREE.AmbientLight(0xfff8ed, 0.25);
   scene.add(ambient);
 
-  const hemisphere = new THREE.HemisphereLight(0xdcecff, 0xf5dfc0, 1.0);
+  const hemisphere = new THREE.HemisphereLight(0xe5eff2, 0xc7ae91, 0.8);
   scene.add(hemisphere);
 
-  const keyLight = new THREE.DirectionalLight(0xffe9c8, 1.22);
-  keyLight.position.set(7, 14, 5);
+  const keyLight = new THREE.DirectionalLight(0xffedda, 2.2);
+  keyLight.position.set(-3, 8, -4);
+  keyLight.target.position.set(-1.5, 0, 0.5);
+  scene.add(keyLight.target);
   scene.add(keyLight);
 
-  const fillLight = new THREE.DirectionalLight(0xcfe0ff, 0.26);
-  fillLight.position.set(-8, 8, -4);
+  const fillLight = new THREE.DirectionalLight(0xddeaf4, 0.3);
+  fillLight.position.set(7, 6, 5);
   scene.add(fillLight);
 
   // Тёплое пятно у стойки — главный «уютный» акцент сцены.
@@ -75,13 +79,63 @@ export function createWorld(scene: THREE.Scene): World {
   const neonSign = environment.neonSign;
   const neonGlowMaterial = environment.neonGlowMaterial;
 
+  // Batch the always-visible plaque edges; optional neon plaques keep their owner.
+  scene.updateMatrixWorld(true);
+  const plaqueEdges: THREE.Mesh[] = [];
+  scene.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.userData.plaqueBacking) return;
+    let owner: THREE.Object3D | null = object;
+    while (owner) {
+      if (owner === neonSign) return;
+      owner = owner.parent;
+    }
+    plaqueEdges.push(object);
+  });
+  const plaqueGeometry = mergeColoredGeometries(plaqueEdges.map((mesh) => ({
+    geometry: mesh.geometry,
+    matrix: mesh.matrixWorld,
+    color: (mesh.material as THREE.MeshLambertMaterial).color,
+  })));
+  if (plaqueGeometry) {
+    const plaques = new THREE.Mesh(plaqueGeometry, VERTEX_COLOR_MATERIAL);
+    plaques.raycast = () => {};
+    scene.add(plaques);
+    for (const edge of plaqueEdges) edge.removeFromParent();
+  }
+
+  // Batch only fixed ground contacts. Optional/animated decor keeps its own shadows.
+  const contactGroups = new Map<THREE.Material, THREE.Mesh[]>();
+  scene.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.userData.visualContact || Array.isArray(object.material)) return;
+    let owner: THREE.Object3D | null = object;
+    while (owner) {
+      if (owner === cat || owner === tv || owner === neonSign) return;
+      if (owner.userData.type === 'shelf' && owner.userData.shelfIndex >= 2) return;
+      owner = owner.parent;
+    }
+    const group = contactGroups.get(object.material) ?? [];
+    group.push(object);
+    contactGroups.set(object.material, group);
+  });
+  for (const [material, contacts] of contactGroups) {
+    if (contacts.length < 2) continue;
+    const parts = contacts.map((mesh) => mesh.geometry.clone().applyMatrix4(mesh.matrixWorld));
+    const geometry = mergeGeometries(parts);
+    for (const part of parts) part.dispose();
+    if (!geometry) continue;
+    const combined = new THREE.Mesh(geometry, material);
+    combined.raycast = () => {};
+    scene.add(combined);
+    for (const contact of contacts) contact.removeFromParent();
+  }
+
   const applyDecor = (owned: DecorOwnership): void => {
     tv.visible = owned.tv;
     cat.visible = owned.cat;
     neonSign.visible = owned.sign;
 
-    if (wallMaterial) wallMaterial.color.set(owned.walls ? '#cfe8dd' : '#f2efe7');
-    rugMaterial.color.set(owned.rug ? '#6f9fc4' : '#9ab8c7');
+    if (wallMaterial) wallMaterial.color.set(owned.walls ? '#cbd6c5' : PALETTE.wall);
+    rugMaterial.color.set(owned.rug ? '#b6c7d3' : '#ffffff');
     for (const material of floorMaterials) {
       material.color.set(owned.floor ? '#c9a06a' : '#ffffff');
     }

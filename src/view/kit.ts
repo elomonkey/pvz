@@ -111,6 +111,37 @@ export function mergeStaticMeshesToVertexColor(
   const merged = mergeColoredGeometries(parts);
   if (!merged) return null;
 
+  // Local furniture contact shading is baked once into the existing vertex colours.
+  // No runtime AO pass and no extra draw calls. Characters keep their original colours.
+  if (['shelf', 'counter', 'return-shelf'].includes(String(parent.userData.type))) {
+    const boxes = parts.map((part) => {
+      if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+      return part.geometry.boundingBox!.clone().applyMatrix4(part.matrix);
+    });
+    const centers = boxes.map((box) => box.getCenter(new THREE.Vector3()));
+    const positions = merged.getAttribute('position');
+    const normals = merged.getAttribute('normal');
+    const colors = merged.getAttribute('color');
+    const point = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    for (let i = 0; i < positions.count; i++) {
+      point.fromBufferAttribute(positions, i);
+      normal.fromBufferAttribute(normals, i);
+      let contact = 0;
+      for (let j = 0; j < boxes.length; j++) {
+        const distance = boxes[j].distanceToPoint(point);
+        if (distance >= 0.18) continue;
+        direction.subVectors(centers[j], point);
+        const facing = normal.dot(direction) / Math.max(0.001, direction.length());
+        if (facing <= 0) continue;
+        contact = Math.max(contact, (1 - distance / 0.18) ** 2 * facing);
+      }
+      const shade = 1 - 0.36 * contact;
+      colors.setXYZ(i, colors.getX(i) * shade, colors.getY(i) * shade, colors.getZ(i) * shade);
+    }
+  }
+
   const mergedMesh = new THREE.Mesh(merged, material);
   parent.add(mergedMesh);
   for (const mesh of included) mesh.removeFromParent();
@@ -153,25 +184,25 @@ export function mergeColoredGeometries(parts: ColoredGeometryPart[]): THREE.Buff
 }
 
 export const KIT_COLORS = {
-  bg: '#e3ece7',
-  wall: '#edf2ec',
-  wallTrim: '#c8d8cd',
+  bg: '#e6eeed',
+  wall: '#e9d5bf',
+  wallTrim: '#c6b6a1',
   cream: '#fff4e3',
   paper: '#f6e7d2',
   paperDeep: '#ead4b8',
   ink: '#26313a',
-  wood: '#c99766',
-  woodLight: '#e0bb8a',
-  woodDark: '#8b6446',
-  woodDeep: '#5b4634',
-  sage: '#7f9f89',
-  sageLight: '#a9c4b1',
-  sageDark: '#5f7f6d',
-  cell: '#59645c',
+  wood: '#cda475',
+  woodLight: '#e7bd88',
+  woodDark: '#997653',
+  woodDeep: '#605044',
+  sage: '#85947c',
+  sageLight: '#b4bca4',
+  sageDark: '#667661',
+  cell: '#687267',
   coral: '#d98b72',
   coralDark: '#b96e5b',
   mustard: '#f0b44c',
-  blue: '#6f9fc4',
+  blue: '#8098a8',
   plum: '#8e5a6e',
   white: '#fffaf0',
   shadow: '#1a2430',
@@ -192,7 +223,7 @@ export interface KitMaterialOptions {
 
 export const VERTEX_COLOR_MATERIAL = new THREE.MeshLambertMaterial({
   vertexColors: true,
-  flatShading: true,
+  flatShading: false,
 });
 
 const MATERIAL_CACHE = new Map<string, THREE.MeshLambertMaterial>();
@@ -216,7 +247,7 @@ export function kitMaterial(
 
   const material = new THREE.MeshLambertMaterial({
     color,
-    flatShading: true,
+    flatShading: false,
     transparent: options.transparent ?? false,
     opacity: options.opacity ?? 1,
     depthWrite: options.depthWrite ?? !(options.transparent ?? false),

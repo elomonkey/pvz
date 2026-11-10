@@ -1,0 +1,69 @@
+{
+  "revision": "ec8e922522d3fb32ef4772a42ee5d53f29e993e3",
+  "label": "no-shadows-lambert",
+  "variant": "no-shadows-lambert",
+  "browser": "158.0.8127.18",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "deviceScaleFactor": 1,
+  "seed": 73129,
+  "sampleMs": 5000,
+  "warmupMs": 2000,
+  "method": "RAF intervals; paused service simulation, animated world; refresh uses synchronous 1-pixel readPixels, includes readback overhead",
+  "scenes": [
+    {
+      "scenario": "two-clients",
+      "clients": [
+        "office",
+        "elderly"
+      ],
+      "convertedMaterials": 3,
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "elapsedMs": 5066.400000000001,
+      "frames": 32,
+      "frameMs": {
+        "avg": 158.32500000000002,
+        "p95": 166.69999999999982,
+        "max": 200
+      },
+      "drawCalls": 129,
+      "triangles": 78908,
+      "textures": 20,
+      "programs": 17,
+      "shadowRefresh": {
+        "enabled": false,
+        "refreshMs": 0,
+        "extraMs": 0
+      }
+    },
+    {
+      "scenario": "four-clients-decor",
+      "clients": [
+        "office",
+        "elderly",
+        "student",
+        "courier"
+      ],
+      "convertedMaterials": 3,
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "elapsedMs": 5049.8,
+      "frames": 28,
+      "frameMs": {
+        "avg": 180.35,
+        "p95": 199.89999999999964,
+        "max": 200
+      },
+      "drawCalls": 181,
+      "triangles": 114044,
+      "textures": 23,
+      "programs": 20,
+      "shadowRefresh": {
+        "enabled": false,
+        "refreshMs": 0,
+        "extraMs": 0
+      }
+    }
+  ]
+}
