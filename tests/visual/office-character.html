@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<title>Офисный — пробный образ</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 38px 48px 30px; background: #e9eeea; color: #33434a; font-family: 'Segoe UI', sans-serif; }
+  header { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; }
+  .eyebrow { font-size: 12px; letter-spacing: 2px; color: #718279; font-weight: 600; }
+  h1 { font-size: 38px; margin: 6px 0; font-weight: 600; letter-spacing: -1px; }
+  p { margin: 0; color: #768078; font-size: 15px; }
+  nav { display: flex; gap: 8px; padding-bottom: 5px; }
+  button { border: 1px solid #cdd5cc; border-radius: 8px; padding: 10px 17px; background: #f5f4ec; color: #465850; font: inherit; font-size: 13px; cursor: pointer; }
+  button.active { background: #617968; color: #fff9ed; border-color: #617968; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  section { background: #f4f3ed; border: 1px solid #d8dfd6; border-radius: 16px; overflow: hidden; }
+  .label { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+  .label span { font-size: 12px; letter-spacing: 1px; color: #89938a; }
+  h2 { font-size: 21px; font-weight: 600; margin: 0; }
+  canvas { display: block; width: 100%; height: 620px; }
+  .caption { padding: 0 24px 22px; min-height: 60px; line-height: 1.5; font-size: 14px; color: #7c857b; }
+  footer { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; }
+  .palette { display: flex; gap: 7px; align-items: center; }
+  i { width: 22px; height: 22px; border-radius: 50%; background: var(--c); }
+  footer p { font-size: 13px; }
+</style>
+<header>
+  <div><div class="eyebrow">ПРОБНЫЙ ОБРАЗ · 01</div><h1>Офисный</h1><p>Тот же персонаж. Более спокойные формы и аккуратные детали.</p></div>
+  <nav><button class="active" data-pose="idle">Спокойный</button><button data-pose="impatient">Недовольный</button><button data-pose="carry">С посылкой</button></nav>
+</header>
+<main>
+  <section><div class="label"><h2>Текущий</h2><span>ДО</span></div><canvas id="before"></canvas><div class="caption">Прежняя модель и пропорции.</div></section>
+  <section><div class="label"><h2>Новый вариант</h2><span>ПОСЛЕ</span></div><canvas id="after"></canvas><div class="caption">Скруглённое лицо, мягкий пробор, костюм с лацканами и манжетами,<br>кожаная сумка и более естественные глаза.</div></section>
+</main>
+<footer><p>Одинаковые камера, масштаб и освещение. Остальные персонажи не изменены.</p><div class="palette"><i style="--c:#647d8e"></i><i style="--c:#35444f"></i><i style="--c:#f1e8da"></i><i style="--c:#789783"></i><i style="--c:#90694c"></i></div></footer>
+<script type="module">
+  import * as THREE from 'three';
+  import { ARCHETYPES } from '/src/data.ts';
+  import { createPerson } from '/src/view/characters.ts';
+  import { createOfficePerson } from '/src/view/officeCharacter.ts';
+  const options = ARCHETYPES.find(value => value.id === 'office');
+  const previews = [];
+  for (const [id, create] of [['before', createPerson], ['after', createOfficePerson]]) {
+    const canvas = document.getElementById(id);
+    const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha: true});
+    renderer.setPixelRatio(1); renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1;
+    const scene = new THREE.Scene();
+    scene.add(new THREE.AmbientLight(0xfff8ed, 0.25), new THREE.HemisphereLight(0xe5eff2, 0xc7ae91, 0.8));
+    const key = new THREE.DirectionalLight(0xffedda,2.2);key.position.set(-3,8,4);scene.add(key);
+    const fill = new THREE.DirectionalLight(0xddeaf4,0.3);fill.position.set(7,6,-5);scene.add(fill);
+    const aspect=canvas.clientWidth/canvas.clientHeight;
+    const camera = new THREE.OrthographicCamera(-1.05*aspect,1.05*aspect,1.05,-1.05,0.1,20);
+    camera.position.set(2.3,2.05,5);camera.lookAt(0,0.85,0);
+    const rig=create(options);scene.add(rig.root);
+    previews.push({id,renderer,scene,camera,rig});
+  }
+  function render(pose='idle') {
+    window.previewStats={};
+    for(const {id,renderer,scene,camera,rig} of previews) {
+      rig.setCarry(pose==='carry');rig.update(0,false,0,pose==='impatient'?'impatient':'idle');
+      renderer.render(scene,camera);
+      window.previewStats[id]={...renderer.info.render};
+    }
+  }
+  document.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{
+    document.querySelectorAll('button').forEach(value=>value.classList.toggle('active',value===button));render(button.dataset.pose);
+  }));
+  render();document.body.dataset.ready='1';
+</script>
+</html>
