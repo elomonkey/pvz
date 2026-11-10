@@ -68,7 +68,7 @@ export function createParcelTopDecal(): THREE.Mesh {
 
 export const PARCEL_VERTEX_MATERIAL = new THREE.MeshLambertMaterial({
   vertexColors: true,
-  flatShading: true,
+  flatShading: false,
 });
 const PARCEL_GEOMETRY_CACHE = new Map<string, THREE.BufferGeometry>();
 
@@ -169,6 +169,49 @@ export function cachedGeometry(key: string, create: () => THREE.BufferGeometry):
 
 export const HEAD_CY = 0.02;
 
+const WOOD_TEXTURE_CACHE = new Map<string, THREE.CanvasTexture>();
+
+/** Small, deterministic oak grain; shared by surfaces, with no external assets. */
+export function woodTexture(base: string, repeatX = 1, repeatY = 1): THREE.CanvasTexture {
+  const key = `${base}|${repeatX}|${repeatY}`;
+  const cached = WOOD_TEXTURE_CACHE.get(key);
+  if (cached) return cached;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, 256, 256);
+    for (let board = 0; board < 4; board++) {
+      ctx.fillStyle = board % 2 ? 'rgba(255,248,229,0.08)' : 'rgba(110,76,45,0.035)';
+      ctx.fillRect(0, board * 64, 256, 64);
+      ctx.fillStyle = 'rgba(100,72,48,0.12)';
+      ctx.fillRect(0, board * 64, 256, 1);
+      ctx.fillRect((board * 97) % 256, board * 64, 1, 64);
+    }
+    for (let line = 0; line < 100; line++) {
+      const y = (line * 31.73) % 256;
+      ctx.strokeStyle = line % 3 ? 'rgba(116,80,46,0.055)' : 'rgba(255,251,235,0.12)';
+      ctx.lineWidth = 0.5 + (line % 3) * 0.25;
+      ctx.beginPath();
+      for (let x = 0; x <= 256; x += 4) {
+        const gy = y + Math.sin(x * Math.PI / 128 + line) * (0.5 + line % 4);
+        if (x === 0) ctx.moveTo(x, gy);
+        else ctx.lineTo(x, gy);
+      }
+      ctx.stroke();
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.anisotropy = 4;
+  WOOD_TEXTURE_CACHE.set(key, texture);
+  return texture;
+}
+
 /**
  * Оболочка-шапочка по эллипсоиду черепа.
  * Край задаётся отдельно спереди, сбоку и сзади, поэтому причёска
@@ -267,12 +310,30 @@ export function cone(radius: number, height: number, color: string, segments = 6
   return new THREE.Mesh(geometry, mat(color));
 }
 
+let contactShadowTexture: THREE.CanvasTexture | null = null;
+
 export function contactShadow(width: number, depth: number, opacity = 0.16): THREE.Mesh {
-  const geometry = new THREE.CircleGeometry(1, 20);
+  if (!contactShadowTexture) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const gradient = ctx.createRadialGradient(32, 32, 3, 32, 32, 32);
+      gradient.addColorStop(0, 'rgba(55,43,33,0.95)');
+      gradient.addColorStop(0.35, 'rgba(55,43,33,0.65)');
+      gradient.addColorStop(0.7, 'rgba(55,43,33,0.2)');
+      gradient.addColorStop(1, 'rgba(55,43,33,0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 64, 64);
+    }
+    contactShadowTexture = new THREE.CanvasTexture(canvas);
+    contactShadowTexture.colorSpace = THREE.SRGBColorSpace;
+  }
+  const geometry = cachedGeometry('soft-contact-plane', () => new THREE.PlaneGeometry(2, 2));
   const material = new THREE.MeshBasicMaterial({
-    color: '#1a2430',
+    map: contactShadowTexture,
     transparent: true,
-    opacity,
+    opacity: Math.min(1, opacity * 2.2),
     depthWrite: false,
   });
   const mesh = new THREE.Mesh(geometry, material);

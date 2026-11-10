@@ -9,6 +9,7 @@ import {
   makeTextTexture,
   signPlane,
   sphere,
+  woodTexture,
 } from './primitives';
 import {
   mergeStaticMeshes,
@@ -19,7 +20,7 @@ import {
 
 const INK = '#26313a';
 const CREAM = '#fff4e3';
-const BLUE = '#6f9fc4';
+const BLUE = '#7893a1';
 const WALL_TRIM = '#d8cdbd';
 const WOOD = '#c99766';
 const WOOD_DARK = '#8b6446';
@@ -117,7 +118,7 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   storageBase.raycast = () => {};
   scene.add(storageBase);
 
-  const rightTexture = makeTileTexture(PALETTE.floor, 'rgba(150, 128, 96, 0.32)', 6, 5);
+  const rightTexture = woodTexture(PALETTE.floor, 2, 3);
   const rightFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(6.6, 5.6),
     new THREE.MeshLambertMaterial({ map: rightTexture }),
@@ -127,7 +128,7 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   rightFloor.userData = { type: 'floor' };
   scene.add(rightFloor);
 
-  const storageTexture = makeTileTexture(PALETTE.storageFloor, 'rgba(120, 116, 106, 0.38)', 6, 2);
+  const storageTexture = woodTexture(PALETTE.storageFloor, 2, 1.5);
   const storageFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(6.4, 2.15),
     new THREE.MeshLambertMaterial({ map: storageTexture }),
@@ -967,11 +968,12 @@ function createLamps(scene: THREE.Scene): void {
     group.add(glow);
 
     const pool = new THREE.Mesh(
-      new THREE.CircleGeometry(0.82, 24),
+      new THREE.PlaneGeometry(1.64, 1.64),
       new THREE.MeshBasicMaterial({
+        map: glowTexture,
         color: '#ffe4b8',
         transparent: true,
-        opacity: 0.08,
+        opacity: 0.12,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       }),

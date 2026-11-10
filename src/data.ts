@@ -172,13 +172,13 @@ export const MAX_STRESS = 100;
 export const MAX_QUEUE = 4;
 
 export const PALETTE = {
-  bg: '#e3ece7',
-  floor: '#d8c6a6',
+  bg: '#e6eeed',
+  floor: '#e9c9a3',
   floorLine: '#c9b48f',
   clientFloor: '#d9c8a8',
   staffFloor: '#c8b795',
-  storageFloor: '#b9b4a8',
-  wall: '#f2efe7',
+  storageFloor: '#dcc6a8',
+  wall: '#e9d5bf',
   wallTrim: '#d8cdbd',
   shelfFrame: '#c99766',
   shelfBoard: '#e0bb8a',
@@ -197,16 +197,16 @@ export const PALETTE = {
 };
 
 export const PARCEL_COLORS = [
-  '#d98b72',
-  '#6f9fc4',
-  '#e4c58c',
-  '#8fae9b',
-  '#a98bb5',
-  '#d98fa8',
-  '#7fb8c9',
-  '#e0a36f',
-  '#c97a5f',
-  '#6f9e8e',
+  '#bc8875',
+  '#8098a8',
+  '#d9bc83',
+  '#91a18a',
+  '#a398a5',
+  '#c19a94',
+  '#88a8af',
+  '#cba276',
+  '#b77f68',
+  '#79968b',
 ];
 
 export const ARCHETYPES: Archetype[] = [

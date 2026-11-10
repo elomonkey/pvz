@@ -39,6 +39,7 @@ import {
   sphere,
   UNIT_BOX,
   UNIT_SPHERE,
+  woodTexture,
 } from './primitives';
 
 export interface CellVisual {
@@ -294,6 +295,7 @@ export function createCounter(scene: THREE.Scene): THREE.Group {
     radius: 0.04,
   });
   top.position.y = 1.045;
+  top.material = new THREE.MeshLambertMaterial({ map: woodTexture(KIT_COLORS.woodLight, 2, 1) });
   group.add(top);
 
   const trim = roundedBox(COUNTER.w + 0.2, 0.04, COUNTER.d + 0.16, KIT_COLORS.cream, {

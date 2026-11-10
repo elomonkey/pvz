@@ -153,25 +153,25 @@ export function mergeColoredGeometries(parts: ColoredGeometryPart[]): THREE.Buff
 }
 
 export const KIT_COLORS = {
-  bg: '#e3ece7',
-  wall: '#edf2ec',
-  wallTrim: '#c8d8cd',
+  bg: '#e6eeed',
+  wall: '#e9d5bf',
+  wallTrim: '#c6b6a1',
   cream: '#fff4e3',
   paper: '#f6e7d2',
   paperDeep: '#ead4b8',
   ink: '#26313a',
-  wood: '#c99766',
-  woodLight: '#e0bb8a',
-  woodDark: '#8b6446',
-  woodDeep: '#5b4634',
-  sage: '#7f9f89',
-  sageLight: '#a9c4b1',
-  sageDark: '#5f7f6d',
-  cell: '#59645c',
+  wood: '#cda475',
+  woodLight: '#e7bd88',
+  woodDark: '#997653',
+  woodDeep: '#605044',
+  sage: '#85947c',
+  sageLight: '#b4bca4',
+  sageDark: '#667661',
+  cell: '#687267',
   coral: '#d98b72',
   coralDark: '#b96e5b',
   mustard: '#f0b44c',
-  blue: '#6f9fc4',
+  blue: '#8098a8',
   plum: '#8e5a6e',
   white: '#fffaf0',
   shadow: '#1a2430',
@@ -192,7 +192,7 @@ export interface KitMaterialOptions {
 
 export const VERTEX_COLOR_MATERIAL = new THREE.MeshLambertMaterial({
   vertexColors: true,
-  flatShading: true,
+  flatShading: false,
 });
 
 const MATERIAL_CACHE = new Map<string, THREE.MeshLambertMaterial>();
@@ -216,7 +216,7 @@ export function kitMaterial(
 
   const material = new THREE.MeshLambertMaterial({
     color,
-    flatShading: true,
+    flatShading: false,
     transparent: options.transparent ?? false,
     opacity: options.opacity ?? 1,
     depthWrite: options.depthWrite ?? !(options.transparent ?? false),

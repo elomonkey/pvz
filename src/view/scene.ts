@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SHELF_DEFS, type DecorOwnership } from '../data';
+import { PALETTE, SHELF_DEFS, type DecorOwnership } from '../data';
 import { createEnvironment } from './environment';
 import {
   createCounter,
@@ -23,18 +23,29 @@ export interface World {
 }
 
 export function createWorld(scene: THREE.Scene): World {
-  const ambient = new THREE.AmbientLight(0xfff6e8, 0.36);
+  const ambient = new THREE.AmbientLight(0xfff8ed, 0.65);
   scene.add(ambient);
 
-  const hemisphere = new THREE.HemisphereLight(0xdcecff, 0xf5dfc0, 1.0);
+  const hemisphere = new THREE.HemisphereLight(0xe5eff2, 0xc7ae91, 1.25);
   scene.add(hemisphere);
 
-  const keyLight = new THREE.DirectionalLight(0xffe9c8, 1.22);
-  keyLight.position.set(7, 14, 5);
+  const keyLight = new THREE.DirectionalLight(0xffe5c4, 1.75);
+  keyLight.position.set(-3, 9, -6);
+  // A single cached shadow map for furniture; moving characters keep cheap blobs.
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(1024, 1024);
+  Object.assign(keyLight.shadow.camera, { left: -10, right: 10, top: 8, bottom: -8, near: 0.5, far: 30 });
+  keyLight.shadow.bias = -0.0003;
+  keyLight.shadow.normalBias = 0.025;
+  keyLight.shadow.radius = 3;
+  keyLight.shadow.intensity = 0.7;
+  keyLight.shadow.autoUpdate = false;
+  keyLight.target.position.set(-1.5, 0, 0.5);
+  scene.add(keyLight.target);
   scene.add(keyLight);
 
-  const fillLight = new THREE.DirectionalLight(0xcfe0ff, 0.26);
-  fillLight.position.set(-8, 8, -4);
+  const fillLight = new THREE.DirectionalLight(0xddeaf4, 0.55);
+  fillLight.position.set(7, 6, 5);
   scene.add(fillLight);
 
   // Тёплое пятно у стойки — главный «уютный» акцент сцены.
@@ -75,17 +86,34 @@ export function createWorld(scene: THREE.Scene): World {
   const neonSign = environment.neonSign;
   const neonGlowMaterial = environment.neonGlowMaterial;
 
+  // Snapshot only the static world before Game adds animated characters.
+  const floors = new Set<THREE.Object3D>(environment.floors);
+  scene.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (materials.some((material) => material.transparent || material instanceof THREE.MeshBasicMaterial)) return;
+    object.castShadow = !floors.has(object) && object !== environment.clientRug;
+    object.receiveShadow = true;
+  });
+  cat.traverse((object) => { object.castShadow = false; });
+  // Parcels disappear on pickup: do not bake their changing visibility into the map.
+  for (const cell of cells) {
+    cell.parcel.traverse((object) => { object.castShadow = false; });
+  }
+  environment.clockSecondHand.castShadow = false;
+
   const applyDecor = (owned: DecorOwnership): void => {
     tv.visible = owned.tv;
     cat.visible = owned.cat;
     neonSign.visible = owned.sign;
 
-    if (wallMaterial) wallMaterial.color.set(owned.walls ? '#cfe8dd' : '#f2efe7');
-    rugMaterial.color.set(owned.rug ? '#6f9fc4' : '#9ab8c7');
+    if (wallMaterial) wallMaterial.color.set(owned.walls ? '#cbd6c5' : PALETTE.wall);
+    rugMaterial.color.set(owned.rug ? '#718b9e' : '#8c9fa8');
     for (const material of floorMaterials) {
       material.color.set(owned.floor ? '#c9a06a' : '#ffffff');
     }
     clockMaterial.color.set(owned.clock ? '#7ec8ff' : '#ffffff');
+    keyLight.shadow.needsUpdate = true;
   };
 
   const update = (time: number): void => {
