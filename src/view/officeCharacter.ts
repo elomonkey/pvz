@@ -1,7 +1,66 @@
 import * as THREE from 'three';
 import type { PersonOptions, PersonRig } from './characters';
 import { mergeStaticMeshesToVertexColor, roundedBox, VERTEX_COLOR_MATERIAL } from './kit';
-import { contactShadow, createParcelTopDecal, mat } from './primitives';
+import { cachedGeometry, contactShadow, createParcelTopDecal, mat } from './primitives';
+
+/** One flat bevel per edge: 44 triangles, rather than a subdivided rounded box. */
+function chamferedBox(w: number, h: number, d: number, radius: number): THREE.BufferGeometry {
+  return cachedGeometry(`office-chamfer:${w}:${h}:${d}:${radius}`, () => {
+    const half = [w / 2, h / 2, d / 2];
+    const r = Math.min(radius * 0.72, Math.min(w, h, d) * 0.45);
+    const core = half.map(value => value - r);
+    const positions: number[] = [], normals: number[] = [], uv: number[] = [];
+    const face = (points: THREE.Vector3[], normal: THREE.Vector3): void => {
+      const cross = new THREE.Vector3().subVectors(points[1], points[0]).cross(new THREE.Vector3().subVectors(points[2], points[0]));
+      if (cross.dot(normal) < 0) points.reverse();
+      for (let i = 1; i < points.length - 1; i++) {
+        for (const point of [points[0], points[i], points[i + 1]]) {
+          positions.push(point.x, point.y, point.z);
+          const smooth = new THREE.Vector3(
+            point.x - THREE.MathUtils.clamp(point.x, -core[0], core[0]),
+            point.y - THREE.MathUtils.clamp(point.y, -core[1], core[1]),
+            point.z - THREE.MathUtils.clamp(point.z, -core[2], core[2]),
+          ).normalize();
+          normals.push(smooth.x, smooth.y, smooth.z);
+          uv.push(0, 0);
+        }
+      }
+    };
+    for (let axis = 0; axis < 3; axis++) {
+      const b = (axis + 1) % 3, c = (axis + 2) % 3;
+      for (const sign of [-1, 1]) {
+        const points = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sb, sc]) => {
+          const point = new THREE.Vector3();
+          point.setComponent(axis, sign * half[axis]);
+          point.setComponent(b, sb * core[b]); point.setComponent(c, sc * core[c]);
+          return point;
+        });
+        face(points, new THREE.Vector3().setComponent(axis, sign));
+      }
+      for (const sb of [-1, 1]) for (const sc of [-1, 1]) {
+        const points = [[-1, false], [1, false], [1, true], [-1, true]].map(([sa, second]) => {
+          const point = new THREE.Vector3().setComponent(axis, Number(sa) * core[axis]);
+          point.setComponent(b, sb * (second ? core[b] : half[b]));
+          point.setComponent(c, sc * (second ? half[c] : core[c]));
+          return point;
+        });
+        face(points, new THREE.Vector3().setComponent(b, sb).setComponent(c, sc).normalize());
+      }
+    }
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      face([
+        new THREE.Vector3(sx * half[0], sy * core[1], sz * core[2]),
+        new THREE.Vector3(sx * core[0], sy * half[1], sz * core[2]),
+        new THREE.Vector3(sx * core[0], sy * core[1], sz * half[2]),
+      ], new THREE.Vector3(sx, sy, sz).normalize());
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return geometry;
+  });
+}
 
 /** Art prototype for the office archetype only; the existing rig contract is preserved. */
 export function createOfficePerson(options: PersonOptions): PersonRig {
@@ -16,9 +75,12 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
   };
   const block = (
     parent: THREE.Group, size: [number, number, number],
-    position: [number, number, number], color: string, radius = 0.025,
+    position: [number, number, number], color: string, radius = 0.025, soft = false,
   ): THREE.Mesh => {
-    const mesh = roundedBox(...size, color, { radius, segments: radius >= 0.06 ? 2 : 1 });
+    const geometry = radius >= 0.015 && Math.min(...size) >= 0.03
+      ? chamferedBox(...size, radius)
+      : cachedGeometry(`office-box:${size.join(':')}`, () => new THREE.BoxGeometry(...size));
+    const mesh = soft ? roundedBox(...size, color, { radius, segments: 1 }) : new THREE.Mesh(geometry, mat(color));
     mesh.position.set(...position);
     parent.add(mesh);
     return mesh;
@@ -34,12 +96,9 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
     shape.moveTo(...outline[0]);
     for (const point of outline.slice(1)) shape.lineTo(...point);
     shape.closePath();
-    const geometry = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.008, bevelEnabled: true, bevelSize: 0.003,
-      bevelThickness: 0.002, bevelSegments: 1, steps: 1, curveSegments: 1,
-    });
+    const geometry = new THREE.ShapeGeometry(shape);
     const mesh = new THREE.Mesh(geometry, mat(color));
-    mesh.position.z = z;
+    mesh.position.z = z + 0.008;
     parent.add(mesh);
     return mesh;
   };
@@ -56,14 +115,11 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
       const taper = 0.82 + 0.18 * (positions.getY(i) + 0.235) / 0.47;
       positions.setX(i, positions.getX(i) * taper);
     }
-    trouser.geometry.computeVertexNormals();
+    // Keep the bevel normals across the low-poly silhouette taper.
     block(leg, [0.15, 0.035, 0.198], [0, -0.432, 0], palette.seam, 0.008);
-    block(leg, [0.19, 0.105, 0.295], [0, -0.495, 0.042], palette.leatherDark, 0.042);
-    block(leg, [0.195, 0.025, 0.30], [0, -0.538, 0.042], palette.sole, 0.012);
+    block(leg, [0.19, 0.105, 0.295], [0, -0.495, 0.042], palette.leatherDark, 0.042, true);
+    block(leg, [0.195, 0.025, 0.30], [0, -0.538, 0.042], palette.sole, 0.012, true);
     block(leg, [0.17, 0.018, 0.275], [0, -0.52, 0.042], palette.leather, 0.008);
-    for (const z of [0.025, 0.055]) {
-      block(leg, [0.075, 0.008, 0.009], [0, -0.44, z], '#b69b7c', 0.003);
-    }
     batch(leg);
   }
 
@@ -79,7 +135,6 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
     // Sloped shoulders instead of the horizontal slab across the old jacket.
     if (y > 0.18) torsoPositions.setY(i, y - 0.045 * (Math.abs(x) / 0.245) ** 1.5);
   }
-  torso.geometry.computeVertexNormals();
   panel(body, [[-0.085, 1.193], [0.085, 1.193], [0.025, 0.997], [-0.025, 0.997]], 0.155, palette.shirt);
   for (const side of [-1, 1]) {
     const lapelOutline: [number, number][] = [[0.045, 1.193], [0.125, 1.166], [0.105, 1.136], [0.145, 1.113], [0.024, 0.975], [0.055, 1.085]];
@@ -107,10 +162,8 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
       sleevePositions.setX(i, sleevePositions.getX(i) * (0.78 + 0.22 * t));
       sleevePositions.setZ(i, sleevePositions.getZ(i) * (0.8 + 0.2 * t) + 0.012 * (1 - t));
     }
-    sleeve.geometry.computeVertexNormals();
-    block(arm, [0.123, 0.034, 0.132], [0, -0.397, 0.01], palette.shirt, 0.012);
-    block(arm, [0.105, 0.125, 0.115], [0, -0.465, 0.005], palette.skin, 0.035);
-    for (const y of [-0.34, -0.37]) block(arm, [0.012, 0.012, 0.012], [side * 0.061, y, 0.025], palette.leatherDark, 0.004);
+    block(arm, [0.123, 0.034, 0.132], [0, -0.397, 0.01], palette.shirt, 0.012, true);
+    block(arm, [0.105, 0.125, 0.115], [0, -0.465, 0.005], palette.skin, 0.035, true);
   }
   const bag = new THREE.Group();
   bag.position.set(-0.015, -0.69, 0.025);
@@ -141,10 +194,10 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
   skullGeometry.computeVertexNormals();
   skull.geometry = skullGeometry;
   for (const side of [-1, 1]) {
-    block(head, [0.04, 0.075, 0.055], [side * 0.206, 0.005, 0.005], palette.skin, 0.018);
+    block(head, [0.04, 0.075, 0.055], [side * 0.206, 0.005, 0.005], palette.skin, 0.018, true);
     block(head, [0.018, 0.037, 0.024], [side * 0.222, 0.005, 0.016], '#d29b79', 0.01);
   }
-  block(head, [0.045, 0.052, 0.044], [0, -0.007, 0.189], palette.skin, 0.019);
+  block(head, [0.045, 0.052, 0.044], [0, -0.007, 0.189], palette.skin, 0.019, true);
   // A single scalp-conforming cap with an asymmetric hairline and a shallow side part.
   const hairGeometry = new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2);
   const hairPositions = hairGeometry.getAttribute('position');
@@ -168,17 +221,22 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
   hairGeometry.computeVertexNormals();
   head.add(new THREE.Mesh(hairGeometry, mat(palette.hair)));
   const partPoints = Array.from({ length: 7 }, (_, i) => hairPoint(0.28 + i / 6 * 0.65, 0.95).multiplyScalar(1.009));
-  const partCurve = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(partPoints), 12, 0.002, 4, false);
+  const partCurve = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(partPoints), 8, 0.002, 3, false);
   head.add(new THREE.Mesh(partCurve, mat('#35271f')));
   const eyes: THREE.Group[] = [];
   const brows: THREE.Mesh[] = [];
+  const eyeDisc = (parent: THREE.Group, width: number, height: number, position: [number, number, number], color: string, segments: number): void => {
+    const geometry = cachedGeometry(`office-eye:${width}:${height}:${segments}`, () => new THREE.CircleGeometry(1, segments).scale(width / 2, height / 2, 1));
+    const mesh = new THREE.Mesh(geometry, mat(color));
+    mesh.position.set(...position); parent.add(mesh);
+  };
   for (const side of [-1, 1]) {
     const eye = new THREE.Group();
     eye.position.set(side * 0.084, 0.053, 0.183);
     head.add(eye);
-    block(eye, [0.071, 0.049, 0.016], [0, 0, 0], '#f8eedf', 0.019);
-    block(eye, [0.033, 0.041, 0.013], [-side * 0.004, -0.001, 0.01], '#49382e', 0.013);
-    block(eye, [0.011, 0.011, 0.005], [-0.006, 0.008, 0.019], '#fff4df', 0.004);
+    eyeDisc(eye, 0.071, 0.049, [0, 0, 0.008], '#f8eedf', 12);
+    eyeDisc(eye, 0.033, 0.041, [-side * 0.004, -0.001, 0.017], '#49382e', 10);
+    eyeDisc(eye, 0.011, 0.011, [-0.006, 0.008, 0.022], '#fff4df', 6);
     batch(eye); eyes.push(eye);
     brows.push(block(head, [0.067, 0.012, 0.016], [side * 0.084, 0.112, 0.182], palette.hair, 0.005));
   }
@@ -186,7 +244,7 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
   for (const brow of brows) brow.userData.dynamic = true;
   const smile = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
     new THREE.Vector3(-0.035, -0.070, 0.182), new THREE.Vector3(0, -0.079, 0.185), new THREE.Vector3(0.035, -0.066, 0.182),
-  ]), 8, 0.0045, 4, false), mat('#8e5743'));
+  ]), 6, 0.0045, 3, false), mat('#8e5743'));
   const mouthFlat = block(head, [0.059, 0.009, 0.01], [0, -0.074, 0.185], '#8e5743', 0.004);
   head.add(smile);
   mouthFlat.visible = false;
