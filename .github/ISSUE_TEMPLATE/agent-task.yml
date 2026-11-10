@@ -1,0 +1,53 @@
+name: Задача для агента
+description: Постановка задачи для OpenCode Lead или Codex Sol
+title: "[task] "
+labels: ["status:ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Одна задача = один PR. Заполните границы и критерии готовности.
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Исполнитель
+      options:
+        - Codex Sol
+        - OpenCode Lead
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Цель
+      description: Что должно измениться и зачем.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Границы задачи
+      description: Какие файлы и модули можно трогать.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Вне задачи
+      description: Что нельзя менять в этом PR.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерии готовности
+      description: Проверяемый результат.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Как проверять
+      description: Команды, браузерный сценарий, ожидаемые состояния.
+    validations:
+      required: true
