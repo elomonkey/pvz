@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE, SHELF_DEFS, type DecorOwnership } from '../data';
 import { createEnvironment } from './environment';
+import { mergeColoredGeometries, VERTEX_COLOR_MATERIAL } from './kit';
 import {
   createCounter,
   createCounterCat,
@@ -23,28 +24,29 @@ export interface World {
 }
 
 export function createWorld(scene: THREE.Scene): World {
-  const ambient = new THREE.AmbientLight(0xfff8ed, 0.65);
+  const ambient = new THREE.AmbientLight(0xfff8ed, 0.25);
   scene.add(ambient);
 
-  const hemisphere = new THREE.HemisphereLight(0xe5eff2, 0xc7ae91, 1.25);
+  const hemisphere = new THREE.HemisphereLight(0xe5eff2, 0xc7ae91, 0.8);
   scene.add(hemisphere);
 
-  const keyLight = new THREE.DirectionalLight(0xffe5c4, 1.75);
-  keyLight.position.set(-3, 9, -6);
+  const keyLight = new THREE.DirectionalLight(0xffedda, 2.2);
+  keyLight.position.set(-3, 8, -4);
   // A single cached shadow map for furniture; moving characters keep cheap blobs.
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024, 1024);
   Object.assign(keyLight.shadow.camera, { left: -10, right: 10, top: 8, bottom: -8, near: 0.5, far: 30 });
   keyLight.shadow.bias = -0.0003;
   keyLight.shadow.normalBias = 0.025;
-  keyLight.shadow.radius = 3;
-  keyLight.shadow.intensity = 0.7;
+  keyLight.shadow.radius = 4;
+  keyLight.shadow.blurSamples = 4;
+  keyLight.shadow.intensity = 0.85;
   keyLight.shadow.autoUpdate = false;
   keyLight.target.position.set(-1.5, 0, 0.5);
   scene.add(keyLight.target);
   scene.add(keyLight);
 
-  const fillLight = new THREE.DirectionalLight(0xddeaf4, 0.55);
+  const fillLight = new THREE.DirectionalLight(0xddeaf4, 0.3);
   fillLight.position.set(7, 6, 5);
   scene.add(fillLight);
 
@@ -86,6 +88,30 @@ export function createWorld(scene: THREE.Scene): World {
   const neonSign = environment.neonSign;
   const neonGlowMaterial = environment.neonGlowMaterial;
 
+  // Batch the always-visible plaque edges; optional neon plaques keep their owner.
+  scene.updateMatrixWorld(true);
+  const plaqueEdges: THREE.Mesh[] = [];
+  scene.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !object.userData.plaqueBacking) return;
+    let owner: THREE.Object3D | null = object;
+    while (owner) {
+      if (owner === neonSign) return;
+      owner = owner.parent;
+    }
+    plaqueEdges.push(object);
+  });
+  const plaqueGeometry = mergeColoredGeometries(plaqueEdges.map((mesh) => ({
+    geometry: mesh.geometry,
+    matrix: mesh.matrixWorld,
+    color: (mesh.material as THREE.MeshLambertMaterial).color,
+  })));
+  if (plaqueGeometry) {
+    const plaques = new THREE.Mesh(plaqueGeometry, VERTEX_COLOR_MATERIAL);
+    plaques.raycast = () => {};
+    scene.add(plaques);
+    for (const edge of plaqueEdges) edge.removeFromParent();
+  }
+
   // Snapshot only the static world before Game adds animated characters.
   const floors = new Set<THREE.Object3D>(environment.floors);
   scene.traverse((object) => {
@@ -95,10 +121,10 @@ export function createWorld(scene: THREE.Scene): World {
     object.castShadow = !floors.has(object) && object !== environment.clientRug;
     object.receiveShadow = true;
   });
-  cat.traverse((object) => { object.castShadow = false; });
+  cat.traverse((object) => { object.castShadow = false; object.receiveShadow = false; });
   // Parcels disappear on pickup: do not bake their changing visibility into the map.
   for (const cell of cells) {
-    cell.parcel.traverse((object) => { object.castShadow = false; });
+    cell.parcel.traverse((object) => { object.castShadow = false; object.receiveShadow = false; });
   }
   environment.clockSecondHand.castShadow = false;
 
@@ -108,7 +134,7 @@ export function createWorld(scene: THREE.Scene): World {
     neonSign.visible = owned.sign;
 
     if (wallMaterial) wallMaterial.color.set(owned.walls ? '#cbd6c5' : PALETTE.wall);
-    rugMaterial.color.set(owned.rug ? '#718b9e' : '#8c9fa8');
+    rugMaterial.color.set(owned.rug ? '#b6c7d3' : '#ffffff');
     for (const material of floorMaterials) {
       material.color.set(owned.floor ? '#c9a06a' : '#ffffff');
     }

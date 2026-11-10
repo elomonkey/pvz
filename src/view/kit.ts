@@ -111,6 +111,37 @@ export function mergeStaticMeshesToVertexColor(
   const merged = mergeColoredGeometries(parts);
   if (!merged) return null;
 
+  // Local furniture contact shading is baked once into the existing vertex colours.
+  // No runtime AO pass and no extra draw calls. Characters keep their original colours.
+  if (['shelf', 'counter', 'return-shelf'].includes(String(parent.userData.type))) {
+    const boxes = parts.map((part) => {
+      if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+      return part.geometry.boundingBox!.clone().applyMatrix4(part.matrix);
+    });
+    const centers = boxes.map((box) => box.getCenter(new THREE.Vector3()));
+    const positions = merged.getAttribute('position');
+    const normals = merged.getAttribute('normal');
+    const colors = merged.getAttribute('color');
+    const point = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    for (let i = 0; i < positions.count; i++) {
+      point.fromBufferAttribute(positions, i);
+      normal.fromBufferAttribute(normals, i);
+      let contact = 0;
+      for (let j = 0; j < boxes.length; j++) {
+        const distance = boxes[j].distanceToPoint(point);
+        if (distance >= 0.18) continue;
+        direction.subVectors(centers[j], point);
+        const facing = normal.dot(direction) / Math.max(0.001, direction.length());
+        if (facing <= 0) continue;
+        contact = Math.max(contact, (1 - distance / 0.18) ** 2 * facing);
+      }
+      const shade = 1 - 0.36 * contact;
+      colors.setXYZ(i, colors.getX(i) * shade, colors.getY(i) * shade, colors.getZ(i) * shade);
+    }
+  }
+
   const mergedMesh = new THREE.Mesh(merged, material);
   parent.add(mergedMesh);
   for (const mesh of included) mesh.removeFromParent();

@@ -10,6 +10,7 @@ import {
   signPlane,
   sphere,
   woodTexture,
+  fabricTexture,
 } from './primitives';
 import {
   mergeStaticMeshes,
@@ -77,9 +78,9 @@ function makeRugTexture(): THREE.CanvasTexture {
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.fillStyle = '#e8f0e8';
+    ctx.fillStyle = ctx.createPattern(fabricTexture('#91a4b1').image, 'repeat')!;
     ctx.fillRect(0, 0, 256, 256);
-    ctx.strokeStyle = '#b7c9c0';
+    ctx.strokeStyle = '#657f90';
     ctx.lineWidth = 8;
     ctx.strokeRect(10, 10, 236, 236);
     ctx.lineWidth = 3;
@@ -121,7 +122,7 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   const rightTexture = woodTexture(PALETTE.floor, 2, 3);
   const rightFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(6.6, 5.6),
-    new THREE.MeshLambertMaterial({ map: rightTexture }),
+    new THREE.MeshStandardMaterial({ map: rightTexture, roughness: 0.82 }),
   );
   rightFloor.rotation.x = -Math.PI / 2;
   rightFloor.position.set(1.65, 0.002, 0.85);
@@ -131,7 +132,7 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   const storageTexture = woodTexture(PALETTE.storageFloor, 2, 1.5);
   const storageFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(6.4, 2.15),
-    new THREE.MeshLambertMaterial({ map: storageTexture }),
+    new THREE.MeshStandardMaterial({ map: storageTexture, roughness: 0.85 }),
   );
   storageFloor.rotation.x = -Math.PI / 2;
   storageFloor.position.set(-4.85, 0.002, -0.475);
@@ -181,6 +182,7 @@ function createRug(scene: THREE.Scene): THREE.Mesh {
   scene.add(stripe2);
 
   const staffMat = box(4.8, 0.018, 1.75, '#7b8f7f');
+  staffMat.material = new THREE.MeshLambertMaterial({ map: fabricTexture('#82917c') });
   staffMat.position.set(1.3, 0.01, -0.62);
   staffMat.userData = { type: 'floor' };
   scene.add(staffMat);
@@ -190,6 +192,7 @@ function createRug(scene: THREE.Scene): THREE.Mesh {
   scene.add(matBorder);
 
   const storageMat = box(6.25, 0.012, 1.9, '#aeb4a8');
+  storageMat.material = new THREE.MeshLambertMaterial({ map: fabricTexture('#afb3a4') });
   storageMat.position.set(-4.85, 0.007, -0.47);
   storageMat.userData = { type: 'floor' };
   scene.add(storageMat);
@@ -713,7 +716,19 @@ function createWalls(scene: THREE.Scene): {
 } {
   const wallMeshes: THREE.Mesh[] = [];
   const addWall = (w: number, h: number, d: number, x: number, y: number, z: number): void => {
-    const mesh = box(w, h, d, PALETTE.wall);
+    // Soft baked bounce falloff at the foot of the wall, without a screen-space pass.
+    const geometry = new THREE.BoxGeometry(w, h, d, Math.max(1, Math.ceil(w / 0.35)), 12, Math.max(1, Math.ceil(d / 0.35)));
+    const positions = geometry.getAttribute('position');
+    const colors = new Float32Array(positions.count * 3);
+    for (let i = 0; i < positions.count; i++) {
+      const worldY = positions.getY(i) + y;
+      const corner = w < 0.3 && d > 1
+        ? 0.1 * Math.exp(-Math.abs(positions.getZ(i) + z - 3.6) * 2.5) : 0;
+      const shade = (1 - 0.25 * Math.exp(-Math.max(0, worldY) * 2.4)) * (1 - corner);
+      colors.set([shade, shade * 0.99, shade * 0.975], i * 3);
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: PALETTE.wall, vertexColors: true }));
     mesh.position.set(x, y, z);
     scene.add(mesh);
     wallMeshes.push(mesh);
@@ -998,6 +1013,13 @@ function createLamps(scene: THREE.Scene): void {
 function createFittingRooms(scene: THREE.Scene): void {
   const frame = '#7b8b9d';
   const curtain = '#b9c6d4';
+  const curtainGeometry = new THREE.BoxGeometry(0.04, 1.9, 0.42, 1, 1, 18);
+  const curtainPositions = curtainGeometry.getAttribute('position');
+  for (let i = 0; i < curtainPositions.count; i++) {
+    const z = curtainPositions.getZ(i);
+    curtainPositions.setX(i, curtainPositions.getX(i) + Math.sin((z + 0.21) / 0.42 * Math.PI * 6) * 0.018);
+  }
+  curtainGeometry.computeVertexNormals();
 
   for (const x of [3.15, 4.35]) {
     const cabin = new THREE.Group();
@@ -1024,6 +1046,8 @@ function createFittingRooms(scene: THREE.Scene): void {
 
     for (const side of [-1, 1]) {
       const panel = box(0.04, 1.9, 0.42, curtain);
+      panel.geometry = curtainGeometry;
+      panel.scale.set(1, 1, 1);
       panel.position.set(-0.65, 1.07, side * 0.41);
       cabin.add(panel);
     }
