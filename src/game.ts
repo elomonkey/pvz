@@ -622,6 +622,7 @@ export class Game {
   }
 
   debugSetShift(shift: number): void {
+    if (this.isGameOver()) return;
     if (!Number.isInteger(shift) || shift < 1 || shift > 5) return;
     this.ui.hideStart();
     this.tutorialActive = false;
@@ -644,6 +645,7 @@ export class Game {
   }
 
   debugBoss(): void {
+    if (this.isGameOver()) return;
     this.modalOpen = false;
     this.ui.hideAllModals();
     if (this.run.shift >= 5) {
@@ -666,9 +668,14 @@ export class Game {
     this.restartGame();
   }
 
+  private isGameOver(): boolean {
+    return this.phase === 'gameover';
+  }
+
   update(dt: number): void {
     this.time += dt;
     this.updateWorldAnimations(dt);
+    if (this.isGameOver()) return;
 
     if (this.questLog.active && (this.phase === 'playing' || this.phase === 'boss' || this.phase === 'break')) {
       this.questUiTimer -= dt;
@@ -711,16 +718,23 @@ export class Game {
 
     if (this.phase === 'playing' || this.phase === 'boss') {
       this.updatePlayer(dt);
-      for (const client of [...this.clients]) client.update(dt, this.time);
+      for (const client of [...this.clients]) {
+        client.update(dt, this.time);
+        if (this.isGameOver()) return;
+      }
       this.updateSpawning(dt);
       this.updateBossApproach();
       this.updateFinalBoss(dt);
+      if (this.isGameOver()) return;
       this.updateProximity();
       this.checkWaveComplete();
       this.updatePrompt();
     } else if (this.phase === 'break') {
       this.updatePlayer(dt);
-      for (const client of [...this.clients]) client.update(dt, this.time);
+      for (const client of [...this.clients]) {
+        client.update(dt, this.time);
+        if (this.isGameOver()) return;
+      }
       this.updateBreak(dt);
       this.updateProximity();
       this.updatePrompt();
@@ -789,6 +803,8 @@ export class Game {
   }
 
   startNewGame(): void {
+    // An explicit new run is allowed to leave the terminal state.
+    this.phase = 'menu';
     this.clearClients();
     this.run.reset();
     this.ownedDecor = this.createRunDecor();
@@ -809,6 +825,7 @@ export class Game {
   }
 
   private beginShift(shift: number): void {
+    if (this.isGameOver()) return;
     this.run.beginShift(shift);
     this.highlightEnabled = this.scannerWorks();
     this.world.setDayPhase(1);
@@ -883,6 +900,7 @@ export class Game {
   }
 
   private executeStep(index: number): void {
+    if (this.isGameOver()) return;
     const step = this.director.enterStep(index);
     if (!step) {
       this.endShift();
@@ -896,6 +914,7 @@ export class Game {
   }
 
   private startWave(wave: number): void {
+    if (this.isGameOver()) return;
     if (this.run.shift === 4 && wave === 2 && !this.queen.spawned) this.spawnQueen();
     this.highlightEnabled = this.scannerWorks();
     const plan = getWavePlan(this.run.shift, wave, MAX_QUEUE);
@@ -1149,6 +1168,7 @@ export class Game {
   }
 
   private onClientPatienceZero(client: Client): void {
+    if (this.isGameOver()) return;
     if (client.isBoss || client.isMenu) return;
     if (client.state !== 'waiting') return;
 
@@ -1175,6 +1195,8 @@ export class Game {
     this.releaseOrder(client.order);
     client.order = null;
     client.leave(1.2);
+    // Keep the loss/cleanup above, but do not advance the boss after fatal stress.
+    if (this.isGameOver()) return;
 
     if (client === this.bossClient && this.run.shift === 3) {
       this.bossClient = null;
@@ -1236,6 +1258,7 @@ export class Game {
   }
 
   private finishCurrentStep(): void {
+    if (this.isGameOver()) return;
     const next = this.director.nextStepIndex;
     if (next === null) {
       this.endShift();
@@ -1245,6 +1268,7 @@ export class Game {
   }
 
   private startBreak(seconds: number, nextStepIndex: number): void {
+    if (this.isGameOver()) return;
     this.phase = 'break';
     this.director.startBreak(seconds, nextStepIndex);
     this.ui.closePanels();
@@ -1260,6 +1284,7 @@ export class Game {
   }
 
   private spawnBoss(): void {
+    if (this.isGameOver()) return;
     const kind = bossKindForShift(this.run.shift);
     if (kind === 'final') {
       this.spawnFinalBoss();
@@ -1307,6 +1332,7 @@ export class Game {
   }
 
   private spawnSanya(): void {
+    if (this.isGameOver()) return;
     // Саня вводит механики: 4 заказа сразу, а после него — многоячейковые заказы.
     this.progression.setMultiOrders(true);
     this.clearClients();
@@ -1420,6 +1446,7 @@ export class Game {
   }
 
   private finishZinaGame(success: boolean): void {
+    if (this.isGameOver()) return;
     if (!this.zina.active) return;
     this.zina.resolve();
     this.boss.resolve();
@@ -1720,6 +1747,7 @@ export class Game {
   }
 
   onBossDone(): void {
+    if (this.isGameOver()) return;
     if (!this.modalOpen) return;
     const context = this.argumentSystem.context;
     const client = this.argueClient;
@@ -1760,6 +1788,7 @@ export class Game {
   }
 
   private startZinaOrder(): void {
+    if (this.isGameOver()) return;
     const zina = this.bossClient;
     if (!zina) {
       this.zinaOrderPending = false;
@@ -1859,6 +1888,7 @@ export class Game {
   }
 
   private finishBossStep(): void {
+    if (this.isGameOver()) return;
     if (this.bossClient) {
       this.bossClient.leave(0);
       this.removeFromQueue(this.bossClient);
@@ -1875,6 +1905,7 @@ export class Game {
   }
 
   private spawnFinalBoss(): void {
+    if (this.isGameOver()) return;
     if (this.run.shift !== 5) return;
     this.clearClients();
     this.world.setDayPhase(3);
@@ -2178,6 +2209,7 @@ export class Game {
   }
 
   private finishFinalBoss(success: boolean): void {
+    if (this.isGameOver()) return;
     if (!this.finalBoss.active) return;
     if (success) this.events.emit('bossDefeated', { kind: 'final' });
     else this.shiftFailed = true;
@@ -2214,6 +2246,7 @@ export class Game {
   }
 
   private endShift(): void {
+    if (this.isGameOver()) return;
     this.phase = 'results';
     this.modalOpen = true;
     this.run.totalServed += this.run.served;
@@ -2360,6 +2393,8 @@ export class Game {
   private gameOver(): void {
     if (this.phase === 'gameover') return;
     this.phase = 'gameover';
+    this.pendingGameOver = false;
+    this.zina.reset();
     this.modalOpen = true;
     this.run.stress = 100;
     this.tutorialActive = false;
@@ -2898,6 +2933,7 @@ export class Game {
   }
 
   private setupMenu(): void {
+    if (this.isGameOver()) return;
     this.clearClients();
     this.updateShelfProgression(1);
     this.queen.reset();
@@ -3643,6 +3679,7 @@ export class Game {
   }
 
   private addStress(amount: number, deferGameOver = false): void {
+    if (this.isGameOver()) return;
     const delta = amount > 0 ? amount * (1 - 0.1 * this.run.upgrades.tolerance) : amount;
     this.run.stress = Number(clamp(this.run.stress + delta, 0, 100).toFixed(2));
     this.updateStressUi();
