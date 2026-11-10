@@ -7,12 +7,14 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "node --test tests/domain.test.ts tests/systems.test.ts tests/input.test.ts tests/events.test.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "three": "^0.187.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/three": "^0.187.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.6"
