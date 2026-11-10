@@ -10,7 +10,7 @@ import {
   type Vec2,
 } from './data';
 import { createPerson, type PersonRig } from './view/characters';
-import { createOfficePerson } from './view/officeCharacter';
+import { createStyledPerson, isCharacterStyle } from './view/characterRig';
 import type { Order } from './domain/orders';
 
 export type ClientState = 'entering' | 'waiting' | 'leaving' | 'gone';
@@ -76,7 +76,10 @@ export class Client {
     this.queueIndex = options.queueIndex;
     this.state = this.isMenu ? 'waiting' : 'entering';
 
-    const createRig = this.archetype.id === 'office' ? createOfficePerson : createPerson;
+    const style = this.archetype.id;
+    const createRig = isCharacterStyle(style)
+      ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
+      : createPerson;
     this.rig = createRig({
       coat: this.archetype.coat,
       pants: this.archetype.pants,

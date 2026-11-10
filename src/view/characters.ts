@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createStyledPerson } from './characterRig';
 import type {
   Archetype,
   HairStyle,
@@ -108,6 +109,12 @@ const BUILD_DIMS: Record<
 };
 
 export function createPerson(options: PersonOptions): PersonRig {
+  if (!options.boss && options.cap && options.accessory === 'lanyard') return createStyledPerson(options, 'player');
+  return createLegacyPerson(options);
+}
+
+// Special characters retain their existing silhouettes and animation contract.
+function createLegacyPerson(options: PersonOptions): PersonRig {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
