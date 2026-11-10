@@ -348,6 +348,7 @@ export function cone(radius: number, height: number, color: string, segments = 6
 }
 
 let contactShadowTexture: THREE.CanvasTexture | null = null;
+const CONTACT_MATERIAL_CACHE = new Map<number, THREE.MeshBasicMaterial>();
 
 export function contactShadow(width: number, depth: number, opacity = 0.16): THREE.Mesh {
   if (!contactShadowTexture) {
@@ -367,13 +368,18 @@ export function contactShadow(width: number, depth: number, opacity = 0.16): THR
     contactShadowTexture.colorSpace = THREE.SRGBColorSpace;
   }
   const geometry = cachedGeometry('soft-contact-plane', () => new THREE.PlaneGeometry(2, 2));
-  const material = new THREE.MeshBasicMaterial({
-    map: contactShadowTexture,
-    transparent: true,
-    opacity: Math.min(1, opacity * 2.2),
-    depthWrite: false,
-  });
+  let material = CONTACT_MATERIAL_CACHE.get(opacity);
+  if (!material) {
+    material = new THREE.MeshBasicMaterial({
+      map: contactShadowTexture,
+      transparent: true,
+      opacity: Math.min(1, opacity * 2.2),
+      depthWrite: false,
+    });
+    CONTACT_MATERIAL_CACHE.set(opacity, material);
+  }
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData.visualContact = true;
   mesh.rotation.x = -Math.PI / 2;
   // Rugs top out at ~0.02; ground contacts must remain visible above them.
   mesh.position.y = 0.032;

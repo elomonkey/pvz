@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PALETTE, SHELF_DEFS, type DecorOwnership } from '../data';
 import { createEnvironment } from './environment';
 import { mergeColoredGeometries, VERTEX_COLOR_MATERIAL } from './kit';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   createCounter,
   createCounterCat,
@@ -32,16 +33,6 @@ export function createWorld(scene: THREE.Scene): World {
 
   const keyLight = new THREE.DirectionalLight(0xffedda, 2.2);
   keyLight.position.set(-3, 8, -4);
-  // A single cached shadow map for furniture; moving characters keep cheap blobs.
-  keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(1024, 1024);
-  Object.assign(keyLight.shadow.camera, { left: -10, right: 10, top: 8, bottom: -8, near: 0.5, far: 30 });
-  keyLight.shadow.bias = -0.0003;
-  keyLight.shadow.normalBias = 0.025;
-  keyLight.shadow.radius = 4;
-  keyLight.shadow.blurSamples = 4;
-  keyLight.shadow.intensity = 0.85;
-  keyLight.shadow.autoUpdate = false;
   keyLight.target.position.set(-1.5, 0, 0.5);
   scene.add(keyLight.target);
   scene.add(keyLight);
@@ -112,21 +103,31 @@ export function createWorld(scene: THREE.Scene): World {
     for (const edge of plaqueEdges) edge.removeFromParent();
   }
 
-  // Snapshot only the static world before Game adds animated characters.
-  const floors = new Set<THREE.Object3D>(environment.floors);
+  // Batch only fixed ground contacts. Optional/animated decor keeps its own shadows.
+  const contactGroups = new Map<THREE.Material, THREE.Mesh[]>();
   scene.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    if (materials.some((material) => material.transparent || material instanceof THREE.MeshBasicMaterial)) return;
-    object.castShadow = !floors.has(object) && object !== environment.clientRug;
-    object.receiveShadow = true;
+    if (!(object instanceof THREE.Mesh) || !object.userData.visualContact || Array.isArray(object.material)) return;
+    let owner: THREE.Object3D | null = object;
+    while (owner) {
+      if (owner === cat || owner === tv || owner === neonSign) return;
+      if (owner.userData.type === 'shelf' && owner.userData.shelfIndex >= 2) return;
+      owner = owner.parent;
+    }
+    const group = contactGroups.get(object.material) ?? [];
+    group.push(object);
+    contactGroups.set(object.material, group);
   });
-  cat.traverse((object) => { object.castShadow = false; object.receiveShadow = false; });
-  // Parcels disappear on pickup: do not bake their changing visibility into the map.
-  for (const cell of cells) {
-    cell.parcel.traverse((object) => { object.castShadow = false; object.receiveShadow = false; });
+  for (const [material, contacts] of contactGroups) {
+    if (contacts.length < 2) continue;
+    const parts = contacts.map((mesh) => mesh.geometry.clone().applyMatrix4(mesh.matrixWorld));
+    const geometry = mergeGeometries(parts);
+    for (const part of parts) part.dispose();
+    if (!geometry) continue;
+    const combined = new THREE.Mesh(geometry, material);
+    combined.raycast = () => {};
+    scene.add(combined);
+    for (const contact of contacts) contact.removeFromParent();
   }
-  environment.clockSecondHand.castShadow = false;
 
   const applyDecor = (owned: DecorOwnership): void => {
     tv.visible = owned.tv;
@@ -139,7 +140,6 @@ export function createWorld(scene: THREE.Scene): World {
       material.color.set(owned.floor ? '#c9a06a' : '#ffffff');
     }
     clockMaterial.color.set(owned.clock ? '#7ec8ff' : '#ffffff');
-    keyLight.shadow.needsUpdate = true;
   };
 
   const update = (time: number): void => {

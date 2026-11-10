@@ -122,7 +122,7 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   const rightTexture = woodTexture(PALETTE.floor, 2, 3);
   const rightFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(6.6, 5.6),
-    new THREE.MeshStandardMaterial({ map: rightTexture, roughness: 0.82 }),
+    new THREE.MeshLambertMaterial({ map: rightTexture }),
   );
   rightFloor.rotation.x = -Math.PI / 2;
   rightFloor.position.set(1.65, 0.002, 0.85);
@@ -132,7 +132,7 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   const storageTexture = woodTexture(PALETTE.storageFloor, 2, 1.5);
   const storageFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(6.4, 2.15),
-    new THREE.MeshStandardMaterial({ map: storageTexture, roughness: 0.85 }),
+    new THREE.MeshLambertMaterial({ map: storageTexture }),
   );
   storageFloor.rotation.x = -Math.PI / 2;
   storageFloor.position.set(-4.85, 0.002, -0.475);
