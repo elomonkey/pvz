@@ -29,6 +29,20 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
       group, VERTEX_COLOR_MATERIAL,
     );
   };
+  const panel = (parent: THREE.Group, outline: [number, number][], z: number, color: string): THREE.Mesh => {
+    const shape = new THREE.Shape();
+    shape.moveTo(...outline[0]);
+    for (const point of outline.slice(1)) shape.lineTo(...point);
+    shape.closePath();
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: 0.008, bevelEnabled: true, bevelSize: 0.003,
+      bevelThickness: 0.002, bevelSegments: 1, steps: 1, curveSegments: 1,
+    });
+    const mesh = new THREE.Mesh(geometry, mat(color));
+    mesh.position.z = z;
+    parent.add(mesh);
+    return mesh;
+  };
 
   const legL = new THREE.Group();
   const legR = new THREE.Group();
@@ -53,40 +67,50 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
     batch(leg);
   }
 
-  block(body, [0.39, 0.12, 0.28], [0, 0.58, 0], palette.trousers, 0.04);
-  const torso = block(body, [0.49, 0.60, 0.305], [0, 0.91, 0], palette.jacket, 0.065);
+  block(body, [0.38, 0.10, 0.27], [0, 0.59, 0], palette.trousers, 0.035);
+  const torso = block(body, [0.49, 0.61, 0.305], [0, 0.90, 0], palette.jacket, 0.065);
   torso.geometry = torso.geometry.clone();
   const torsoPositions = torso.geometry.getAttribute('position');
   for (let i = 0; i < torsoPositions.count; i++) {
     const y = torsoPositions.getY(i);
-    torsoPositions.setX(i, torsoPositions.getX(i) * (0.9 + 0.1 * (y + 0.3) / 0.6));
+    const x = torsoPositions.getX(i);
+    const waist = 0.92 - 0.055 * Math.exp(-(((y + 0.055) / 0.16) ** 2));
+    torsoPositions.setX(i, x * waist);
+    // Sloped shoulders instead of the horizontal slab across the old jacket.
+    if (y > 0.18) torsoPositions.setY(i, y - 0.045 * (Math.abs(x) / 0.245) ** 1.5);
   }
   torso.geometry.computeVertexNormals();
-  block(body, [0.135, 0.33, 0.025], [0, 1.035, 0.15], palette.shirt, 0.018);
+  panel(body, [[-0.085, 1.193], [0.085, 1.193], [0.025, 0.997], [-0.025, 0.997]], 0.155, palette.shirt);
   for (const side of [-1, 1]) {
-    const lapel = block(body, [0.085, 0.265, 0.03], [side * 0.088, 1.074, 0.165], palette.lapel, 0.012);
-    lapel.rotation.z = side * 0.31;
-    const collar = block(body, [0.068, 0.055, 0.025], [side * 0.039, 1.177, 0.17], palette.shirt, 0.009);
-    collar.rotation.z = side * 0.36;
+    const lapelOutline: [number, number][] = [[0.045, 1.193], [0.125, 1.166], [0.105, 1.136], [0.145, 1.113], [0.024, 0.975], [0.055, 1.085]];
+    panel(body, lapelOutline.map(([x, y]) => [side * x, y]), 0.166, palette.lapel);
+    panel(body, [[side * 0.073, 1.197], [side * 0.012, 1.18], [side * 0.035, 1.137]], 0.177, palette.shirt);
     block(body, [0.105, 0.018, 0.017], [side * 0.132, 0.83, 0.148], palette.seam, 0.006);
     block(body, [0.09, 0.011, 0.012], [side * 0.132, 0.844, 0.15], palette.lapel, 0.004);
   }
   block(body, [0.11, 0.017, 0.018], [-0.13, 1.04, 0.155], palette.seam, 0.004);
   block(body, [0.047, 0.037, 0.013], [-0.13, 1.062, 0.157], palette.shirt, 0.005);
-  block(body, [0.036, 0.04, 0.025], [0, 1.139, 0.183], palette.tie, 0.008);
-  const tie = block(body, [0.045, 0.16, 0.02], [0, 1.045, 0.18], palette.tie, 0.009);
-  tie.rotation.z = -0.025;
-  for (const y of [0.94, 0.87]) block(body, [0.019, 0.019, 0.015], [0.035, y, 0.16], palette.leatherDark, 0.007);
+  block(body, [0.031, 0.032, 0.018], [0, 1.155, 0.186], palette.tie, 0.007);
+  panel(body, [[-0.013, 1.138], [0.013, 1.138], [0.02, 1.017], [0, 0.997], [-0.02, 1.017]], 0.18, palette.tie);
+  for (const y of [0.94, 0.87]) block(body, [0.018, 0.018, 0.012], [0.018, y, 0.157], palette.leatherDark, 0.006);
 
   const armL = new THREE.Group();
   const armR = new THREE.Group();
   for (const [arm, side] of [[armL, -1], [armR, 1]] as const) {
-    arm.position.set(side * 0.285, 1.135, 0);
+    arm.position.set(side * 0.265, 1.135, 0);
     body.add(arm);
-    block(arm, [0.15, 0.43, 0.17], [0, -0.185, 0], palette.jacket, 0.045);
-    block(arm, [0.13, 0.045, 0.145], [0, -0.397, 0], palette.shirt, 0.012);
+    const sleeve = block(arm, [0.155, 0.43, 0.17], [0, -0.185, 0], palette.jacket, 0.06);
+    sleeve.geometry = sleeve.geometry.clone();
+    const sleevePositions = sleeve.geometry.getAttribute('position');
+    for (let i = 0; i < sleevePositions.count; i++) {
+      const t = (sleevePositions.getY(i) + 0.215) / 0.43;
+      sleevePositions.setX(i, sleevePositions.getX(i) * (0.78 + 0.22 * t));
+      sleevePositions.setZ(i, sleevePositions.getZ(i) * (0.8 + 0.2 * t) + 0.012 * (1 - t));
+    }
+    sleeve.geometry.computeVertexNormals();
+    block(arm, [0.123, 0.034, 0.132], [0, -0.397, 0.01], palette.shirt, 0.012);
     block(arm, [0.105, 0.125, 0.115], [0, -0.465, 0.005], palette.skin, 0.035);
-    for (const y of [-0.34, -0.37]) block(arm, [0.012, 0.012, 0.012], [side * 0.073, y, 0.025], palette.leatherDark, 0.004);
+    for (const y of [-0.34, -0.37]) block(arm, [0.012, 0.012, 0.012], [side * 0.061, y, 0.025], palette.leatherDark, 0.004);
   }
   const bag = new THREE.Group();
   bag.position.set(-0.015, -0.69, 0.025);
@@ -121,22 +145,42 @@ export function createOfficePerson(options: PersonOptions): PersonRig {
     block(head, [0.018, 0.037, 0.024], [side * 0.222, 0.005, 0.016], '#d29b79', 0.01);
   }
   block(head, [0.045, 0.052, 0.044], [0, -0.007, 0.189], palette.skin, 0.019);
-  block(head, [0.42, 0.145, 0.34], [0, 0.19, -0.025], palette.hair, 0.06);
-  const sweep = block(head, [0.28, 0.09, 0.19], [-0.055, 0.23, 0.07], palette.hairLight, 0.038);
-  sweep.rotation.z = -0.12;
-  block(head, [0.12, 0.07, 0.16], [0.135, 0.218, 0.06], palette.hair, 0.025);
-  for (const side of [-1, 1]) block(head, [0.034, 0.12, 0.12], [side * 0.188, 0.111, -0.047], palette.hair, 0.012);
+  // A single scalp-conforming cap with an asymmetric hairline and a shallow side part.
+  const hairGeometry = new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+  const hairPositions = hairGeometry.getAttribute('position');
+  const hairPoint = (t: number, phi: number): THREE.Vector3 => {
+    const front = Math.max(0, Math.sin(phi));
+    const theta = t * (1.61 - 0.50 * front + 0.08 * front * Math.cos(phi));
+    const hx = Math.sin(theta) * Math.cos(phi), hy = Math.cos(theta), hz = Math.sin(theta) * Math.sin(phi);
+    const part = 0.009 * Math.exp(-(((hx - 0.30) / 0.10) ** 2)) * front * Math.sin(theta);
+    return new THREE.Vector3(
+      Math.sign(hx) * Math.abs(hx) ** 0.72 * 0.219,
+      Math.sign(hy) * Math.abs(hy) ** 0.8 * 0.238 + 0.021 + front * Math.sin(theta) * 0.017 - part,
+      Math.sign(hz) * Math.abs(hz) ** 0.72 * 0.193,
+    );
+  };
+  for (let i = 0; i < hairPositions.count; i++) {
+    const phi = Math.atan2(hairPositions.getZ(i), hairPositions.getX(i));
+    const t = Math.acos(THREE.MathUtils.clamp(hairPositions.getY(i), 0, 1)) / (Math.PI / 2);
+    const point = hairPoint(t, phi);
+    hairPositions.setXYZ(i, point.x, point.y, point.z);
+  }
+  hairGeometry.computeVertexNormals();
+  head.add(new THREE.Mesh(hairGeometry, mat(palette.hair)));
+  const partPoints = Array.from({ length: 7 }, (_, i) => hairPoint(0.28 + i / 6 * 0.65, 0.95).multiplyScalar(1.009));
+  const partCurve = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(partPoints), 12, 0.002, 4, false);
+  head.add(new THREE.Mesh(partCurve, mat('#35271f')));
   const eyes: THREE.Group[] = [];
   const brows: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const eye = new THREE.Group();
-    eye.position.set(side * 0.086, 0.054, 0.181);
+    eye.position.set(side * 0.084, 0.053, 0.183);
     head.add(eye);
-    block(eye, [0.049, 0.028, 0.013], [0, 0, 0], '#f8eedf', 0.012);
-    block(eye, [0.022, 0.024, 0.012], [-side * 0.003, -0.001, 0.008], '#49382e', 0.009);
-    block(eye, [0.007, 0.007, 0.005], [-0.004, 0.005, 0.015], '#fff4df', 0.003);
+    block(eye, [0.071, 0.049, 0.016], [0, 0, 0], '#f8eedf', 0.019);
+    block(eye, [0.033, 0.041, 0.013], [-side * 0.004, -0.001, 0.01], '#49382e', 0.013);
+    block(eye, [0.011, 0.011, 0.005], [-0.006, 0.008, 0.019], '#fff4df', 0.004);
     batch(eye); eyes.push(eye);
-    brows.push(block(head, [0.059, 0.012, 0.016], [side * 0.086, 0.105, 0.184], palette.hair, 0.005));
+    brows.push(block(head, [0.067, 0.012, 0.016], [side * 0.084, 0.112, 0.182], palette.hair, 0.005));
   }
   // Keep the animated brows out of the static head batch.
   for (const brow of brows) brow.userData.dynamic = true;

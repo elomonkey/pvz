@@ -40,6 +40,7 @@
   import { createOfficePerson } from '/src/view/officeCharacter.ts';
   const options = ARCHETYPES.find(value => value.id === 'office');
   const previews = [];
+  window.characterPreviews = previews;
   for (const [id, create] of [['before', createPerson], ['after', createOfficePerson]]) {
     const canvas = document.getElementById(id);
     const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha: true});
