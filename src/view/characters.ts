@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createStyledPerson } from './characterRig';
+import { createPersonDisposer } from './personResources';
 import type {
   Archetype,
   HairStyle,
@@ -38,6 +39,8 @@ export interface PersonRig {
   armR: THREE.Group;
   legL: THREE.Group;
   legR: THREE.Group;
+  /** Release only this rig's owned GPU resources, after removing it from the scene. */
+  dispose: () => void;
   setCarry: (visible: boolean, color?: string) => void;
   update: (dt: number, moving: boolean, time: number, mood?: 'idle' | 'impatient' | 'angry') => void;
 }
@@ -115,6 +118,8 @@ export function createPerson(options: PersonOptions): PersonRig {
 
 // Special characters retain their existing silhouettes and animation contract.
 function createLegacyPerson(options: PersonOptions): PersonRig {
+  const ownedGeometries = new Set<THREE.BufferGeometry>();
+  const ownedMaterials = new Set<THREE.Material>();
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
@@ -264,6 +269,7 @@ function createLegacyPerson(options: PersonOptions): PersonRig {
     });
     const merged = mergeColoredGeometries(eyeParts);
     if (merged) {
+      ownedGeometries.add(merged);
       eye.add(new THREE.Mesh(merged, VERTEX_COLOR_MATERIAL));
     } else {
       eye.add(white, pupil, glint);
@@ -294,6 +300,7 @@ function createLegacyPerson(options: PersonOptions): PersonRig {
     kitMaterial(mouthColor),
   );
   mouthSmile.position.set(0, -0.075, 0.196);
+  ownedGeometries.add(mouthSmile.geometry);
   mouthSmile.rotation.z = Math.PI;
   head.add(mouthSmile);
 
@@ -549,36 +556,36 @@ function createLegacyPerson(options: PersonOptions): PersonRig {
   const carriedParcel = roundedBox(0.34, 0.3, 0.26, '#d8b98a', { radius: 0.035 });
   const carryMaterial = (carriedParcel.material as THREE.MeshLambertMaterial).clone();
   carriedParcel.material = carryMaterial;
+  ownedMaterials.add(carryMaterial);
   carry.add(carriedParcel);
   const carryDecal = createParcelTopDecal();
   carryDecal.position.set(0, 0.156, 0);
   carry.add(carryDecal);
   carry.visible = false;
 
-  mergeStaticMeshesToVertexColor(
+  const batch = (meshes: THREE.Mesh[], parent: THREE.Group): void => {
+    const merged = mergeStaticMeshesToVertexColor(meshes, parent, VERTEX_COLOR_MATERIAL);
+    if (merged) ownedGeometries.add(merged.geometry);
+  };
+  batch(
     body.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
     body,
-    VERTEX_COLOR_MATERIAL,
   );
-  mergeStaticMeshesToVertexColor(
+  batch(
     armL.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
     armL,
-    VERTEX_COLOR_MATERIAL,
   );
-  mergeStaticMeshesToVertexColor(
+  batch(
     armR.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
     armR,
-    VERTEX_COLOR_MATERIAL,
   );
-  mergeStaticMeshesToVertexColor(
+  batch(
     legL.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
     legL,
-    VERTEX_COLOR_MATERIAL,
   );
-  mergeStaticMeshesToVertexColor(
+  batch(
     legR.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
     legR,
-    VERTEX_COLOR_MATERIAL,
   );
   const headMeshes = head.children.filter(
     (child): child is THREE.Mesh => child instanceof THREE.Mesh,
@@ -589,8 +596,14 @@ function createLegacyPerson(options: PersonOptions): PersonRig {
   const headTransparent = headMeshes.filter(
     (mesh) => (mesh.material as THREE.Material).transparent,
   );
-  mergeStaticMeshesToVertexColor(headOpaque, head, VERTEX_COLOR_MATERIAL);
+  batch(headOpaque, head);
+  const beforeTransparentMerge = new Set(head.children);
   mergeStaticMeshes(headTransparent, head);
+  for (const child of head.children) {
+    if (child instanceof THREE.Mesh && !beforeTransparentMerge.has(child)) ownedGeometries.add(child.geometry);
+  }
+  const resources = { geometries: [...ownedGeometries], materials: [...ownedMaterials] };
+  body.userData.personResources = resources;
 
   root.scale.setScalar(options.scale ?? 1);
 
@@ -611,6 +624,7 @@ function createLegacyPerson(options: PersonOptions): PersonRig {
     armR,
     legL,
     legR,
+    dispose: createPersonDisposer(resources),
     setCarry(visible: boolean, color?: string) {
       carrying = visible;
       carry.visible = visible;

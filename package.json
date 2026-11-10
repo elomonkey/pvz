@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "node --test tests/domain.test.ts tests/systems.test.ts tests/input.test.ts tests/events.test.ts",
+    "test": "node --test tests/domain.test.ts tests/systems.test.ts tests/input.test.ts tests/events.test.ts tests/person-resources.test.ts",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "perf": "node tests/perf/render-perf.mjs"
+    "perf": "node tests/perf/render-perf.mjs",
+    "perf:long-session": "node tests/perf/long-session.mjs"
   },
   "dependencies": {
     "three": "^0.187.0"

@@ -108,6 +108,17 @@ npm run perf -- --label current --check-budget
 
 Отдельный Vite на порту 4176, Chromium 1280×900/DPR 1, фиксированные сцены с 2 клиентами и 4 клиентами со всем оформлением. После 2 секунд прогрева собираются avg/p95/max RAF frame time за 5 секунд, draw calls, triangles, textures, programs и отдельно refresh shadow map, если он есть. JSON и скриншоты — в `test-results/perf/current/`. Запускать отдельно от e2e и других perf-процессов. [Методика, метрики и кадры до/после](docs/perf/PR5_REPORT.md).
 
+### Long-session и lifecycle персонажей
+
+```bash
+npm run build
+npm run perf:long-session -- --label current --check-plateau
+```
+
+Production preview поднимается автоматически на `127.0.0.1:4177`. Свежий Chromium проходит 20 циклов start/restart: четыре клиента с посылками → два клиента меню. После каждого состояния записываются geometries, textures, programs, материалы, DOM-метки и avg/p95/max RAF frame time. Первые четыре цикла — прогрев; затем счётчики должны оставаться постоянными. JSON и финальный кадр сохраняются в `test-results/long-session/current/`. Запускать отдельно от других браузерных проверок; Chromium должен быть установлен. [Методика, ограничения и замеры issue #4](docs/perf/issue4/REPORT.md).
+
+`npm run test:e2e` также включает 20 циклов с проверкой плато и проверку безопасного dispose всех обычных/специальных rig. `PersonRig.dispose()` освобождает только явно перечисленные instance-ресурсы; Client вызывает его после удаления персонажа из сцены. Общие геометрии, материалы, текстуры и parcel-кэши остаются живыми.
+
 ## Структура проекта
 
 ```
@@ -138,7 +149,7 @@ src/sound.ts            синтезированные звуки
 src/yandex.ts           безопасная обёртка Yandex Games SDK
 src/data.ts             архетипы, реплики, босс, улучшения, константы
 src/style.css           стили и адаптивность
-tests/                  unit-тесты домена, систем, событий и ввода (41 тест)
+tests/                  unit-тесты домена, систем, событий, ввода и владения ресурсами (43 теста)
 docs/GAME_GUIDE.md      полный справочник по механикам, сменам и боссам
 docs/GDD.md             дизайн-документ и планы развития
 ```

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { PersonOptions, PersonRig } from './characters';
 import { mergeStaticMeshesToVertexColor, roundedBox, VERTEX_COLOR_MATERIAL } from './kit';
 import { cachedGeometry, contactShadow, createParcelTopDecal, mat } from './primitives';
+import { createPersonDisposer } from './personResources';
 
 /** One flat bevel per edge: 44 triangles, rather than a subdivided rounded box. */
 function chamferedBox(w: number, h: number, d: number, radius: number): THREE.BufferGeometry {
@@ -733,8 +734,9 @@ export function createStyledPerson(options: PersonOptions, style: CharacterStyle
   const baseY = profile.leg - 0.55 * profile.upper;
   body.position.y = baseY;
   head.scale.set(profile.head / profile.width, profile.head / profile.upper, profile.head / profile.depth);
-  // Instance-owned outputs are separate from module caches; issue #4 can dispose these.
-  body.userData.personResources = { geometries: [...ownedGeometries], materials: [...ownedMaterials] };
+  // Only per-instance merge outputs and the carry colour clone; never shared caches.
+  const resources = { geometries: [...ownedGeometries], materials: [...ownedMaterials] };
+  body.userData.personResources = resources;
   for (const geometry of temporaryGeometries) geometry.dispose();
   let carrying = false,
     phase = 0,
@@ -749,6 +751,7 @@ export function createStyledPerson(options: PersonOptions, style: CharacterStyle
     armR,
     legL,
     legR,
+    dispose: createPersonDisposer(resources),
     setCarry(visible, color) {
       carrying = visible;
       carry.visible = visible;

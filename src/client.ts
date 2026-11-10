@@ -383,5 +383,6 @@ export class Client {
     this.destroyed = true;
     this.root.removeFromParent();
     this.label.element.remove();
+    this.rig.dispose();
   }
 }
