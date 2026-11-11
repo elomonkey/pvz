@@ -66,7 +66,7 @@ export class HudView {
   constructor() {
     for (const source of [
       new URL('../assets/sanya-portrait.webp', import.meta.url).href,
-      new URL('../assets/queen-expressions.webp', import.meta.url).href,
+      new URL('../assets/queen-expressions-v2.webp', import.meta.url).href,
     ]) {
       const portrait = new Image();
       portrait.src = source;

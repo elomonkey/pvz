@@ -13,6 +13,7 @@ import { createPerson, type PersonRig } from './view/characters';
 import { createStyledPerson, isCharacterStyle } from './view/characterRig';
 import { createGalinaPerson } from './view/galinaCharacter';
 import { createSanyaPerson, createZinaPerson } from './view/queueBossCharacters';
+import { createQueenPerson } from './view/queenCharacter';
 import type { Order } from './domain/orders';
 
 export type ClientState = 'entering' | 'waiting' | 'leaving' | 'gone';
@@ -85,9 +86,11 @@ export class Client {
         ? createZinaPerson
         : style === 'sanya'
           ? createSanyaPerson
-          : isCharacterStyle(style)
-            ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
-            : createPerson;
+          : style === 'fitting-queen'
+            ? createQueenPerson
+            : isCharacterStyle(style)
+              ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
+              : createPerson;
     this.rig = createRig({
       coat: this.archetype.coat,
       pants: this.archetype.pants,

@@ -1,0 +1,28 @@
+{
+  "revision": "6444bc394726e257574263ef11ce41af18d9ce0e",
+  "label": "after-main",
+  "method": "seed 73129, 1280x900 DPR1, actual shift 4 Queen encounter, help service paused, world animated; 1.5s warmup + 5s RAF",
+  "browser": "158.0.8127.18",
+  "rows": [
+    {
+      "shift": 4,
+      "characterTriangles": {
+        "total": 2058,
+        "visible": 2056
+      },
+      "frameMs": {
+        "avg": 113.69777777777779,
+        "p95": 116.80000000000018,
+        "max": 133.29999999999927
+      },
+      "frames": 45,
+      "drawCalls": 122,
+      "triangles": 70246,
+      "geometries": 88,
+      "textures": 16,
+      "programs": 9,
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    }
+  ],
+  "errors": []
+}
