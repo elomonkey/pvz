@@ -1,0 +1,43 @@
+{
+  "revision": "2bae0397f47ca7a73c008a5ebcc24670f3af5e46",
+  "build": "production preview",
+  "browser": "158.0.8127.18",
+  "viewport": {
+    "width": 1600,
+    "height": 960
+  },
+  "seed": 73129,
+  "method": "same frozen final encounter, DPR1, 1s warmup + 5s RAF each; entry animation excluded; CSS atlases excluded from WebGL counters",
+  "rows": [
+    {
+      "stage": "scene-only",
+      "frames": 39,
+      "frameMs": {
+        "avg": 129.05384615384617,
+        "p95": 150,
+        "max": 150.10000000000036
+      },
+      "drawCalls": 135,
+      "triangles": 72510,
+      "geometries": 100,
+      "textures": 17,
+      "programs": 9
+    },
+    {
+      "stage": "speaker-visible",
+      "frames": 39,
+      "frameMs": {
+        "avg": 130.3358974358974,
+        "p95": 149.89999999999782,
+        "max": 150
+      },
+      "drawCalls": 135,
+      "triangles": 72510,
+      "geometries": 100,
+      "textures": 17,
+      "programs": 9
+    }
+  ],
+  "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "errors": []
+}

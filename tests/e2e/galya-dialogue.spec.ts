@@ -122,8 +122,10 @@ test('Галя: финальные реплики, переход к Зине и
     const { FINAL_BOSS_ENTRANCE_LINES } = await import(path);
     return FINAL_BOSS_ENTRANCE_LINES.map((line: any) => line.text);
   });
-  expect(await page.locator('#final-boss-dialogue .final-boss-text').allTextContents()).toEqual(lines);
-  await page.locator('#final-boss-done').click();
+  for (const text of lines) {
+    await expect(page.locator('#final-boss-dialogue .final-boss-text')).toHaveText(text);
+    await page.locator('#final-boss-done').click();
+  }
   expect(await page.evaluate(() => (window as any).game.finalBoss.stage)).toBe('collect');
   await expect(page.locator('#boss-modal')).toBeHidden();
   await page.evaluate(() => {

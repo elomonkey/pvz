@@ -1,0 +1,250 @@
+/* One current speaker and one original line per tap. Same shared SVG silhouette. */
+.dialogue-scene[data-dialogue-mode='final'] .boss-stage {
+  inset: auto 4vw max(34px, env(safe-area-inset-bottom)) 1vw;
+  grid-template-columns: minmax(180px, 28vw) minmax(0, 1fr);
+  align-items: end;
+}
+.dialogue-scene[data-dialogue-mode='final'] .boss-stage::before {
+  display: none;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
+  width: 39vw;
+  max-width: 650px;
+  margin: 0 0 -30px -4vw;
+}
+.dialogue-scene[data-final-speaker='narrator'] .dialogue-portrait {
+  display: none;
+}
+.dialogue-scene[data-dialogue-mode='final'] .boss-modal {
+  grid-column: 2;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'head' 'final';
+  gap: 4px;
+  z-index: 3;
+}
+.dialogue-scene[data-dialogue-mode='final'] .boss-head {
+  padding: 0 0 0 8px;
+  justify-content: start;
+}
+.dialogue-scene[data-dialogue-mode='final'] .boss-meta {
+  min-width: 180px;
+  padding: 10px 36px 16px;
+}
+.dialogue-scene[data-dialogue-mode='final'] .boss-name {
+  font-size: clamp(28px, 3vw, 46px);
+}
+.dialogue-scene[data-final-speaker='valera'] .boss-meta {
+  background: #566576;
+}
+.dialogue-scene[data-final-speaker='narrator'] .boss-meta {
+  background: var(--dialogue-ink);
+}
+.dialogue-scene[data-dialogue-mode='final'] .boss-badge {
+  display: none;
+}
+.dialogue-scene[data-dialogue-mode='final']
+  :is(.dialogue-frame, .dialogue-trim) {
+  display: block;
+  grid-area: final;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-frame {
+  inset: -42px -16px -26px;
+  width: calc(100% + 32px);
+  height: calc(100% + 68px);
+  z-index: 0;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-frame-wide {
+  display: none;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-frame-compact {
+  display: block;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-trim {
+  z-index: 1;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-tape.top {
+  top: -10px;
+  right: 8%;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-tape.bottom {
+  bottom: -5px;
+  left: 8%;
+}
+.dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
+  padding: 26px 42px 40px;
+  min-height: 260px;
+  clip-path: none;
+  background: none;
+  isolation: auto;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.dialogue-scene[data-dialogue-mode='final'] #boss-final-view.hidden {
+  display: none;
+}
+.dialogue-scene[data-dialogue-mode='final'] #boss-final-view::before {
+  display: none;
+}
+.dialogue-scene[data-dialogue-mode='final'] .final-boss-phase {
+  padding: 4px 10px;
+  margin-bottom: 12px;
+  background: var(--dialogue-ink);
+  color: var(--dialogue-cream);
+  transform: rotate(-2deg);
+  font-size: 10px;
+}
+.dialogue-scene[data-dialogue-mode='final'] .final-boss-dialogue {
+  overflow: visible;
+  max-height: none;
+  margin: 0 0 22px;
+  width: 100%;
+}
+.dialogue-scene[data-dialogue-mode='final'] .final-boss-line {
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  animation: none;
+}
+.dialogue-scene[data-dialogue-mode='final'] .final-boss-speaker {
+  display: none;
+}
+.dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
+  display: block;
+  font-size: clamp(24px, 2.8vw, 42px);
+  line-height: 1.17;
+  font-style: italic;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+  font-size: clamp(18px, 1.8vw, 28px);
+  font-weight: 700;
+}
+.dialogue-scene[data-dialogue-mode='final'] #final-boss-done {
+  display: block;
+  width: auto;
+  min-width: 170px;
+  margin: auto 0 0 auto;
+  padding: 11px 28px;
+  min-height: 46px;
+  font-size: 16px;
+  font-weight: 900;
+  font-style: italic;
+  clip-path: polygon(7% 5%, 100% 0, 93% 96%, 0 100%);
+  border: 2px solid var(--dialogue-ink);
+  transition: transform 120ms ease-out;
+}
+.dialogue-scene[data-dialogue-mode='final'] #final-boss-done:hover {
+  transform: translate(-3px, -2px);
+}
+.dialogue-scene[data-dialogue-mode='final'] #final-boss-done:focus-visible {
+  outline-offset: -5px;
+  outline-color: var(--dialogue-ink);
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  .dialogue-scene[data-dialogue-mode='final'] .boss-stage {
+    display: block;
+    inset: auto 16px max(26px, env(safe-area-inset-bottom)) 16px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
+    position: absolute;
+    width: min(65vw, 31vh);
+    left: -27px;
+    bottom: calc(100% - 48px);
+    margin: 0;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .boss-head {
+    padding: 0;
+    justify-content: flex-end;
+    min-height: 62px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .boss-meta {
+    min-width: 120px;
+    padding: 9px 24px 14px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .boss-name {
+    font-size: 27px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
+    padding: 24px 22px 34px;
+    min-height: 235px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
+    font-size: 25px;
+  }
+  .dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+    font-size: 19px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] #final-boss-done {
+    min-width: 155px;
+    font-size: 15px;
+    padding: 10px 20px;
+  }
+}
+@media (max-width: 700px) and (max-height: 660px) and (orientation: portrait) {
+  .dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
+    width: 30vh;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
+    min-height: 220px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
+    font-size: 22px;
+  }
+  .dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+    font-size: 17px;
+  }
+}
+@media (max-height: 540px) and (orientation: landscape) {
+  .dialogue-scene[data-dialogue-mode='final'] .boss-stage {
+    grid-template-columns: 23vw minmax(0, 1fr);
+    bottom: 22px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
+    width: 34vw;
+    margin-bottom: -14px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .boss-meta {
+    padding: 5px 24px 10px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .boss-name {
+    font-size: 24px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .boss-kicker {
+    font-size: 8px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
+    padding: 18px 25px 26px;
+    min-height: 172px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .final-boss-phase {
+    font-size: 8px;
+    margin-bottom: 8px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
+    font-size: 21px;
+  }
+  .dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+    font-size: 15px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .final-boss-dialogue {
+    margin-bottom: 12px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] #final-boss-done {
+    min-height: 44px;
+    min-width: 145px;
+    font-size: 14px;
+    padding: 8px 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialogue-scene[data-dialogue-mode='final'] * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

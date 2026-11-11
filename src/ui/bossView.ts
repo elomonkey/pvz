@@ -11,6 +11,7 @@ import {
 } from './components';
 import { BossDialogueScene } from './bossDialogueScene';
 import './bossDialogue.css';
+import './finalBossDialogue.css';
 
 export interface BossActions {
   onServe: () => void;
@@ -66,6 +67,11 @@ export class BossView {
   private readonly tugMarker = byId('tug-marker');
   private readonly tugBossEnd = byId('tug-boss-end');
   private readonly scene = new BossDialogueScene(this.modal);
+  private finalLines: readonly BossDialogueLine[] = [];
+  private finalLineIndex = 0;
+  private finalPhase = '';
+  private finalButton = '';
+  private finalCompleted = true;
 
   bind(actions: BossActions): void {
     this.actions = actions;
@@ -83,7 +89,14 @@ export class BossView {
       }
     });
     this.done.addEventListener('click', () => actions.onDone());
-    this.finalDone.addEventListener('click', () => actions.onFinalDialogueDone());
+    this.finalDone.addEventListener('click', () => this.advanceFinalDialogue());
+    this.finalDone.addEventListener('keydown', event => {
+      if (event.repeat && (event.key === 'Enter' || event.key === ' ')) event.preventDefault();
+    });
+    this.finalView.addEventListener('click', event => {
+      if ((event.target as HTMLElement).closest('button')) return;
+      this.advanceFinalDialogue();
+    });
     this.zinaPuzzle.addEventListener('click', (event) => {
       const target = (event.target as HTMLElement).closest<HTMLElement>('[data-tile-index]');
       if (!target) return;
@@ -100,7 +113,6 @@ export class BossView {
     this.modal.classList.remove('client-argue');
     this.kicker.textContent = 'ФИНАЛЬНЫЙ БОСС';
     this.badge.textContent = '!';
-    this.name.textContent = 'Галя и Валера';
     this.quote.textContent = 'Семейный спор';
     this.choiceView.classList.add('hidden');
     this.argueView.classList.add('hidden');
@@ -109,17 +121,49 @@ export class BossView {
     this.dialogPanel.classList.add('hidden');
     this.finalView.classList.remove('hidden');
     this.finalPhaseLabel.textContent = phase;
-    clear(this.finalDialogue);
-    for (const [index, line] of lines.entries()) {
-      const row = createDialogueLine({ speaker: line.speaker, text: line.text, tone: line.tone });
-      row.style.setProperty('--line-index', String(index));
-      this.finalDialogue.appendChild(row);
-    }
-    this.finalDone.textContent = button;
+    this.finalLines = lines;
+    this.finalLineIndex = 0;
+    this.finalPhase = phase;
+    this.finalButton = button;
+    this.finalCompleted = false;
+    this.finalDialogue.removeAttribute('tabindex');
+    this.finalDialogue.setAttribute('aria-live', 'polite');
+    this.finalDialogue.setAttribute('aria-atomic', 'true');
     this.modal.classList.remove('hidden');
     this.actions?.onClosePanels();
-    // Galya's existing family dialogue is kept intact, including Valera's lines.
-    this.scene.open('galya', 'final', phase.includes('2') ? 'surprised' : 'angry');
+    this.renderFinalLine();
+  }
+
+  private advanceFinalDialogue(): void {
+    if (this.finalCompleted || this.modal.classList.contains('hidden') ||
+      this.modal.dataset.dialogueMode !== 'final' || !this.finalLines.length) return;
+    if (this.finalLineIndex < this.finalLines.length - 1) {
+      this.finalLineIndex++;
+      this.renderFinalLine();
+      return;
+    }
+    // Clear before invoking Game: re-entrant/late clicks cannot finish twice.
+    this.finalCompleted = true;
+    this.finalLines = [];
+    this.actions?.onFinalDialogueDone();
+  }
+
+  private renderFinalLine(): void {
+    const line = this.finalLines[this.finalLineIndex];
+    clear(this.finalDialogue);
+    this.finalDone.disabled = !line;
+    if (!line) return;
+    this.name.textContent = line.speaker;
+    this.finalDialogue.dataset.lineIndex = String(this.finalLineIndex);
+    this.finalDialogue.appendChild(createDialogueLine(line));
+    this.finalDone.textContent = this.finalLineIndex === this.finalLines.length - 1
+      ? this.finalButton : 'Дальше';
+    const speaker = line.tone ?? 'narrator';
+    const phase = this.finalPhase.match(/\d+/)?.[0];
+    const emotion = speaker === 'valera'
+      ? phase === '3' ? 'angry' : phase === '2' ? 'surprised' : 'stern'
+      : line.text === line.text.toUpperCase() ? 'angry' : 'stern';
+    this.scene.openFamily(speaker, emotion);
   }
 
   showBoss(serveStress: number, line: string, name = 'Галя'): void {
@@ -375,6 +419,8 @@ export class BossView {
   }
 
   hideBoss(): void {
+    this.finalCompleted = true;
+    this.finalLines = [];
     this.scene.close();
     this.modal.classList.add('hidden');
     this.finalView.classList.add('hidden');

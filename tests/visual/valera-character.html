@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ru">
+  <meta charset="utf-8" /><title>Валера · концепт в игре</title>
+  <style>
+    body {
+      margin: 0;
+      background: #eee9df;
+      color: #352d2d;
+      font:
+        16px 'Segoe UI',
+        sans-serif;
+    }
+    header {
+      padding: 24px 38px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    p {
+      margin: 6px 0;
+      color: #817466;
+      font-size: 14px;
+    }
+    button {
+      padding: 8px 12px;
+      margin: 3px;
+      border: 1px solid #d1bdaa;
+      background: #fff2dd;
+      color: #573b3d;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 600px;
+    }
+    .labels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      text-align: center;
+      font-size: 21px;
+      font-weight: 700;
+    }
+    .stats {
+      font-size: 13px;
+      color: #887567;
+      font-weight: 400;
+      margin-top: 5px;
+    }
+    footer {
+      padding: 22px 38px;
+      font-size: 14px;
+      color: #817466;
+    }
+  </style>
+  <header>
+    <div>
+      <h1>Валера · новая модель</h1>
+      <p>Одинаковые камера, масштаб и освещение · настоящий Three.js</p>
+    </div>
+    <nav>
+      <div>
+        <button data-style="queen">До / после</button
+        ><button data-style="blogger">С Саней</button
+        ><button data-style="lineup">Семейная пара</button>
+      </div>
+      <div>
+        <button data-pose="idle">Idle</button
+        ><button data-pose="walking">Ходьба</button
+        ><button data-pose="impatient">Недовольство</button
+        ><button data-pose="angry">Злость</button
+        ><button data-pose="carry">Посылка</button>
+      </div>
+      <div>
+        <button data-angle="0">Спереди</button
+        ><button data-angle="0.4">3/4</button
+        ><button data-angle="3.14">Сзади</button>
+      </div>
+    </nav>
+  </header>
+  <canvas></canvas>
+  <section class="labels"></section>
+  <footer>
+    Сравнение игровых моделей · Валера / Галя / Саня · без shadow maps и
+    постобработки.
+  </footer>
+  <script type="module">
+    import * as THREE from 'three';
+    import {
+      ARCHETYPES,
+      VALERA_ARCHETYPE,
+      BOSS_ARCHETYPE,
+      BABA_ARCHETYPE,
+      SANYA_ARCHETYPE,
+    } from '/src/data.ts';
+    import { createPerson } from '/src/view/characters.ts';
+    import { createStyledPerson } from '/src/view/characterRig.ts';
+    import { createValeraPerson } from '/src/view/valeraCharacter.ts';
+    import { createGalinaPerson } from '/src/view/galinaCharacter.ts';
+    import {
+      createZinaPerson,
+      createSanyaPerson,
+    } from '/src/view/queueBossCharacters.ts';
+    const canvas = document.querySelector('canvas'),
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(canvas.clientWidth, 600, false);
+    renderer.setPixelRatio(1);
+    renderer.setClearColor('#eee9df');
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    const scene = new THREE.Scene();
+    scene.add(
+      new THREE.AmbientLight(0xfff8ed, 0.25),
+      new THREE.HemisphereLight(0xe5eff2, 0xc7ae91, 0.8),
+    );
+    const key = new THREE.DirectionalLight(0xffedda, 2.2);
+    key.position.set(-3, 8, 4);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0xddeaf4, 0.3);
+    fill.position.set(7, 6, -5);
+    scene.add(fill);
+    const half = (3.2 * 600) / canvas.clientWidth,
+      camera = new THREE.OrthographicCamera(-3.2, 3.2, half, -half, 0.1, 40);
+    camera.position.set(0, 3.7, 10);
+    camera.lookAt(0, 1, 0);
+    const rigs = [
+      createPerson({ ...VALERA_ARCHETYPE, boss: true }),
+      createValeraPerson({ ...VALERA_ARCHETYPE, boss: true }),
+      createStyledPerson(
+        ARCHETYPES.find((a) => a.id === 'blogger'),
+        'blogger',
+      ),
+      createGalinaPerson({ ...BOSS_ARCHETYPE, boss: true }),
+      createZinaPerson({ ...BABA_ARCHETYPE, boss: true }),
+      createSanyaPerson(SANYA_ARCHETYPE),
+    ];
+    for (const r of rigs) {
+      r.root.rotation.y = 0.4;
+      scene.add(r.root);
+    }
+    let indices = [0, 1],
+      pose = 'idle';
+    const names = [
+      'Прежний Валера',
+      'Новый Валера',
+      'Блогерша',
+      'Галина',
+      'Зина',
+      'Саня',
+    ];
+    function stats() {
+      return rigs.map((r) => {
+        let total = 0,
+          visible = 0;
+        const tris = (o) =>
+          (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+        r.root.traverse((o) => {
+          if (o.isMesh) total += tris(o);
+        });
+        r.root.traverseVisible((o) => {
+          if (o.isMesh) visible += tris(o);
+        });
+        return { total, visible };
+      });
+    }
+    function render(next = pose, time = 1.5, dt = 0) {
+      pose = next;
+      for (const r of rigs) {
+        r.setCarry(pose === 'carry', ['#c8a072']);
+        r.update(
+          dt,
+          pose === 'walking',
+          time,
+          pose === 'impatient' || pose === 'angry' ? pose : 'idle',
+        );
+      }
+      renderer.render(scene, camera);
+      const values = stats();
+      document.querySelector('.labels').innerHTML = indices
+        .map(
+          (i) =>
+            `<div>${names[i]}<div class="stats">${values[i].visible} видимых / ${values[i].total} всего треугольников</div></div>`,
+        )
+        .join('');
+    }
+    function show(style) {
+      indices =
+        style === 'queen'
+          ? [0, 1]
+          : style === 'blogger'
+            ? [5, 1]
+            : [3, 1];
+      const halfWidth = indices.length === 4 ? 4.3 : 3.2;
+      camera.left = -halfWidth;
+      camera.right = halfWidth;
+      camera.top = (halfWidth * 600) / canvas.clientWidth;
+      camera.bottom = -camera.top;
+      camera.updateProjectionMatrix();
+      rigs.forEach((r) => (r.root.visible = false));
+      indices.forEach((id, i) => {
+        rigs[id].root.visible = true;
+        rigs[id].root.position.x =
+          (i - (indices.length - 1) / 2) * (indices.length === 4 ? 2 : 2.9);
+      });
+      document.querySelector('.labels').style.gridTemplateColumns =
+        `repeat(${indices.length},1fr)`;
+      render();
+    }
+    document
+      .querySelectorAll('[data-style]')
+      .forEach((b) => (b.onclick = () => show(b.dataset.style)));
+    document
+      .querySelectorAll('[data-pose]')
+      .forEach((b) => (b.onclick = () => render(b.dataset.pose, 1.5, 0.2)));
+    document.querySelectorAll('[data-angle]').forEach(
+      (b) =>
+        (b.onclick = () => {
+          rigs.forEach((r) => (r.root.rotation.y = Number(b.dataset.angle)));
+          render();
+        }),
+    );
+    window.valeraLab = { rigs, renderer, scene, camera, show, render, stats };
+    show('queen');
+    document.body.dataset.ready = '1';
+  </script>
+</html>

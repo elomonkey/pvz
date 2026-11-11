@@ -11,6 +11,10 @@ const PROFILES = {
     atlas: new URL('../assets/zina-expressions.webp', import.meta.url).href,
     frames: { stern: '0%', angry: '50%', surprised: '100%' },
   },
+  valera: {
+    atlas: new URL('../assets/valera-expressions.webp', import.meta.url).href,
+    frames: { stern: '0%', angry: '50%', surprised: '100%' },
+  },
 } as const;
 
 /** Stages the existing BossView DOM; never owns dialogue text or game callbacks. */
@@ -56,6 +60,7 @@ export class BossDialogueScene {
 
   open(profile: keyof typeof PROFILES, mode: Mode, emotion: Emotion): void {
     if (!this.active) this.previousFocus = document.activeElement as HTMLElement;
+    if (this.profile !== profile) this.emotion = null;
     this.profile = profile;
     this.modal.classList.add('dialogue-scene');
     document.body.classList.add('in-boss-dialogue');
@@ -91,6 +96,19 @@ export class BossDialogueScene {
     this.setEmotion(surprised ? 'surprised' : 'angry');
   }
 
+  /** Only the current speaker is visible; narration has no character portrait. */
+  openFamily(speaker: 'galya' | 'valera' | 'narrator', emotion: Emotion): void {
+    this.cancelAnimations();
+    this.open(speaker === 'valera' ? 'valera' : 'galya', 'final', emotion);
+    this.modal.dataset.finalSpeaker = speaker;
+    if (speaker !== 'narrator' && !this.motion.matches) {
+      this.animations = [this.portrait.animate(
+        [{ opacity: 0, transform: 'translateX(-16px)' }, { opacity: 1, transform: 'translateX(0)' }],
+        { duration: 180, easing: 'ease-out' },
+      )];
+    }
+  }
+
   pulse(): void {
     if (!this.active || this.motion.matches) return;
     this.cancelAnimations();
@@ -116,7 +134,12 @@ export class BossDialogueScene {
   }
 
   focusControl(): void {
-    if (this.active) this.controls()[0]?.focus({ preventScroll: true });
+    if (!this.active) return;
+    const controls = this.controls();
+    const first = this.modal.dataset.dialogueMode === 'final'
+      ? controls.find(control => control.tagName === 'BUTTON')
+      : controls[0];
+    first?.focus({ preventScroll: true });
   }
 
   close(): void {
@@ -129,6 +152,7 @@ export class BossDialogueScene {
     delete this.modal.dataset.portraitCharacter;
     delete this.modal.dataset.dialogueMode;
     delete this.modal.dataset.emotion;
+    delete this.modal.dataset.finalSpeaker;
     this.modal.setAttribute('aria-describedby', 'boss-quote');
     if (wasActive) {
       if (this.modal.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();

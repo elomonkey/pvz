@@ -9,6 +9,7 @@
 
 > Полный справочник по механикам, сменам и боссам: [`docs/GAME_GUIDE.md`](docs/GAME_GUIDE.md).
 > План архитектуры и графики: [`docs/ROADMAP_ARCHITECTURE_GRAPHICS.md`](docs/ROADMAP_ARCHITECTURE_GRAPHICS.md).
+> Финальный босс — диалоги и модель Валеры: [`docs/FINAL_BOSS_VISUAL_PASS.md`](docs/FINAL_BOSS_VISUAL_PASS.md).
 > Визуальный style guide: [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md).
 > Правила работы OpenCode Lead и Codex Sol: [`AGENTS.md`](AGENTS.md) и [`docs/AGENT_WORKFLOW.md`](docs/AGENT_WORKFLOW.md).
 
