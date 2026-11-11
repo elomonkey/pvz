@@ -1,5 +1,5 @@
 {
-  "revision": "411b96364bb4e35a16e32b34e298850229f41fe3",
+  "revision": "2bae0397f47ca7a73c008a5ebcc24670f3af5e46",
   "build": "production preview",
   "browser": "158.0.8127.18",
   "viewport": {
@@ -11,11 +11,11 @@
   "rows": [
     {
       "stage": "scene-only",
-      "frames": 40,
+      "frames": 39,
       "frameMs": {
-        "avg": 127.49249999999998,
-        "p95": 133.39999999999964,
-        "max": 133.5
+        "avg": 129.05384615384617,
+        "p95": 150,
+        "max": 150.10000000000036
       },
       "drawCalls": 135,
       "triangles": 72510,
@@ -24,12 +24,12 @@
       "programs": 9
     },
     {
-      "stage": "duet-visible",
-      "frames": 40,
+      "stage": "speaker-visible",
+      "frames": 39,
       "frameMs": {
-        "avg": 128.32999999999998,
-        "p95": 133.39999999999964,
-        "max": 133.39999999999964
+        "avg": 130.3358974358974,
+        "p95": 149.89999999999782,
+        "max": 150
       },
       "drawCalls": 135,
       "triangles": 72510,
