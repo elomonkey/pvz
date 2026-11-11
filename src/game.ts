@@ -1115,7 +1115,20 @@ export class Game {
     return this.progression.orderSize(this.run.shift);
   }
 
+  private cellOnShelf(id: string): boolean {
+    return this.world.cells.some((cell) => cell.id === id && cell.parcel.visible);
+  }
+
+  private ensureShelfStock(): void {
+    const hasVisible = this.world.cells.some(
+      (cell) =>
+        cell.shelfIndex < this.progression.activeShelfCount && cell.parcel.visible,
+    );
+    if (!hasVisible) this.restockCells();
+  }
+
   private createOrder(mixedRequested: boolean, forcedCount?: number): Order {
+    this.ensureShelfStock();
     const items: OrderItem[] = [];
     const desired = forcedCount ?? this.orderSize();
 
@@ -1132,7 +1145,9 @@ export class Game {
         id = cellId(shelf, column, level);
         attempts++;
       } while (
-        (this.reservedCells.has(id) || items.some((item) => item.cellId === id)) &&
+        (this.reservedCells.has(id) ||
+          !this.cellOnShelf(id) ||
+          items.some((item) => item.cellId === id)) &&
         attempts < 200
       );
 
@@ -1158,6 +1173,7 @@ export class Game {
         (cell) =>
           cell.shelfIndex === first.shelf &&
           cell.id !== first.cellId &&
+          cell.parcel.visible &&
           !this.reservedCells.has(cell.id),
       );
       if (candidates.length > 0) {
@@ -1196,6 +1212,7 @@ export class Game {
   }
 
   private createFinalBossBarcodeOrder(count: number): Order {
+    this.ensureShelfStock();
     const items: OrderItem[] = [];
     const shelfCount = Math.min(3, this.progression.activeShelfCount);
 
@@ -1212,7 +1229,9 @@ export class Game {
         id = cellId(shelf, column, level);
         attempts++;
       } while (
-        (this.reservedCells.has(id) || items.some((item) => item.cellId === id)) &&
+        (this.reservedCells.has(id) ||
+          !this.cellOnShelf(id) ||
+          items.some((item) => item.cellId === id)) &&
         attempts < 200
       );
       if (items.some((item) => item.cellId === id)) continue;
@@ -1609,7 +1628,9 @@ export class Game {
   } | null {
     const free = this.world.cells.filter(
       (cell) =>
-        cell.shelfIndex < this.progression.activeShelfCount && !this.reservedCells.has(cell.id),
+        cell.shelfIndex < this.progression.activeShelfCount &&
+        cell.parcel.visible &&
+        !this.reservedCells.has(cell.id),
     );
     return free.length > 0 ? pick(free) : null;
   }
@@ -1923,6 +1944,7 @@ export class Game {
         (value) =>
           value.id === pendingCell &&
           value.shelfIndex < this.progression.activeShelfCount &&
+          value.parcel.visible &&
           !this.reservedCells.has(value.id),
       ) ?? this.pickZinaCell();
     if (!cell) {
@@ -2893,12 +2915,11 @@ export class Game {
     order: Order,
   ): void {
     cell.parcel.visible = false;
-    this.service.takeNextItem();
+    this.service.takeNextItem(cell.color);
 
     const remaining = this.service.remainingItems();
-    const carriedCount = order.items.filter((item) => item.picked).length;
     this.service.active?.client.setTarget(true);
-    this.player.setCarry(true, cell.color, carriedCount);
+    this.player.setCarry(true, this.service.carryColors);
     this.ui.closeCellPanel();
     this.ui.closeScanner();
     this.scannerPanel.clearPanel();
@@ -3023,13 +3044,14 @@ export class Game {
     const active = this.service.active;
     if (!active) return;
     active.client.setTarget(false);
-    if (active.order.carrying || active.order.items.some((item) => item.picked)) {
+    const carried = active.order.carrying || active.order.items.some((item) => item.picked);
+    if (carried) {
       this.service.carrying = false;
       this.player.setCarry(false);
-      this.restockCells();
     }
     this.releaseOrder(active.order);
     this.service.clear();
+    if (carried) this.restockCells();
     this.scannerPanel.reset();
     this.ui.closePanels();
     this.setHighlight(-1, -1);
@@ -3151,7 +3173,18 @@ export class Game {
   }
 
   private restockCells(): void {
-    for (const cell of this.world.cells) cell.parcel.visible = true;
+    const carried = new Set<string>();
+    const order = this.service.active?.order;
+    if (order) {
+      for (const item of order.items) {
+        if (!item.picked) continue;
+        carried.add(item.cellId);
+        carried.add(item.actualCellId);
+      }
+    }
+    for (const cell of this.world.cells) {
+      cell.parcel.visible = !carried.has(cell.id);
+    }
   }
 
   private updateProximity(): void {
