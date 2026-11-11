@@ -5,7 +5,7 @@ import { cachedGeometry, contactShadow, createParcelTopDecal, mat } from './prim
 import { createPersonDisposer, MAX_CARRY_PARCELS } from './personResources';
 
 /** One flat bevel per edge: 44 triangles, rather than a subdivided rounded box. */
-function chamferedBox(w: number, h: number, d: number, radius: number): THREE.BufferGeometry {
+export function chamferedBox(w: number, h: number, d: number, radius: number): THREE.BufferGeometry {
   return cachedGeometry(`office-chamfer:${w}:${h}:${d}:${radius}`, () => {
     const half = [w / 2, h / 2, d / 2];
     const r = Math.min(radius * 0.72, Math.min(w, h, d) * 0.45);
