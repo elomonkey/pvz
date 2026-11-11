@@ -98,7 +98,14 @@ async function deliverOrder(page: Page) {
       g.takeParcel(cell, order);
     }
     g.deliver();
-    return { count, budget: g.queen.budget, fitting: g.queen.inFitting, occupied: [...g.fittingOccupied] };
+    return {
+      count,
+      budget: g.queen.budget,
+      fitting: g.queen.inFitting,
+      occupied: [...g.fittingOccupied],
+      state: queen.state,
+      position: { x: queen.root.position.x, z: queen.root.position.z },
+    };
   });
 }
 
@@ -120,7 +127,46 @@ test('Королева: исходные заказы, примерка, воз�
   expect(budget).toBeGreaterThanOrEqual(20);
   expect(budget).toBeLessThanOrEqual(30);
   const delivered = await deliverOrder(page);
-  expect(delivered).toEqual({ count: 3, budget: budget - 3, fitting: true, occupied: [true, true] });
+  expect(delivered).toEqual({
+    count: 3,
+    budget: budget - 3,
+    fitting: false,
+    occupied: [false, false],
+    state: 'entering',
+    position: expect.any(Object),
+  });
+  expect(Math.hypot(delivered.position.x - 3.15, delivered.position.z - 2.8)).toBeGreaterThan(1);
+  expect(
+    await page.evaluate(() => {
+      const g = (window as any).game;
+      g.checkWaveComplete();
+      return g.phase;
+    }),
+  ).toBe('playing');
+
+  // The Queen must visibly walk to the fitting room, not teleport there.
+  const arrived = await page.evaluate(() => {
+    const g = (window as any).game;
+    const queen = g.queenClient;
+    let frames = 0;
+    while (!g.queen.inFitting && frames < 300) {
+      queen.update(1 / 60, frames / 60);
+      g.updateQueen(1 / 60);
+      frames++;
+    }
+    return {
+      frames,
+      fitting: g.queen.inFitting,
+      occupied: [...g.fittingOccupied],
+      position: { x: queen.root.position.x, z: queen.root.position.z },
+      state: queen.state,
+    };
+  });
+  expect(arrived.frames).toBeGreaterThan(20);
+  expect(arrived.fitting).toBe(true);
+  expect(arrived.occupied).toEqual([true, true]);
+  expect(arrived.state).toBe('gone');
+  expect(Math.hypot(arrived.position.x - 3.15, arrived.position.z - 2.8)).toBeLessThan(0.01);
   await page.evaluate(() => (window as any).game.updateQueen(5.9));
   expect(await page.evaluate(() => (window as any).game.queen.inFitting)).toBe(true);
   await page.evaluate(() => (window as any).game.updateQueen(.11));
