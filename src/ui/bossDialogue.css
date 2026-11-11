@@ -1,5 +1,6 @@
 /* A cut-paper stage over the actual PVZ. No canvas, blur or fullscreen flashes. */
-.dialogue-portrait {
+.dialogue-portrait,
+.dialogue-trim {
   display: none;
 }
 body.in-boss-dialogue #banner {
@@ -163,7 +164,26 @@ body.in-boss-dialogue .client-bubble {
   border-radius: 0;
   color: var(--dialogue-ink);
   background: var(--dialogue-ink);
-  clip-path: polygon(3% 6%, 100% 0, 96% 81%, 100% 91%, 79% 93%, 74% 100%, 62% 95%, 0 100%);
+  clip-path: polygon(
+    5% 5%,
+    48% 1%,
+    52% 4%,
+    100% 0,
+    97% 31%,
+    99% 39%,
+    97% 46%,
+    98% 81%,
+    100% 89%,
+    82% 92%,
+    77% 100%,
+    63% 94%,
+    4% 100%,
+    0 82%,
+    2% 61%,
+    0 53%,
+    3% 47%,
+    1% 34%
+  );
   font-size: clamp(23px, 2.25vw, 38px);
   font-style: italic;
   font-weight: 900;
@@ -196,6 +216,66 @@ body.in-boss-dialogue .client-bubble {
   opacity: 0.7;
 }
 
+/* Separate, non-interactive paper trim can cross the clipped speech-card edges. */
+.dialogue-scene .dialogue-trim {
+  position: absolute;
+  grid-area: quote;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+  z-index: 3;
+}
+.dialogue-scene[data-dialogue-mode='final'] .dialogue-trim {
+  display: none;
+}
+.dialogue-tape {
+  position: absolute;
+  width: clamp(72px, 7vw, 110px);
+  height: 24px;
+  background: var(--dialogue-gold);
+  background-image: repeating-linear-gradient(94deg, #fff2 0 1px, transparent 1px 8px);
+  clip-path: polygon(
+    4% 0,
+    96% 0,
+    100% 10%,
+    95% 22%,
+    100% 34%,
+    95% 46%,
+    100% 58%,
+    95% 70%,
+    100% 82%,
+    96% 100%,
+    0 100%,
+    5% 88%,
+    0 76%,
+    5% 64%,
+    0 52%,
+    5% 40%,
+    0 28%,
+    5% 16%,
+    0 8%
+  );
+}
+.dialogue-tape.top {
+  top: -18px;
+  right: 10%;
+  transform: rotate(-12deg);
+}
+.dialogue-tape.bottom {
+  bottom: -9px;
+  left: 13%;
+  transform: rotate(-6deg);
+}
+.dialogue-slashes {
+  position: absolute;
+  right: 112px;
+  bottom: 22px;
+  width: 64px;
+  height: 15px;
+  background: repeating-linear-gradient(90deg, var(--dialogue-wine) 0 13px, transparent 13px 22px);
+  transform: skewX(-32deg) rotate(-3deg);
+}
+
 .dialogue-scene #boss-choice-view {
   grid-area: choices;
   gap: 12px;
@@ -206,12 +286,15 @@ body.in-boss-dialogue .client-bubble {
   isolation: isolate;
   min-height: 100px;
   gap: 7px;
-  padding: 16px 24px 16px 33px;
+  padding: 16px 32px 16px 44px;
   border: 0;
   border-radius: 0;
   background: var(--dialogue-cream);
-  clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
+  clip-path: polygon(6% 8%, 100% 0, 93% 92%, 0 100%);
   transition: transform 130ms ease-out;
+}
+.dialogue-scene .boss-choice.argue {
+  clip-path: polygon(5% 0, 100% 7%, 94% 100%, 0 93%);
 }
 .dialogue-scene .boss-choice::before {
   content: '';
@@ -226,7 +309,7 @@ body.in-boss-dialogue .client-bubble {
   content: '';
   position: absolute;
   top: 22px;
-  left: 15px;
+  left: clamp(16px, 1.45vw, 23px);
   border-left: 9px solid currentColor;
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
