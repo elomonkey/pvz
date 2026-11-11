@@ -1822,7 +1822,6 @@ export class Game {
     zina.maxPatience = 30;
     zina.setPatience(30);
     zina.hasShouted = false;
-    zina.leaveTimer = 0;
     zina.state = 'waiting';
     zina.root.position.set(QUEUE_SPOTS[0].x, 0, QUEUE_SPOTS[0].z);
     zina.setQueueIndex(0);
@@ -2030,7 +2029,6 @@ export class Game {
     galya.maxPatience = 120;
     galya.setPatience(120);
     galya.hasShouted = false;
-    galya.leaveTimer = 0;
     galya.state = 'waiting';
     galya.root.position.set(QUEUE_SPOTS[0].x, 0, QUEUE_SPOTS[0].z);
     galya.setQueueIndex(0);
@@ -2774,8 +2772,9 @@ export class Game {
     this.service.takeNextItem();
 
     const remaining = this.service.remainingItems();
+    const carriedCount = order.items.filter((item) => item.picked).length;
     this.service.active?.client.setTarget(true);
-    this.player.setCarry(true, cell.color);
+    this.player.setCarry(true, cell.color, carriedCount);
     this.ui.closeCellPanel();
     this.ui.closeScanner();
     this.scannerPanel.clearPanel();
