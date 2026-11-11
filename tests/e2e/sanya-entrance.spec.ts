@@ -58,6 +58,23 @@ test('Саня: выразительный вход не останавлива�
     await page.mouse.up();
   }
   await expect(page.locator('.scan-cell-id')).toHaveCount(4);
+  const service = await page.evaluate(() => {
+    const g = (window as any).game, order = g.service.active.order;
+    const stages = [];
+    while (g.service.remainingItems().length) {
+      g.takeParcel(g.world.cells.find((cell: any) => cell.id === order.cellId), order);
+      stages.push({ carrying: g.service.carrying, ready: g.service.readyToDeliver });
+      if (!g.service.readyToDeliver) g.deliver();
+    }
+    const before = g.run.served;
+    g.deliver();
+    return { stages, before, served: g.run.served, active: g.service.active, carrying: g.service.carrying, phase: g.phase };
+  });
+  expect(service.stages).toEqual([
+    { carrying: true, ready: false }, { carrying: true, ready: false },
+    { carrying: true, ready: false }, { carrying: true, ready: true },
+  ]);
+  expect(service).toMatchObject({ before: 0, served: 1, active: null, carrying: false, phase: 'break' });
   expect(errors).toEqual([]);
 });
 

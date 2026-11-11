@@ -5,6 +5,10 @@ export interface ServiceSession<TClient> {
   order: Order;
 }
 
+export interface ClearedServiceSession<TClient> extends ServiceSession<TClient> {
+  carried: boolean;
+}
+
 export interface ScannerSignal {
   text: string;
   level: number;
@@ -34,9 +38,9 @@ export class ServiceSystem<TClient = unknown> {
     return this.carried;
   }
 
-  set carrying(value: boolean) {
-    this.carried = value;
-    if (!value) this.carriedColors.length = 0;
+  get readyToDeliver(): boolean {
+    const items = this.session?.order.items;
+    return !!items?.length && items.every((item) => item.picked === true);
   }
 
   get carryColors(): readonly string[] {
@@ -61,12 +65,16 @@ export class ServiceSystem<TClient = unknown> {
 
   begin(client: TClient, order: Order): ServiceSession<TClient> {
     this.session = { client, order };
+    this.carried = false;
     this.carriedColors.length = 0;
     return this.session;
   }
 
-  clear(): ServiceSession<TClient> | null {
-    const previous = this.session;
+  clear(): ClearedServiceSession<TClient> | null {
+    const previous = this.session ? {
+      ...this.session,
+      carried: this.carried || this.session.order.items.some((item) => item.picked),
+    } : null;
     this.session = null;
     this.carried = false;
     this.carriedColors.length = 0;
@@ -87,8 +95,8 @@ export class ServiceSystem<TClient = unknown> {
     if (item) {
       item.picked = true;
       if (color) this.carriedColors.push(color);
+      this.carried = true;
     }
-    this.carried = true;
     return item;
   }
 

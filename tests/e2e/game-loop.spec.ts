@@ -6,7 +6,7 @@ import type { Order } from '../../src/domain/orders';
 // Scene navigation and early shift completion depend on these internal methods.
 interface SmokeGame {
   queue: Client[];
-  service: { active: { order: Order } | null; carrying: boolean };
+  service: { active: { order: Order } | null; carrying: boolean; readyToDeliver: boolean };
   isServableFront(client: Client): boolean;
   onShelfClick(shelf: number): void;
   endShift(): void;
@@ -62,6 +62,7 @@ test('старт → клиент → сканер → ячейка → выда
     await page.locator(`[data-cell-id="${cellId}"]`).click();
     await expect(page.locator('#cell-panel')).toBeHidden();
     await expect.poll(() => page.evaluate(() => window.game.service.carrying)).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.game.service.readyToDeliver)).toBe(true);
     await clientTag.click();
     await expect(page.locator('#hud-served')).toHaveText('1');
     await expect.poll(() => page.evaluate(() => window.game.service.active === null)).toBe(true);

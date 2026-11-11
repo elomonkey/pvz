@@ -1211,7 +1211,6 @@ export class Game {
       actualCellId: first.actualCellId,
       mixed,
       scanned: false,
-      carrying: false,
       searchMode: false,
       mixedTriggered: false,
       checkedCells: [],
@@ -1274,7 +1273,6 @@ export class Game {
       actualCellId: first.actualCellId,
       mixed: false,
       scanned: false,
-      carrying: false,
       searchMode: false,
       mixedTriggered: false,
       checkedCells: [],
@@ -1283,10 +1281,7 @@ export class Game {
 
   private syncOrderTarget(order: Order): OrderItem | null {
     const item = order.items.find((value) => !value.picked);
-    if (!item) {
-      order.carrying = true;
-      return null;
-    }
+    if (!item) return null;
     order.shelf = item.shelf;
     order.column = item.column;
     order.level = item.level;
@@ -2029,7 +2024,6 @@ export class Game {
       actualCellId: cell.id,
       mixed: false,
       scanned: true,
-      carrying: false,
       searchMode: false,
       mixedTriggered: false,
       checkedCells: [],
@@ -2234,7 +2228,6 @@ export class Game {
     this.addReputation(0.2);
     client.setTarget(false);
     client.showBubble('Наконец-то!', 1.2);
-    this.service.carrying = false;
     this.player.setCarry(false);
     this.service.clear();
     this.scannerPanel.reset();
@@ -2788,7 +2781,7 @@ export class Game {
       }
       if (this.service.active) {
         if (this.service.active.client === current) {
-          if (this.service.active.order.carrying) {
+          if (this.service.readyToDeliver) {
             this.deliver();
           } else {
             this.ui.showScanResult(this.orderCellList(this.service.active.order));
@@ -2806,7 +2799,7 @@ export class Game {
         this.ui.toast('Сначала отсканируйте заказ', 'error');
         return;
       }
-      if (active.order.carrying) {
+      if (this.service.readyToDeliver) {
         this.ui.toast('Посылка уже в руках. Отнесите её клиенту.', 'error');
         return;
       }
@@ -2825,7 +2818,7 @@ export class Game {
 
   private openCellPanelFor(order: Order): void {
     const active = this.service.active;
-    if (!active || active.order !== order || order.carrying) return;
+    if (!active || active.order !== order || this.service.readyToDeliver) return;
     const shelf = this.world.shelves[order.shelf];
     if (!shelf) return;
 
@@ -2860,7 +2853,7 @@ export class Game {
 
   chooseCellById(id: string): void {
     const active = this.service.active;
-    if (!active || !active.order.scanned || active.order.carrying) return;
+    if (!active || !active.order.scanned || this.service.readyToDeliver) return;
     const order = active.order;
     const cell = this.world.cells.find((value) => value.id === id);
     if (!cell || cell.shelfIndex !== order.shelf) return;
@@ -2927,15 +2920,13 @@ export class Game {
     cell.parcel.visible = false;
     this.service.takeNextItem(cell.color);
 
-    const remaining = this.service.remainingItems();
     this.service.active?.client.setTarget(true);
     this.player.setCarry(true, this.service.carryColors);
     this.ui.closeCellPanel();
     this.ui.closeScanner();
     this.scannerPanel.clearPanel();
 
-    if (remaining.length > 0) {
-      order.carrying = false;
+    if (!this.service.readyToDeliver) {
       this.syncOrderTarget(order);
       if (this.highlightEnabled) {
         this.setHighlight(order.shelf, order.column);
@@ -2945,7 +2936,6 @@ export class Game {
       this.ui.setOrderChip('Сбор посылок', this.orderCellList(order), 'cell');
       this.ui.toast(`Посылка взята. Осталось: ${this.orderCellList(order)}`, 'success');
     } else {
-      order.carrying = true;
       this.setHighlight(-1, -1);
       this.ui.setOrderChip('В руках', 'Отнесите клиенту', 'carry');
       this.ui.toast('Все посылки собраны. Отнесите их клиенту.', 'success');
@@ -2968,7 +2958,7 @@ export class Game {
 
   private deliver(): void {
     const active = this.service.active;
-    if (!active || !active.order.carrying) return;
+    if (!active || !this.service.readyToDeliver) return;
     const client = active.client;
     if (!this.isServableFront(client)) {
       this.ui.toast('Клиент уже не ждёт у стойки', 'error');
@@ -2995,7 +2985,6 @@ export class Game {
       client.showBubble(pick(THANKS_LINES), 1.2);
       const left = this.queen.deliver(active.order.items.length);
       this.ui.setQueenStatus(true, left);
-      this.service.carrying = false;
       this.player.setCarry(false);
       this.service.clear();
       this.scannerPanel.reset();
@@ -3028,7 +3017,6 @@ export class Game {
     this.removeFromQueue(client);
     this.releaseOrder(active.order);
     this.service.clear();
-    this.service.carrying = false;
     this.player.setCarry(false);
     this.scannerPanel.clearPanel();
     this.ui.closePanels();
@@ -3051,17 +3039,14 @@ export class Game {
   }
 
   private cancelActiveOrder(): void {
-    const active = this.service.active;
+    const active = this.service.clear();
     if (!active) return;
     active.client.setTarget(false);
-    const carried = active.order.carrying || active.order.items.some((item) => item.picked);
-    if (carried) {
-      this.service.carrying = false;
+    if (active.carried) {
       this.player.setCarry(false);
     }
     this.releaseOrder(active.order);
-    this.service.clear();
-    if (carried) this.restockCells();
+    if (active.carried) this.restockCells();
     this.scannerPanel.reset();
     this.ui.closePanels();
     this.setHighlight(-1, -1);
@@ -3200,7 +3185,7 @@ export class Game {
 
   private updateProximity(): void {
     const active = this.service.active;
-    if (!active || active.order.carrying || !active.order.scanned) {
+    if (!active || this.service.readyToDeliver || !active.order.scanned) {
       if (this.scannerPanel.nearShelf !== null || this.scannerPanel.panelKey !== null) {
         this.scannerPanel.clearPanel();
         this.ui.closeCellPanel();
@@ -3775,7 +3760,7 @@ export class Game {
       if (
         this.service.active &&
         this.service.active.order.scanned &&
-        !this.service.active.order.carrying &&
+        !this.service.readyToDeliver &&
         this.service.active.order.shelf === shelfIndex &&
         this.playerNearShelf(shelfIndex)
       ) {
@@ -3797,7 +3782,7 @@ export class Game {
       this.ui.toast('Сначала отсканируйте заказ', 'error');
       return;
     }
-    if (active.order.carrying) {
+    if (this.service.readyToDeliver) {
       this.ui.toast('Посылка уже в руках. Отнесите её клиенту.', 'error');
       return;
     }
@@ -3949,7 +3934,7 @@ export class Game {
     if (this.service.active) {
       const order = this.service.active.order;
       const remaining = order.items.filter((item) => !item.picked);
-      if (order.carrying) {
+      if (this.service.readyToDeliver) {
         this.ui.setPrompt(
           order.items.length > 1
             ? 'Все посылки собраны. Отнесите их клиенту у стойки.'

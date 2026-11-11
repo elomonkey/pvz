@@ -23,7 +23,6 @@ export interface Order {
   actualCellId: string;
   mixed: boolean;
   scanned: boolean;
-  carrying: boolean;
   searchMode: boolean;
   mixedTriggered: boolean;
   checkedCells: string[];
