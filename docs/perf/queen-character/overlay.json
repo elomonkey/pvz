@@ -1,5 +1,5 @@
 {
-  "revision": "0e85070794e2282d2208418a37bfefe02fae0b7b",
+  "revision": "6444bc394726e257574263ef11ce41af18d9ce0e",
   "workingTreeDirty": true,
   "build": "production preview",
   "browser": "158.0.8127.18",
@@ -11,9 +11,9 @@
   "rows": [
     {
       "stage": "scene-only",
-      "frames": 40,
+      "frames": 41,
       "frameMs": {
-        "avg": 126.6625,
+        "avg": 124.79024390243904,
         "p95": 133.40000000000055,
         "max": 133.40000000000055
       },
@@ -25,11 +25,11 @@
     },
     {
       "stage": "queen-entrance",
-      "frames": 39,
+      "frames": 40,
       "frameMs": {
-        "avg": 128.62820512820514,
-        "p95": 150,
-        "max": 150
+        "avg": 125.415,
+        "p95": 133.40000000000146,
+        "max": 133.40000000000146
       },
       "drawCalls": 122,
       "triangles": 70254,
