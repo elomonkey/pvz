@@ -1,10 +1,14 @@
 type Emotion = 'stern' | 'angry' | 'surprised';
-type Mode = 'choice' | 'argue' | 'result' | 'final';
+type Mode = 'choice' | 'argue' | 'puzzle' | 'result' | 'final';
 
 // View-only profiles: new bosses can add an atlas without changing encounter rules.
 const PROFILES = {
   galya: {
     atlas: new URL('../assets/galya-expressions.webp', import.meta.url).href,
+    frames: { stern: '0%', angry: '50%', surprised: '100%' },
+  },
+  zina: {
+    atlas: new URL('../assets/zina-expressions.webp', import.meta.url).href,
     frames: { stern: '0%', angry: '50%', surprised: '100%' },
   },
 } as const;
@@ -24,9 +28,11 @@ export class BossDialogueScene {
     this.portrait = modal.querySelector('.dialogue-portrait-art')!;
     this.card = modal.querySelector('.boss-modal')!;
     this.effect = modal.querySelector('.dialogue-impact')!;
-    // One shared atlas; start loading before the first dramatic entrance.
-    const preload = new Image();
-    preload.src = PROFILES.galya.atlas;
+    // One atlas per profile, loaded before the first entrance (never per encounter).
+    for (const profile of Object.values(PROFILES)) {
+      const preload = new Image();
+      preload.src = profile.atlas;
+    }
     modal.addEventListener('keydown', (event) => {
       if (!this.active || event.key !== 'Tab') return;
       const controls = this.controls();
@@ -63,7 +69,10 @@ export class BossDialogueScene {
   setMode(mode: Mode): void {
     if (!this.active) return;
     this.modal.dataset.dialogueMode = mode;
-    this.modal.setAttribute('aria-describedby', mode === 'final' ? 'final-boss-dialogue' : 'boss-quote');
+    this.modal.setAttribute(
+      'aria-describedby',
+      mode === 'final' ? 'final-boss-dialogue' : mode === 'puzzle' ? 'boss-quote zina-hint' : 'boss-quote',
+    );
     this.focusControl();
   }
 
