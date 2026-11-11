@@ -3653,12 +3653,18 @@ export class Game {
 
   private moveTo(target: Vec2, action: PendingAction | null): void {
     if (this.modalOpen) return;
-    const distance = this.movement.distanceTo(target);
+    const resolved = this.nav.resolveTarget(target);
+    if (!resolved) {
+      this.pendingAction = null;
+      this.ui.toast('Туда не пройти', 'error');
+      return;
+    }
+    const distance = this.movement.distanceTo(resolved);
     this.pendingAction = action;
 
     if (distance < 0.24) {
-      this.movement.snapTo(target);
-      this.playerRoot.position.set(target.x, 0, target.z);
+      this.movement.snapTo(resolved);
+      this.playerRoot.position.set(resolved.x, 0, resolved.z);
       this.marker.visible = false;
       if (action) {
         this.faceAction(action);
@@ -3668,7 +3674,7 @@ export class Game {
       return;
     }
 
-    const path = this.nav.findPath(this.movement.position, target);
+    const path = this.nav.findPath(this.movement.position, resolved);
     if (path.length === 0) {
       this.pendingAction = null;
       this.ui.toast('Туда не пройти', 'error');
