@@ -9,6 +9,8 @@ import {
   createDialogueLine,
   setProgressFill,
 } from './components';
+import { BossDialogueScene } from './bossDialogueScene';
+import './bossDialogue.css';
 
 export interface BossActions {
   onServe: () => void;
@@ -63,6 +65,7 @@ export class BossView {
   private readonly finalDone = byId('final-boss-done') as HTMLButtonElement;
   private readonly tugMarker = byId('tug-marker');
   private readonly tugBossEnd = byId('tug-boss-end');
+  private readonly scene = new BossDialogueScene(this.modal);
 
   bind(actions: BossActions): void {
     this.actions = actions;
@@ -72,6 +75,12 @@ export class BossView {
       event.preventDefault();
       event.stopPropagation();
       actions.onMash();
+    });
+    this.mash.addEventListener('keydown', event => {
+      if (this.scene.active && !event.repeat && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        actions.onMash();
+      }
     });
     this.done.addEventListener('click', () => actions.onDone());
     this.finalDone.addEventListener('click', () => actions.onFinalDialogueDone());
@@ -101,17 +110,20 @@ export class BossView {
     this.finalView.classList.remove('hidden');
     this.finalPhaseLabel.textContent = phase;
     clear(this.finalDialogue);
-    for (const line of lines) {
-      this.finalDialogue.appendChild(
-        createDialogueLine({ speaker: line.speaker, text: line.text, tone: line.tone }),
-      );
+    for (const [index, line] of lines.entries()) {
+      const row = createDialogueLine({ speaker: line.speaker, text: line.text, tone: line.tone });
+      row.style.setProperty('--line-index', String(index));
+      this.finalDialogue.appendChild(row);
     }
     this.finalDone.textContent = button;
     this.modal.classList.remove('hidden');
     this.actions?.onClosePanels();
+    // Galya's existing family dialogue is kept intact, including Valera's lines.
+    this.scene.open('galya', 'final', phase.includes('2') ? 'surprised' : 'angry');
   }
 
   showBoss(serveStress: number, line: string, name = 'Галя'): void {
+    this.scene.close();
     this.modal.classList.remove('client-argue');
     this.kicker.textContent = 'БОСС';
     this.badge.textContent = '!';
@@ -139,9 +151,11 @@ export class BossView {
     this.resultQuote.classList.add('hidden');
     this.modal.classList.remove('hidden');
     this.actions?.onClosePanels();
+    if (name === 'Галя') this.scene.open('galya', 'choice', 'angry');
   }
 
   showClientArgue(name: string, line: string, concedeStress: number): void {
+    this.scene.close();
     this.modal.classList.add('client-argue');
     this.kicker.textContent = 'СПОР С КЛИЕНТОМ';
     this.badge.textContent = '!';
@@ -185,6 +199,7 @@ export class BossView {
     this.tugMarker.classList.remove('mashing');
     this.setBossMarker(0);
     this.score.textContent = 'Перетягивание';
+    this.scene.setMode('argue');
   }
 
   pushBossTaunt(text: string): void {
@@ -193,6 +208,10 @@ export class BossView {
     bubble.className = 'boss-taunt';
     bubble.textContent = text;
     this.tauntList.appendChild(bubble);
+    if (this.scene.active) {
+      this.quote.textContent = text;
+      this.scene.pulse();
+    }
   }
 
   showZinaGame(
@@ -203,6 +222,7 @@ export class BossView {
     time: number,
     total: number,
   ): void {
+    this.scene.close();
     this.modal.classList.remove('client-argue');
     this.kicker.textContent = 'БОСС';
     this.badge.textContent = '!';
@@ -303,11 +323,13 @@ export class BossView {
     this.feedback.classList.remove('good');
     this.score.textContent = 'Перетягивание';
     this.updateBossTimer(1);
+    this.scene.focusControl();
   }
 
   setBossMarker(value: number): void {
     const clamped = Math.max(-1, Math.min(1, value));
     this.tugMarker.style.left = `${50 + clamped * 40}%`;
+    this.scene.reactToAdvantage(clamped);
   }
 
   updateBossTimer(ratio: number): void {
@@ -333,9 +355,13 @@ export class BossView {
     this.resultQuote.classList.toggle('hidden', !finalQuote);
     this.resultTitle.classList.toggle('win', success);
     this.resultTitle.classList.toggle('lose', !success);
+    if (this.scene.active && finalQuote) this.quote.textContent = finalQuote;
+    this.scene.setMode('result');
+    this.scene.setEmotion(success ? 'surprised' : 'stern');
   }
 
   hideBoss(): void {
+    this.scene.close();
     this.modal.classList.add('hidden');
     this.finalView.classList.add('hidden');
   }

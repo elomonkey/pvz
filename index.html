@@ -215,8 +215,12 @@
           </div>
         </div>
 
-        <div id="boss-modal" class="overlay hidden">
+        <div id="boss-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="boss-name" aria-describedby="boss-quote">
           <div class="boss-stage">
+          <div class="dialogue-portrait" aria-hidden="true">
+            <div class="dialogue-portrait-art"></div>
+            <div class="dialogue-impact"></div>
+          </div>
           <div class="modal boss-modal">
             <div class="boss-head">
               <div class="boss-avatar">
@@ -236,7 +240,38 @@
               <div class="boss-badge" id="boss-badge">!</div>
             </div>
 
+            <svg class="dialogue-frame" viewBox="345 600 990 350" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+              <defs>
+                <!-- Traced in the supplied 1672 × 941 reference's image coordinates. -->
+                <path id="galya-frame-wide" vector-effect="non-scaling-stroke" d="M377 669 L1124 617 L1088 715 L1133 782 L1306 782 L1240 919 L690 899 L480 915 L413 858 L362 719 L404 690 Z" />
+                <!-- Portrait keeps the same left fold/base; the right shoulder folds inward to fit. -->
+                <path id="galya-frame-compact" vector-effect="non-scaling-stroke" d="M377 669 L1300 617 L1273 715 L1300 782 L1314 782 L1290 919 L690 899 L480 915 L413 858 L362 719 L404 690 Z" />
+                <path id="galya-tape-edge" d="M3 3 L19 1 L41 2 L62 0 L82 2 L103 1 L100 5 L105 8 L101 11 L106 15 L101 18 L104 22 L99 27 L81 26 L61 28 L39 26 L18 28 L0 26 L4 22 L1 18 L5 15 L0 12 L4 8 Z" />
+                <linearGradient id="galya-tape-color" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+                  <stop stop-color="#f6c64a" /><stop offset="1" stop-color="#edb431" />
+                </linearGradient>
+              </defs>
+              <g class="dialogue-frame-wide">
+                <use href="#galya-frame-wide" class="dialogue-frame-shadow" transform="translate(14 18)" />
+                <use href="#galya-frame-wide" class="dialogue-frame-outline" />
+                <use href="#galya-frame-wide" class="dialogue-frame-paper" />
+              </g>
+              <g class="dialogue-frame-compact">
+                <use href="#galya-frame-compact" class="dialogue-frame-shadow" transform="translate(14 18)" />
+                <use href="#galya-frame-compact" class="dialogue-frame-outline" />
+                <use href="#galya-frame-compact" class="dialogue-frame-paper" />
+              </g>
+              <g class="dialogue-frame-slashes">
+                <polygon points="922,900 946,873 980,870 956,897" />
+                <polygon points="970,899 994,872 1028,869 1004,896" />
+                <polygon points="1018,898 1042,871 1076,868 1052,895" />
+              </g>
+            </svg>
             <div class="boss-quote" id="boss-quote">Вы вообще работаете? Мне быстро надо!</div>
+            <div class="dialogue-trim" aria-hidden="true">
+              <svg class="dialogue-tape top" viewBox="0 0 108 30" preserveAspectRatio="none" focusable="false"><use href="#galya-tape-edge" fill="url(#galya-tape-color)" /></svg>
+              <svg class="dialogue-tape bottom" viewBox="0 0 108 30" preserveAspectRatio="none" focusable="false"><use href="#galya-tape-edge" fill="url(#galya-tape-color)" /></svg>
+            </div>
 
             <div id="boss-choice-view">
               <button id="boss-serve" class="boss-choice serve" type="button">
@@ -299,7 +334,7 @@
 
             <div id="boss-final-view" class="hidden">
               <div class="final-boss-phase" id="final-boss-phase-label">ФАЗА 1 / 3</div>
-              <div class="final-boss-dialogue" id="final-boss-dialogue"></div>
+              <div class="final-boss-dialogue" id="final-boss-dialogue" tabindex="0" aria-labelledby="final-boss-phase-label"></div>
               <button id="final-boss-done" class="btn primary" type="button">Дальше</button>
             </div>
           </div>

@@ -1,0 +1,41 @@
+{
+  "build": "production preview",
+  "browser": "158.0.8127.18",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "method": "same paused shift-1 Galya encounter; 1s warmup, 5s RAF per state; intro excluded; WebGL counters exclude CSS image memory",
+  "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "rows": [
+    {
+      "stage": "scene-only",
+      "frameMs": {
+        "avg": 111.4777777777778,
+        "p95": 116.80000000000018,
+        "max": 133.30000000000018
+      },
+      "frames": 45,
+      "drawCalls": 110,
+      "triangles": 63984,
+      "geometries": 86,
+      "textures": 16,
+      "programs": 9
+    },
+    {
+      "stage": "galya-choice",
+      "frameMs": {
+        "avg": 115.90454545454548,
+        "p95": 133.29999999999927,
+        "max": 150
+      },
+      "frames": 44,
+      "drawCalls": 110,
+      "triangles": 63984,
+      "geometries": 86,
+      "textures": 16,
+      "programs": 9
+    }
+  ],
+  "errors": []
+}
