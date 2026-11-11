@@ -144,6 +144,7 @@ interface WaveConfig {
 }
 
 const PLAYER_SPEED = 3.15;
+const FITTING_POINT: Vec2 = { x: 3.15, z: 2.8 };
 
 export class Game {
   private readonly scene: THREE.Scene;
@@ -217,6 +218,7 @@ export class Game {
 
   private queenClient: Client | null = null;
   private readonly queen = new QueenSystem();
+  private queenWalkingToFitting = false;
   private fittingActive = false;
   private fittingOccupied = [false, false];
   private fittingTimers = [0, 0];
@@ -948,6 +950,7 @@ export class Game {
     this.world.setDayPhase(1);
 
     this.queen.reset();
+    this.queenWalkingToFitting = false;
     this.queenClient = null;
     this.fittingActive = isFittingActive(shift);
     this.fittingOccupied = [false, false];
@@ -1392,6 +1395,7 @@ export class Game {
 
   private checkWaveComplete(): void {
     if (this.phase !== 'playing') return;
+    if (this.queenWalkingToFitting) return;
     if (this.spawnQueue.length > 0) return;
     if (this.clients.some((client) => client !== this.queenClient)) return;
     if (this.service.active) return;
@@ -2405,6 +2409,7 @@ export class Game {
       queen.hideBubble();
     }
     this.queen.reset();
+    this.queenWalkingToFitting = false;
     this.queenClient = null;
     this.fittingOccupied = [false, false];
     this.fittingFull = false;
@@ -2556,6 +2561,7 @@ export class Game {
     this.service.reset();
     this.player.setCarry(false);
     this.queen.reset();
+    this.queenWalkingToFitting = false;
     this.finalBoss.reset();
     if (this.finalBossGalya) {
       this.finalBossGalya.root.visible = false;
@@ -3004,7 +3010,7 @@ export class Game {
           `Королева получила ${active.order.items.length} товара. Осталось ${left}.`,
           'success',
         );
-        this.hideQueen();
+        this.sendQueenToFitting();
       }
       this.updateHud();
       this.updatePrompt();
@@ -3086,6 +3092,7 @@ export class Game {
     this.clearClients();
     this.updateShelfProgression(1);
     this.queen.reset();
+    this.queenWalkingToFitting = false;
     this.queenClient = null;
     this.ui.setQueenStatus(false, 0);
     this.fittingActive = false;
@@ -3381,6 +3388,13 @@ export class Game {
     if (!this.queen.active || !this.queenClient) return;
     const queen = this.queenClient;
 
+    if (this.queenWalkingToFitting) {
+      if (queen.state === 'waiting' && queen.isAt(FITTING_POINT, 0.2)) {
+        this.enterQueenFitting();
+      }
+      return;
+    }
+
     if (queen.state === 'gone') {
       // Пока игрок несёт возврат, Королева ждёт, а не возвращается с новым заказом.
       if (this.queen.returnInHand) return;
@@ -3399,16 +3413,35 @@ export class Game {
     if (queen.state !== 'waiting') return;
   }
 
-  private hideQueen(): void {
+  private sendQueenToFitting(): void {
+    const queen = this.queenClient;
+    if (!queen || this.queenWalkingToFitting) return;
+    this.removeFromQueue(queen);
+    queen.hideBubble();
+    queen.setTarget(false);
+    queen.rig.setCarry(false);
+    queen.walkTo(FITTING_POINT);
+    this.queenWalkingToFitting = true;
+    this.fittingOccupied = [false, false];
+    this.fittingFull = false;
+    this.ui.setFittingRooms(0, 2, true);
+    this.updatePatienceMultipliers();
+    this.ui.toast(
+      'Королева идёт в примерочную. Она может вернуться с возвратом.',
+      'boss',
+    );
+  }
+
+  private enterQueenFitting(): void {
+    this.queenWalkingToFitting = false;
     const queen = this.queenClient;
     if (!queen) return;
-    this.removeFromQueue(queen);
     queen.hideBubble();
     queen.rig.setCarry(false);
     queen.state = 'gone';
     queen.root.visible = true;
     queen.label.visible = true;
-    queen.root.position.set(3.15, 0, 2.8);
+    queen.root.position.set(FITTING_POINT.x, 0, FITTING_POINT.z);
     queen.root.rotation.y = -0.4;
     this.queen.startFitting(6);
     this.fittingOccupied = [true, true];
@@ -3487,6 +3520,7 @@ export class Game {
   private finishQueen(): void {
     const queen = this.queenClient;
     this.queen.finish();
+    this.queenWalkingToFitting = false;
     this.fittingOccupied = [false, false];
     this.fittingFull = false;
     this.fittingTimers = [5, 9];
