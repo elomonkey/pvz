@@ -1,0 +1,43 @@
+{
+  "revision": "0e85070794e2282d2208418a37bfefe02fae0b7b",
+  "workingTreeDirty": true,
+  "build": "production preview",
+  "browser": "158.0.8127.18",
+  "viewport": {
+    "width": 1600,
+    "height": 960
+  },
+  "method": "same frozen shift-4 Queen scene, seed 20261111, DPR 1; 1s warmup + 5s RAF each; entrance animation excluded; banner 30s only in fixture; CSS atlas excluded from WebGL counters",
+  "rows": [
+    {
+      "stage": "scene-only",
+      "frames": 40,
+      "frameMs": {
+        "avg": 126.6625,
+        "p95": 133.40000000000055,
+        "max": 133.40000000000055
+      },
+      "drawCalls": 122,
+      "triangles": 70254,
+      "geometries": 88,
+      "textures": 16,
+      "programs": 9
+    },
+    {
+      "stage": "queen-entrance",
+      "frames": 39,
+      "frameMs": {
+        "avg": 128.62820512820514,
+        "p95": 150,
+        "max": 150
+      },
+      "drawCalls": 122,
+      "triangles": 70254,
+      "geometries": 88,
+      "textures": 16,
+      "programs": 9
+    }
+  ],
+  "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "errors": []
+}

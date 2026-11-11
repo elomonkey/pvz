@@ -1,0 +1,59 @@
+{
+  "samples": [
+    {
+      "mood": "idle",
+      "carry": false,
+      "total": 2242,
+      "visible": 2064,
+      "calls": 13,
+      "ownedGeometries": 9,
+      "ownedMaterials": 4
+    },
+    {
+      "mood": "idle",
+      "carry": true,
+      "total": 2242,
+      "visible": 2060,
+      "calls": 17,
+      "ownedGeometries": 9,
+      "ownedMaterials": 4
+    },
+    {
+      "mood": "impatient",
+      "carry": false,
+      "total": 2242,
+      "visible": 2064,
+      "calls": 13,
+      "ownedGeometries": 9,
+      "ownedMaterials": 4
+    },
+    {
+      "mood": "impatient",
+      "carry": true,
+      "total": 2242,
+      "visible": 2060,
+      "calls": 17,
+      "ownedGeometries": 9,
+      "ownedMaterials": 4
+    },
+    {
+      "mood": "angry",
+      "carry": false,
+      "total": 2234,
+      "visible": 2056,
+      "calls": 13,
+      "ownedGeometries": 9,
+      "ownedMaterials": 4
+    },
+    {
+      "mood": "angry",
+      "carry": true,
+      "total": 2234,
+      "visible": 2052,
+      "calls": 17,
+      "ownedGeometries": 9,
+      "ownedMaterials": 4
+    }
+  ],
+  "errors": []
+}
