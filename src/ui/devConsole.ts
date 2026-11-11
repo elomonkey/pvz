@@ -8,6 +8,9 @@ export class DevConsole {
   private readonly boss = byId('dev-boss') as HTMLButtonElement;
   private readonly money = byId('dev-money') as HTMLButtonElement;
   private readonly reset = byId('dev-reset') as HTMLButtonElement;
+  private readonly tutorialOn = byId('dev-tutorial-on') as HTMLButtonElement;
+  private readonly tutorialOff = byId('dev-tutorial-off') as HTMLButtonElement;
+  private readonly tutorialStatus = byId('dev-tutorial-status');
   private readonly shifts = Array.from(
     document.querySelectorAll<HTMLButtonElement>('[data-dev-shift]'),
   );
@@ -20,6 +23,15 @@ export class DevConsole {
     this.reset.addEventListener('click', () => {
       this.game?.debugShowMenu();
       this.toggle(false);
+    });
+    this.tutorialOn.addEventListener('click', () => {
+      this.game?.debugEnableTutorial();
+      this.refreshTutorialStatus();
+      this.toggle(false);
+    });
+    this.tutorialOff.addEventListener('click', () => {
+      this.game?.debugDisableTutorial();
+      this.refreshTutorialStatus();
     });
     for (const button of this.shifts) {
       button.addEventListener('click', () => {
@@ -37,5 +49,13 @@ export class DevConsole {
   toggle(force?: boolean): void {
     const open = force ?? this.panel.classList.contains('hidden');
     this.panel.classList.toggle('hidden', !open);
+    if (open) this.refreshTutorialStatus();
+  }
+
+  private refreshTutorialStatus(): void {
+    if (!this.game) return;
+    const enabled = this.game.debugTutorialEnabled();
+    this.tutorialStatus.textContent = `Обучение: ${enabled ? 'включено' : 'выключено'}`;
+    this.tutorialStatus.classList.toggle('on', enabled);
   }
 }

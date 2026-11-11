@@ -97,6 +97,7 @@ import {
   loadResultsIntroSeen,
   loadScannerBreakSeen,
   loadTutorialDone,
+  resetTutorialProgress,
   saveBest,
   saveDecorIds,
   saveResultsIntroSeen,
@@ -668,6 +669,32 @@ export class Game {
 
   debugShowMenu(): void {
     this.restartGame();
+  }
+
+  debugTutorialEnabled(): boolean {
+    return !loadTutorialDone();
+  }
+
+  debugEnableTutorial(): void {
+    resetTutorialProgress();
+    this.ui.hideStart();
+    this.startNewGame();
+  }
+
+  debugDisableTutorial(): void {
+    saveTutorialDone();
+    saveResultsIntroSeen();
+    this.tutorialPending = false;
+    if (!this.tutorialActive) return;
+    this.tutorialActive = false;
+    this.tutorialOpen = false;
+    this.tutorialStep = 'welcome';
+    this.modalOpen = false;
+    this.clearTutorialMarker();
+    this.ui.setTutorialTarget(null);
+    this.ui.hideTutorial();
+    this.updatePatienceMultipliers();
+    this.updatePrompt();
   }
 
   private isGameOver(): boolean {
