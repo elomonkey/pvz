@@ -2,6 +2,14 @@ import type { Sound } from '../sound';
 import { byId, clear, createQuestRow, setProgressFill } from './components';
 import './bossEntrance.css';
 
+// Presentation for the existing Queen banners; titles, text and timing stay in Game.
+const QUEEN_EXPRESSIONS = new Map<string, 'demanding' | 'annoyed' | 'satisfied'>([
+  ['Королева примерочной', 'demanding'],
+  ['Королева вернулась', 'demanding'],
+  ['Королева вернулась с возвратом', 'annoyed'],
+  ['Королева ушла', 'satisfied'],
+]);
+
 export interface HudData {
   shift: number;
   waveLabel: string;
@@ -56,8 +64,13 @@ export class HudView {
   private bannerTimer: number | null = null;
 
   constructor() {
-    const portrait = new Image();
-    portrait.src = new URL('../assets/sanya-portrait.webp', import.meta.url).href;
+    for (const source of [
+      new URL('../assets/sanya-portrait.webp', import.meta.url).href,
+      new URL('../assets/queen-expressions.webp', import.meta.url).href,
+    ]) {
+      const portrait = new Image();
+      portrait.src = source;
+    }
   }
 
   bind(sound: Sound): void {
@@ -192,8 +205,13 @@ export class HudView {
     }
     this.bannerTitle.textContent = title;
     this.bannerSub.textContent = sub;
-    // Sanya remains a timed service encounter, never a modal dialogue.
-    this.bannerEl.classList.toggle('boss-entrance', title === 'Курьер Саня');
+    const queenEmotion = QUEEN_EXPRESSIONS.get(title);
+    const character = queenEmotion ? 'queen' : title === 'Курьер Саня' ? 'sanya' : null;
+    this.bannerEl.classList.toggle('boss-entrance', character !== null);
+    if (character) this.bannerEl.dataset.entranceCharacter = character;
+    else delete this.bannerEl.dataset.entranceCharacter;
+    if (queenEmotion) this.bannerEl.dataset.entranceEmotion = queenEmotion;
+    else delete this.bannerEl.dataset.entranceEmotion;
     this.bannerEl.classList.remove('hidden');
     this.bannerEl.classList.remove('pop');
     void this.bannerEl.offsetWidth;
