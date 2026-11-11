@@ -40,7 +40,7 @@
   z-index: 1;
 }
 .boss-entrance[data-entrance-character='queen'] .boss-entrance-portrait {
-  background-image: url('../assets/queen-expressions.webp');
+  background-image: url('../assets/queen-expressions-v2.webp');
   background-size: 300% 100%;
   background-position: 0% 50%;
 }

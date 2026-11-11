@@ -35,7 +35,7 @@ for (const viewport of [{ width: 1400, height: 900 }, { width: 390, height: 844 
         first, between, phase: g.phase, modal: g.modalOpen,
         title: document.getElementById('banner-title')!.textContent,
         profile: document.getElementById('banner')!.dataset.entranceCharacter,
-        queen: g.queenClient?.archetype.id, budget: g.queen.budget,
+        queen: g.queenClient?.archetype.id, body: g.queenClient?.rig.body.name, budget: g.queen.budget,
         ordinaryPending: g.spawnQueue.length,
       };
     });
@@ -45,6 +45,7 @@ for (const viewport of [{ width: 1400, height: 900 }, { width: 390, height: 844 
     expect(state.phase).toBe('playing');
     expect(state.modal).toBe(false);
     expect(state.queen).toBe('fitting-queen');
+    expect(state.body).toBe('queen-body');
     expect(state.budget).toBeGreaterThanOrEqual(20);
     expect(state.budget).toBeLessThanOrEqual(30);
     expect(state.ordinaryPending).toBeGreaterThan(0);
