@@ -51,6 +51,8 @@ export class ModalView {
   private readonly tutorialNext = byId('tutorial-next') as HTMLButtonElement;
   private readonly tutorialSkip = byId('tutorial-skip') as HTMLButtonElement;
 
+  private readonly resultsIntro = byId('results-intro');
+  private readonly resultsIntroClose = byId('results-intro-close') as HTMLButtonElement;
   private readonly resultsModal = byId('results-modal');
   private readonly resultsKicker = byId('results-kicker');
   private readonly resultsStars = byId('results-stars');
@@ -81,6 +83,7 @@ export class ModalView {
     this.helpClose.addEventListener('click', () => actions.onCloseHelp());
     this.tutorialNext.addEventListener('click', () => actions.onTutorialNext());
     this.tutorialSkip.addEventListener('click', () => actions.onTutorialSkip());
+    this.resultsIntroClose.addEventListener('click', () => this.hideResultsIntro());
     this.nextShift.addEventListener('click', () => actions.onNextShift());
     this.restartBtn.addEventListener('click', () => actions.onRestart());
   }
@@ -168,10 +171,20 @@ export class ModalView {
   }
 
   showResults(): void {
+    this.hideResultsIntro();
     this.resultsModal.classList.remove('hidden');
   }
 
+  showResultsIntro(): void {
+    this.resultsIntro.classList.remove('hidden');
+  }
+
+  hideResultsIntro(): void {
+    this.resultsIntro.classList.add('hidden');
+  }
+
   hideResults(): void {
+    this.hideResultsIntro();
     this.resultsModal.classList.add('hidden');
   }
 
@@ -197,5 +210,6 @@ export class ModalView {
     this.hideResults();
     this.hideGameOver();
     this.hideTutorial();
+    this.hideResultsIntro();
   }
 }

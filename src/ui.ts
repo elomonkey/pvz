@@ -298,6 +298,10 @@ export class UI {
     this.closePanels();
   }
 
+  showResultsIntro(): void {
+    this.modals.showResultsIntro();
+  }
+
   setNextShiftFinal(final: boolean): void {
     this.modals.setNextShiftFinal(final);
   }
