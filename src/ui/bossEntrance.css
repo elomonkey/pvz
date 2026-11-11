@@ -1,0 +1,153 @@
+/* Sanya's existing three-second banner, with the shared paper silhouette.
+   No modal, focus trap, backdrop, input interception or gameplay timer. */
+.boss-entrance-portrait,
+.boss-entrance-frame,
+.boss-entrance-tape {
+  display: none;
+}
+.banner.boss-entrance {
+  --dialogue-wine: #81263f;
+  --dialogue-cream: #fff0d5;
+  --dialogue-ink: #241f22;
+  --dialogue-gold: #f5bb35;
+  isolation: isolate;
+  top: auto;
+  right: auto;
+  bottom: 180px;
+  left: 24px;
+  display: grid;
+  grid-template-columns: 28% minmax(0, 1fr);
+  gap: 6px 0;
+  align-items: end;
+  width: min(900px, calc(100vw - 48px));
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--dialogue-ink);
+  text-align: left;
+  text-shadow: none;
+  transform: none;
+  backdrop-filter: none;
+}
+.boss-entrance .boss-entrance-portrait {
+  position: absolute;
+  bottom: -12px;
+  left: -2%;
+  display: block;
+  width: 32%;
+  aspect-ratio: 1;
+  background: url('../assets/sanya-portrait.webp') no-repeat center / contain;
+  z-index: 1;
+}
+.boss-entrance .banner-title {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
+  padding: 9px 24px 12px;
+  background: var(--dialogue-wine);
+  color: var(--dialogue-cream);
+  clip-path: polygon(7% 0, 100% 3%, 94% 100%, 0 100%);
+  transform: rotate(-3deg);
+  font-size: clamp(24px, 2.6vw, 38px);
+  font-style: italic;
+}
+.boss-entrance .banner-sub {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 132px;
+  margin: 0;
+  padding: 24px 32px 36px;
+  font-size: clamp(18px, 1.65vw, 24px);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1.25;
+  opacity: 1;
+}
+.boss-entrance .boss-entrance-frame {
+  position: absolute;
+  grid-column: 2;
+  grid-row: 2;
+  top: -10px;
+  left: -4px;
+  display: block;
+  width: calc(100% + 12px);
+  height: calc(100% + 20px);
+  overflow: visible;
+  z-index: -1;
+}
+.banner.boss-entrance.pop {
+  animation: boss-entrance-in 350ms ease-out;
+}
+.boss-entrance .boss-entrance-tape {
+  position: absolute;
+  grid-column: 2;
+  grid-row: 2;
+  top: -12px;
+  right: 8%;
+  display: block;
+  width: 84px;
+  height: 24px;
+  transform: rotate(-10deg);
+}
+/* Scanning and shelf controls take visual priority, even before the 3s expire. */
+#ui-root:has(#scanner-panel:not(.hidden), #cell-panel:not(.hidden)) .banner.boss-entrance {
+  visibility: hidden;
+}
+@keyframes boss-entrance-in {
+  from { opacity: 0; transform: translateX(-40px) rotate(-2deg); }
+  to { opacity: 1; transform: translateX(0) rotate(0); }
+}
+@media (max-width: 620px) {
+  .banner.boss-entrance {
+    bottom: max(110px, 18vh);
+    left: 10px;
+    width: calc(100vw - 20px);
+    grid-template-columns: 24% minmax(0, 1fr);
+  }
+  .boss-entrance .boss-entrance-portrait {
+    bottom: calc(100% - 45px);
+    left: -9px;
+    width: min(150px, 28vw);
+  }
+  .boss-entrance .banner-title {
+    font-size: 22px;
+    padding: 8px 15px 10px;
+  }
+  .boss-entrance .banner-sub {
+    grid-column: 1 / -1;
+    min-height: 120px;
+    padding: 23px 24px 36px;
+    font-size: 18px;
+  }
+  .boss-entrance .boss-entrance-frame {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-height: 540px) and (orientation: landscape) {
+  .banner.boss-entrance {
+    bottom: 50px;
+    width: min(660px, calc(100vw - 32px));
+    left: 16px;
+    grid-template-columns: 28% minmax(0, 1fr);
+  }
+  .boss-entrance .banner-title {
+    font-size: 23px;
+  }
+  .boss-entrance .banner-sub {
+    grid-column: 2;
+    min-height: 100px;
+    padding: 20px 28px 30px;
+    font-size: 18px;
+  }
+  .boss-entrance .boss-entrance-portrait {
+    bottom: -12px;
+    left: -2%;
+    width: min(32%, 50vh);
+  }
+  .boss-entrance .boss-entrance-frame {
+    grid-column: 2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .banner.boss-entrance.pop { animation: none; }
+}

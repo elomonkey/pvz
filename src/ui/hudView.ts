@@ -1,5 +1,6 @@
 import type { Sound } from '../sound';
 import { byId, clear, createQuestRow, setProgressFill } from './components';
+import './bossEntrance.css';
 
 export interface HudData {
   shift: number;
@@ -53,6 +54,11 @@ export class HudView {
   private readonly bannerSub = byId('banner-sub');
   private readonly muteBtn = byId('btn-mute') as HTMLButtonElement;
   private bannerTimer: number | null = null;
+
+  constructor() {
+    const portrait = new Image();
+    portrait.src = new URL('../assets/sanya-portrait.webp', import.meta.url).href;
+  }
 
   bind(sound: Sound): void {
     this.muteBtn.addEventListener('click', () => {
@@ -186,6 +192,8 @@ export class HudView {
     }
     this.bannerTitle.textContent = title;
     this.bannerSub.textContent = sub;
+    // Sanya remains a timed service encounter, never a modal dialogue.
+    this.bannerEl.classList.toggle('boss-entrance', title === 'Курьер Саня');
     this.bannerEl.classList.remove('hidden');
     this.bannerEl.classList.remove('pop');
     void this.bannerEl.offsetWidth;
