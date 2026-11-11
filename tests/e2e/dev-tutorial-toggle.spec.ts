@@ -11,6 +11,8 @@ test('dev-консоль включает и выключает обучение
     await page.addInitScript(() => {
       localStorage.setItem('pvz_tycoon_tutorial_done', '1');
       localStorage.setItem('pvz_tycoon_results_intro_seen', '1');
+      localStorage.setItem('pvz_tycoon_argue_intro_seen', '1');
+      localStorage.setItem('pvz_tycoon_shift4_intro_seen', '1');
     });
     await page.goto('/');
     await page.getByRole('button', { name: 'Начать смену', exact: true }).click();
@@ -29,9 +31,11 @@ test('dev-консоль включает и выключает обучение
       await page.evaluate(() => ({
         tutorial: localStorage.getItem('pvz_tycoon_tutorial_done'),
         results: localStorage.getItem('pvz_tycoon_results_intro_seen'),
+        argue: localStorage.getItem('pvz_tycoon_argue_intro_seen'),
+        shift4: localStorage.getItem('pvz_tycoon_shift4_intro_seen'),
         shift: (window as any).game.run.shift,
       })),
-    ).toEqual({ tutorial: null, results: null, shift: 1 });
+    ).toEqual({ tutorial: null, results: null, argue: null, shift4: null, shift: 1 });
 
     await page.keyboard.press('F2');
     await expect(page.locator('#dev-console')).toBeVisible();
@@ -44,11 +48,15 @@ test('dev-консоль включает и выключает обучение
     const state = await page.evaluate(() => ({
       tutorial: localStorage.getItem('pvz_tycoon_tutorial_done'),
       results: localStorage.getItem('pvz_tycoon_results_intro_seen'),
+      argue: localStorage.getItem('pvz_tycoon_argue_intro_seen'),
+      shift4: localStorage.getItem('pvz_tycoon_shift4_intro_seen'),
       modal: (window as any).game.modalOpen,
       phase: (window as any).game.phase,
     }));
     expect(state.tutorial).toBe('1');
     expect(state.results).toBe('1');
+    expect(state.argue).toBe('1');
+    expect(state.shift4).toBe('1');
     expect(state.modal).toBe(false);
     expect(state.phase).not.toBe('menu');
   } finally {
