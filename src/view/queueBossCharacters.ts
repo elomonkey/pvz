@@ -447,14 +447,6 @@ function createQueueBoss(options: PersonOptions, style: BossStyle): PersonRig {
       0.019,
     );
     if (zina) disc(head, 0.037, 0.021, [side * 0.17, -0.076, 0.211], '#cb947b');
-    else
-      block(
-        head,
-        [0.042, 0.105, 0.085],
-        [side * 0.233, 0.073, -0.02],
-        p.hair,
-        0.01,
-      );
   }
   const nose = new THREE.Mesh(
     cachedGeometry(`queue-boss-nose:${style}`, () =>
@@ -574,6 +566,40 @@ function createQueueBoss(options: PersonOptions, style: BossStyle): PersonRig {
     }
     block(head, [0.039, 0.013, 0.014], [0, 0.009, 0.24], '#62564a', 0);
   } else {
+    // A continuous nape/sides under the cap; a flat fringe would pierce its crown.
+    const hair = cachedGeometry('sanya-short-scalp', () => {
+      const g = new THREE.SphereGeometry(
+        1,
+        14,
+        5,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2,
+      );
+      const pos = g.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+        const phi = Math.atan2(pos.getZ(i), pos.getX(i));
+        const t =
+          Math.acos(THREE.MathUtils.clamp(pos.getY(i), 0, 1)) / (Math.PI / 2);
+        const front = Math.max(0, Math.sin(phi));
+        const theta = t * (1.98 - 0.66 * front + 0.07 * front * Math.cos(phi));
+        const x = Math.sin(theta) * Math.cos(phi),
+          y = Math.cos(theta),
+          z = Math.sin(theta) * Math.sin(phi);
+        pos.setXYZ(
+          i,
+          Math.sign(x) * Math.abs(x) ** 0.5 * 0.252,
+          Math.sign(y) * Math.abs(y) ** 0.55 * 0.265 + 0.012,
+          Math.sign(z) * Math.abs(z) ** 0.5 * 0.216 - 0.008,
+        );
+      }
+      const flat = g.toNonIndexed();
+      g.dispose();
+      flat.computeVertexNormals();
+      return flat;
+    });
+    head.add(new THREE.Mesh(hair, mat(p.hair)));
     const cap = cachedGeometry('sanya-cap-crown', () => {
       const g = new THREE.SphereGeometry(
           1,
@@ -592,7 +618,7 @@ function createQueueBoss(options: PersonOptions, style: BossStyle): PersonRig {
         pos.setXYZ(
           i,
           Math.sign(x) * Math.abs(x) ** 0.5 * 0.269,
-          y * 0.19 + 0.147,
+          y * 0.19 + 0.202,
           Math.sign(z) * Math.abs(z) ** 0.55 * 0.23 - 0.012,
         );
       }
@@ -602,24 +628,10 @@ function createQueueBoss(options: PersonOptions, style: BossStyle): PersonRig {
       return flat;
     });
     head.add(new THREE.Mesh(cap, mat(p.blue)));
-    block(head, [0.455, 0.031, 0.25], [0, 0.151, 0.2], '#4b7399', 0.035);
-    block(head, [0.41, 0.014, 0.22], [0, 0.134, 0.2], '#36546e', 0.025);
-    facet(head, [0.028, 0.017, 0.027], [0, 0.337, -0.012], p.blue);
-    panel(
-      head,
-      [
-        [-0.15, 0.156],
-        [-0.04, 0.183],
-        [0.055, 0.137],
-        [0.12, 0.176],
-        [0.177, 0.132],
-        [0.083, 0.1],
-        [-0.026, 0.137],
-        [-0.113, 0.113],
-      ],
-      [0, 0, 0.21],
-      p.hair,
-    );
+    // Leave room for the raised eyebrow pose below the brim, never on the crown.
+    block(head, [0.455, 0.031, 0.25], [0, 0.206, 0.2], '#4b7399', 0.035);
+    block(head, [0.41, 0.014, 0.22], [0, 0.189, 0.2], '#36546e', 0.025);
+    facet(head, [0.028, 0.017, 0.027], [0, 0.392, -0.012], p.blue);
     for (const side of [-1, 1])
       panel(
         head,
@@ -629,7 +641,7 @@ function createQueueBoss(options: PersonOptions, style: BossStyle): PersonRig {
           [0.032, 0.022],
           [-0.005, 0.022],
         ],
-        [side * 0.024, 0.237, 0.218],
+        [side * 0.024, 0.292, 0.218],
         '#e4dabc',
       );
   }
