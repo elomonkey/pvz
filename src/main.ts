@@ -91,9 +91,11 @@ renderer.domElement.addEventListener('contextmenu', (event) => {
   event.preventDefault();
 });
 
-const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.05);
+const timer = new THREE.Timer();
+timer.connect(document);
+renderer.setAnimationLoop((timestamp) => {
+  timer.update(timestamp);
+  const dt = Math.min(timer.getDelta(), 0.05);
   game.update(dt);
   ui.update(dt);
   renderer.render(scene, camera);
