@@ -1,0 +1,28 @@
+{
+  "revision": "c221f931ea77e3bafd145c7bb94d5d80483047b2",
+  "label": "before",
+  "method": "seed 73129, 1280x900 DPR1, actual shift 5 final boss encounter, help service paused, world animated; 1.5s warmup + 5s RAF",
+  "browser": "158.0.8127.18",
+  "rows": [
+    {
+      "shift": 5,
+      "characterTriangles": {
+        "total": 9796,
+        "visible": 9194
+      },
+      "frameMs": {
+        "avg": 117.43720930232558,
+        "p95": 133.19999999999982,
+        "max": 133.40000000000055
+      },
+      "frames": 43,
+      "drawCalls": 134,
+      "triangles": 79220,
+      "geometries": 99,
+      "textures": 17,
+      "programs": 9,
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    }
+  ],
+  "errors": []
+}

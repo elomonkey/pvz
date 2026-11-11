@@ -181,5 +181,3 @@ test('Valera instance resources plateau for 20 cycles and caches survive dispose
   for (const row of result.rows.slice(4)) expect(row).toEqual(result.rows[4]);
   expect(errors).toEqual([]);
 });
-
-
