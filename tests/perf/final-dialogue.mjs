@@ -40,7 +40,7 @@ try {
     g.debugSetShift(5);
     g.debugBoss();
     g.finalBossGalya.preplaceAtFront();
-    for (const selector of ['.dialogue-portrait-art', '.family-partner-art']) {
+    for (const selector of ['.dialogue-portrait-art']) {
       const image = new Image();
       image.src = getComputedStyle(
         document.querySelector(selector),
@@ -75,6 +75,29 @@ try {
     }
     await page.setViewportSize({ width: 1600, height: 960 });
   };
+  const finishDialogue = async (number) => {
+    for (let index = 0; index < (number === 2 ? 3 : 6); index++) {
+      if (index === 1) {
+        await capture(`phase-${number}-valera-desktop`);
+        await page.setViewportSize({ width: 390, height: 844 });
+        await capture(`phase-${number}-valera-mobile`);
+        await page.setViewportSize({ width: 1600, height: 960 });
+      }
+      if (index === 5) await capture(`phase-${number}-narrator`);
+      await page.locator('#final-boss-done').click();
+    }
+  };
+  await page.evaluate(() =>
+    document.getElementById('boss-modal').classList.add('hidden'),
+  );
+  await capture('valera-bag-in-game');
+  await page.screenshot({
+    path: resolve(images, 'valera-bag-detail.png'),
+    clip: { x: 540, y: 350, width: 240, height: 240 },
+  });
+  await page.evaluate(() =>
+    document.getElementById('boss-modal').classList.remove('hidden'),
+  );
   await capturePhase(1);
   const metrics = await page.evaluate(async () => {
     const g = window.game,
@@ -85,7 +108,7 @@ try {
       r.render(g.scene, g.camera);
       window.labelRenderer.render(g.scene, g.camera);
     });
-    for (const stage of ['scene-only', 'duet-visible']) {
+    for (const stage of ['scene-only', 'speaker-visible']) {
       modal.classList.toggle('hidden', stage === 'scene-only');
       await new Promise((r) => setTimeout(r, 1000));
       const times = [];
@@ -138,11 +161,11 @@ try {
       }
       g.deliver();
     });
-  await page.locator('#final-boss-done').click();
+  await finishDialogue(1);
   await deliver();
   await deliver();
   await capturePhase(2);
-  await page.locator('#final-boss-done').click();
+  await finishDialogue(2);
   await deliver();
   await page.evaluate(() => {
     const g = window.game;
@@ -162,7 +185,7 @@ try {
       throw new Error('Fitting dialogue did not open');
   });
   await capturePhase(3);
-  await page.locator('#final-boss-done').click();
+  await finishDialogue(3);
   await capture('return-in-game');
   const output = resolve('test-results/perf/final-dialogue');
   await mkdir(output, { recursive: true });

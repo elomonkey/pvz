@@ -1,64 +1,43 @@
-/* A duet around the same SVG paper; text, order and callbacks stay in BossView. */
-.family-partner {
-  display: none;
-}
-#boss-modal.dialogue-scene[data-dialogue-mode='final'] {
-  background: linear-gradient(180deg, #241b2410 8%, #241b2440 50%, #241b24c7);
-}
+/* One current speaker and one original line per tap. Same shared SVG silhouette. */
 .dialogue-scene[data-dialogue-mode='final'] .boss-stage {
-  inset: auto 2vw max(30px, env(safe-area-inset-bottom)) 2vw;
-  grid-template-columns: minmax(150px, 19vw) minmax(0, 1fr) minmax(150px, 19vw);
+  inset: auto 4vw max(34px, env(safe-area-inset-bottom)) 1vw;
+  grid-template-columns: minmax(180px, 28vw) minmax(0, 1fr);
   align-items: end;
 }
 .dialogue-scene[data-dialogue-mode='final'] .boss-stage::before {
   display: none;
 }
 .dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
-  grid-column: 1;
-  width: 31vw;
-  max-width: 540px;
-  margin: 0 0 -24px -4vw;
-  z-index: 2;
+  width: 39vw;
+  max-width: 650px;
+  margin: 0 0 -30px -4vw;
 }
-.dialogue-scene[data-dialogue-mode='final'] .family-partner {
-  position: relative;
-  display: block;
-  grid-column: 3;
-  grid-row: 1;
-  width: 31vw;
-  max-width: 540px;
-  aspect-ratio: 1;
-  justify-self: end;
-  margin: 0 -4vw -24px 0;
-  pointer-events: none;
-  z-index: 2;
-  animation: family-partner-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.family-partner-art {
-  width: 100%;
-  height: 100%;
-  background-size: 300% 100%;
-  background-repeat: no-repeat;
-  transform: scaleX(-1);
+.dialogue-scene[data-final-speaker='narrator'] .dialogue-portrait {
+  display: none;
 }
 .dialogue-scene[data-dialogue-mode='final'] .boss-modal {
   grid-column: 2;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: 'head' 'final';
-  gap: 8px;
+  gap: 4px;
   z-index: 3;
 }
 .dialogue-scene[data-dialogue-mode='final'] .boss-head {
-  justify-content: center;
-  gap: 0;
+  padding: 0 0 0 8px;
+  justify-content: start;
 }
 .dialogue-scene[data-dialogue-mode='final'] .boss-meta {
-  min-width: 0;
-  padding: 10px 36px 14px;
-  text-align: center;
+  min-width: 180px;
+  padding: 10px 36px 16px;
 }
 .dialogue-scene[data-dialogue-mode='final'] .boss-name {
-  font-size: clamp(25px, 2.4vw, 40px);
+  font-size: clamp(28px, 3vw, 46px);
+}
+.dialogue-scene[data-final-speaker='valera'] .boss-meta {
+  background: #566576;
+}
+.dialogue-scene[data-final-speaker='narrator'] .boss-meta {
+  background: var(--dialogue-ink);
 }
 .dialogue-scene[data-dialogue-mode='final'] .boss-badge {
   display: none;
@@ -69,9 +48,9 @@
   grid-area: final;
 }
 .dialogue-scene[data-dialogue-mode='final'] .dialogue-frame {
-  inset: -65px -16px -38px;
+  inset: -42px -16px -26px;
   width: calc(100% + 32px);
-  height: calc(100% + 103px);
+  height: calc(100% + 68px);
   z-index: 0;
 }
 .dialogue-scene[data-dialogue-mode='final'] .dialogue-frame-wide {
@@ -85,77 +64,75 @@
 }
 .dialogue-scene[data-dialogue-mode='final'] .dialogue-tape.top {
   top: -10px;
-  right: 5%;
+  right: 8%;
 }
 .dialogue-scene[data-dialogue-mode='final'] .dialogue-tape.bottom {
   bottom: -5px;
-  left: 5%;
+  left: 8%;
 }
 .dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
-  padding: 28px 34px 38px;
+  padding: 26px 42px 40px;
+  min-height: 260px;
   clip-path: none;
   background: none;
   isolation: auto;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.dialogue-scene[data-dialogue-mode='final'] #boss-final-view.hidden {
+  display: none;
 }
 .dialogue-scene[data-dialogue-mode='final'] #boss-final-view::before {
   display: none;
 }
 .dialogue-scene[data-dialogue-mode='final'] .final-boss-phase {
-  display: inline-block;
-  padding: 5px 11px;
-  margin-bottom: 10px;
+  padding: 4px 10px;
+  margin-bottom: 12px;
   background: var(--dialogue-ink);
   color: var(--dialogue-cream);
   transform: rotate(-2deg);
-  font-size: 11px;
+  font-size: 10px;
 }
 .dialogue-scene[data-dialogue-mode='final'] .final-boss-dialogue {
-  max-height: min(37vh, 330px);
-  gap: 7px;
-  scrollbar-color: #81263f #e6d5b9;
-  scrollbar-width: thin;
+  overflow: visible;
+  max-height: none;
+  margin: 0 0 22px;
+  width: 100%;
 }
 .dialogue-scene[data-dialogue-mode='final'] .final-boss-line {
-  flex: 0 0 auto;
-  padding: 7px 12px 8px;
-  margin-right: 20px;
-  background: #f5dfbf;
-  border-left: 4px solid var(--dialogue-wine);
-}
-.dialogue-scene[data-dialogue-mode='final'] .final-boss-line.valera {
-  margin: 0 0 0 20px;
-  background: #dce2df;
-  border-left: 0;
-  border-right: 4px solid #566576;
-}
-.dialogue-scene[data-dialogue-mode='final'] .final-boss-line.narrator {
-  padding: 5px 2px;
+  padding: 0;
   margin: 0;
   background: none;
   border: 0;
+  animation: none;
 }
 .dialogue-scene[data-dialogue-mode='final'] .final-boss-speaker {
-  font-size: 10px;
-  margin-bottom: 3px;
+  display: none;
 }
 .dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
-  font-size: clamp(13px, 1.15vw, 18px);
-  line-height: 1.3;
-}
-.dialogue-scene[data-dialogue-mode='final']
-  .final-boss-line.narrator
-  .final-boss-text {
-  font-size: 12px;
+  display: block;
+  font-size: clamp(24px, 2.8vw, 42px);
+  line-height: 1.17;
   font-style: italic;
-  color: #66545a;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+  font-size: clamp(18px, 1.8vw, 28px);
+  font-weight: 700;
 }
 .dialogue-scene[data-dialogue-mode='final'] #final-boss-done {
   display: block;
   width: auto;
-  min-width: 190px;
-  margin: 3px 0 0 auto;
-  font-size: 17px;
+  min-width: 170px;
+  margin: auto 0 0 auto;
+  padding: 11px 28px;
+  min-height: 46px;
+  font-size: 16px;
   font-weight: 900;
   font-style: italic;
   clip-path: polygon(7% 5%, 100% 0, 93% 96%, 0 100%);
@@ -169,120 +146,100 @@
   outline-offset: -5px;
   outline-color: var(--dialogue-ink);
 }
-@keyframes family-partner-in {
-  from {
-    opacity: 0;
-    transform: translateX(60px) rotate(5deg);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) rotate(0);
-  }
-}
 @media (max-width: 700px) and (orientation: portrait) {
   .dialogue-scene[data-dialogue-mode='final'] .boss-stage {
     display: block;
-    inset: auto 14px max(24px, env(safe-area-inset-bottom)) 14px;
-  }
-  .dialogue-scene[data-dialogue-mode='final']
-    :is(.dialogue-portrait, .family-partner) {
-    position: absolute;
-    width: min(43vw, 23vh);
-    bottom: calc(100% - 22px);
-    margin: 0;
+    inset: auto 16px max(26px, env(safe-area-inset-bottom)) 16px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
-    left: -17px;
-  }
-  .dialogue-scene[data-dialogue-mode='final'] .family-partner {
-    right: -17px;
+    position: absolute;
+    width: min(65vw, 31vh);
+    left: -27px;
+    bottom: calc(100% - 48px);
+    margin: 0;
   }
   .dialogue-scene[data-dialogue-mode='final'] .boss-head {
     padding: 0;
-    min-height: 55px;
-    align-items: end;
+    justify-content: flex-end;
+    min-height: 62px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .boss-meta {
-    padding: 8px 20px 12px;
-    z-index: 3;
+    min-width: 120px;
+    padding: 9px 24px 14px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .boss-name {
-    font-size: 23px;
+    font-size: 27px;
   }
   .dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
-    padding: 25px 19px 30px;
-  }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-dialogue {
-    max-height: 32vh;
+    padding: 24px 22px 34px;
+    min-height: 235px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
-    font-size: 13px;
+    font-size: 25px;
   }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-speaker {
-    font-size: 9px;
-  }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-line {
-    padding: 6px 8px;
-    margin-right: 8px;
-  }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-line.valera {
-    margin-left: 8px;
+  .dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+    font-size: 19px;
   }
   .dialogue-scene[data-dialogue-mode='final'] #final-boss-done {
+    min-width: 155px;
     font-size: 15px;
-    min-width: 160px;
-    padding: 11px 18px;
+    padding: 10px 20px;
+  }
+}
+@media (max-width: 700px) and (max-height: 660px) and (orientation: portrait) {
+  .dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
+    width: 30vh;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
+    min-height: 220px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
+    font-size: 22px;
+  }
+  .dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+    font-size: 17px;
   }
 }
 @media (max-height: 540px) and (orientation: landscape) {
   .dialogue-scene[data-dialogue-mode='final'] .boss-stage {
-    grid-template-columns: 17vw minmax(0, 1fr) 17vw;
-    bottom: 18px;
+    grid-template-columns: 23vw minmax(0, 1fr);
+    bottom: 22px;
   }
-  .dialogue-scene[data-dialogue-mode='final']
-    :is(.dialogue-portrait, .family-partner) {
-    width: 27vw;
-    margin-bottom: -8px;
+  .dialogue-scene[data-dialogue-mode='final'] .dialogue-portrait {
+    width: 34vw;
+    margin-bottom: -14px;
+  }
+  .dialogue-scene[data-dialogue-mode='final'] .boss-meta {
+    padding: 5px 24px 10px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .boss-name {
-    font-size: 22px;
+    font-size: 24px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .boss-kicker {
     font-size: 8px;
   }
-  .dialogue-scene[data-dialogue-mode='final'] .boss-meta {
-    padding: 5px 22px 8px;
-  }
-  .dialogue-scene[data-dialogue-mode='final'] .boss-modal {
-    gap: 2px;
-  }
   .dialogue-scene[data-dialogue-mode='final'] #boss-final-view {
-    padding: 15px 22px 24px;
+    padding: 18px 25px 26px;
+    min-height: 172px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .final-boss-phase {
-    margin-bottom: 6px;
-    padding: 3px 7px;
-    font-size: 9px;
-  }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-dialogue {
-    max-height: 30vh;
-    gap: 4px;
-    margin-bottom: 7px;
+    font-size: 8px;
+    margin-bottom: 8px;
   }
   .dialogue-scene[data-dialogue-mode='final'] .final-boss-text {
-    font-size: 12px;
+    font-size: 21px;
   }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-speaker {
-    font-size: 8px;
+  .dialogue-scene[data-final-speaker='narrator'] .final-boss-text {
+    font-size: 15px;
   }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-line {
-    padding: 4px 7px;
+  .dialogue-scene[data-dialogue-mode='final'] .final-boss-dialogue {
+    margin-bottom: 12px;
   }
   .dialogue-scene[data-dialogue-mode='final'] #final-boss-done {
     min-height: 44px;
-    padding: 8px 18px;
-    font-size: 14px;
     min-width: 145px;
+    font-size: 14px;
+    padding: 8px 18px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -290,9 +247,4 @@
     animation: none !important;
     transition: none !important;
   }
-}
-@media (max-width: 700px) and (max-height: 740px) and (orientation: portrait) {
-  .dialogue-scene[data-dialogue-mode='final'] :is(.dialogue-portrait, .family-partner) { width: min(34vw, 18vh); }
-  .dialogue-scene[data-dialogue-mode='final'] .final-boss-dialogue { max-height: 27vh; }
-  .dialogue-scene[data-dialogue-mode='final'] .boss-head { min-height: 44px; }
 }

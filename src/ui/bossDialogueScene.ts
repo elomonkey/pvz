@@ -26,21 +26,12 @@ export class BossDialogueScene {
   private readonly portrait: HTMLElement;
   private readonly card: HTMLElement;
   private readonly effect: HTMLElement;
-  private readonly partner: HTMLElement;
   private animations: Animation[] = [];
 
   constructor(private readonly modal: HTMLElement) {
     this.portrait = modal.querySelector('.dialogue-portrait-art')!;
     this.card = modal.querySelector('.boss-modal')!;
     this.effect = modal.querySelector('.dialogue-impact')!;
-    const partner = document.createElement('div');
-    partner.className = 'family-partner';
-    partner.setAttribute('aria-hidden', 'true');
-    this.partner = document.createElement('div');
-    this.partner.className = 'family-partner-art';
-    this.partner.style.backgroundImage = `url("${PROFILES.valera.atlas}")`;
-    partner.appendChild(this.partner);
-    modal.querySelector('.boss-stage')!.appendChild(partner);
     // One atlas per profile, loaded before the first entrance (never per encounter).
     for (const profile of Object.values(PROFILES)) {
       const preload = new Image();
@@ -69,6 +60,7 @@ export class BossDialogueScene {
 
   open(profile: keyof typeof PROFILES, mode: Mode, emotion: Emotion): void {
     if (!this.active) this.previousFocus = document.activeElement as HTMLElement;
+    if (this.profile !== profile) this.emotion = null;
     this.profile = profile;
     this.modal.classList.add('dialogue-scene');
     document.body.classList.add('in-boss-dialogue');
@@ -104,14 +96,17 @@ export class BossDialogueScene {
     this.setEmotion(surprised ? 'surprised' : 'angry');
   }
 
-  /** Both speakers share the existing phase transcript and single continuation. */
-  openFamily(phase: string): void {
-    const number = phase.match(/\d+/)?.[0];
-    const middle = number === '2';
-    this.open('galya', 'final', middle ? 'stern' : 'angry');
-    this.partner.style.backgroundPosition = `${PROFILES.valera.frames[
-      number === '3' ? 'angry' : middle ? 'surprised' : 'stern'
-    ]} 50%`;
+  /** Only the current speaker is visible; narration has no character portrait. */
+  openFamily(speaker: 'galya' | 'valera' | 'narrator', emotion: Emotion): void {
+    this.cancelAnimations();
+    this.open(speaker === 'valera' ? 'valera' : 'galya', 'final', emotion);
+    this.modal.dataset.finalSpeaker = speaker;
+    if (speaker !== 'narrator' && !this.motion.matches) {
+      this.animations = [this.portrait.animate(
+        [{ opacity: 0, transform: 'translateX(-16px)' }, { opacity: 1, transform: 'translateX(0)' }],
+        { duration: 180, easing: 'ease-out' },
+      )];
+    }
   }
 
   pulse(): void {
@@ -157,6 +152,7 @@ export class BossDialogueScene {
     delete this.modal.dataset.portraitCharacter;
     delete this.modal.dataset.dialogueMode;
     delete this.modal.dataset.emotion;
+    delete this.modal.dataset.finalSpeaker;
     this.modal.setAttribute('aria-describedby', 'boss-quote');
     if (wasActive) {
       if (this.modal.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
