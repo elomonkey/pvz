@@ -97,6 +97,16 @@ test('Зина: портрет, клавиатура и реальные ход�
   await expect(page.locator('#boss-modal')).toBeHidden();
   expect(await page.evaluate(() => (window as any).game.bossClient.order !== null)).toBe(true);
   expect(await page.evaluate(() => document.body.classList.contains('in-boss-dialogue'))).toBe(false);
+  const delivery = await page.evaluate(() => {
+    const g = (window as any).game, order = g.service.active.order;
+    g.deliver();
+    const before = { served: g.run.served, ready: g.service.readyToDeliver };
+    g.takeParcel(g.world.cells.find((cell: any) => cell.id === order.cellId), order);
+    const ready = g.service.readyToDeliver;
+    g.deliver();
+    return { before, ready, served: g.run.served, active: g.service.active, carrying: g.service.carrying, phase: g.phase };
+  });
+  expect(delivery).toEqual({ before: { served: 0, ready: false }, ready: true, served: 1, active: null, carrying: false, phase: 'break' });
   expect(errors).toEqual([]);
 });
 

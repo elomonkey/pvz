@@ -51,7 +51,6 @@ test('carried stack follows cell colors and new orders skip emptied cells', asyn
         actualCellId: cells[0].id,
         mixed: false,
         scanned: true,
-        carrying: false,
         searchMode: false,
         mixedTriggered: false,
         checkedCells: [],

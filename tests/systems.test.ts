@@ -139,6 +139,9 @@ test('service system: сессия, сборка и сброс', () => {
 
   assert.equal(service.active, null);
   assert.equal(service.carrying, false);
+  assert.equal(service.readyToDeliver, false);
+  assert.equal(service.takeNextItem(), null);
+  assert.equal(service.carrying, false);
   service.begin(client, order);
   assert.equal(service.active?.client, client);
   assert.equal(service.remainingItems().length, 2);
@@ -146,20 +149,71 @@ test('service system: сессия, сборка и сброс', () => {
   const first = service.takeNextItem('#bc8875');
   assert.equal(first?.cellId, 'A-1-1');
   assert.equal(service.carrying, true);
+  assert.equal(service.readyToDeliver, false);
   assert.deepEqual(service.carryColors, ['#bc8875']);
   assert.equal(service.remainingItems().length, 1);
   const second = service.takeNextItem('#8098a8');
   assert.equal(second?.cellId, 'A-2-1');
   assert.deepEqual(service.carryColors, ['#bc8875', '#8098a8']);
   assert.equal(service.remainingItems().length, 0);
-  service.carrying = false;
-  assert.deepEqual(service.carryColors, []);
+  assert.equal(service.readyToDeliver, true);
+  assert.equal(service.takeNextItem('#ffffff'), null);
+  assert.deepEqual(service.carryColors, ['#bc8875', '#8098a8']);
 
   const previous = service.clear();
-  assert.equal(previous?.client, client);
+  assert.deepEqual(previous, { client, order, carried: true });
+  assert.equal(previous?.order, order);
   assert.equal(service.active, null);
   assert.equal(service.carrying, false);
+  assert.equal(service.readyToDeliver, false);
   assert.deepEqual(service.carryColors, []);
+  assert.equal(service.clear(), null);
+});
+
+test('service system: clear snapshots partial and untouched orders without clearing a return', () => {
+  for (const picked of [false, true]) {
+    const service = new ServiceSystem();
+    const client = { id: 1 };
+    const order = { items: [{ picked: false }, { picked: false }] };
+    service.begin(client, order);
+    service.carryingReturn = true;
+    if (picked) service.takeNextItem('#bc8875');
+    assert.equal(service.readyToDeliver, false);
+    assert.deepEqual(service.clear(), { client, order, carried: picked });
+    assert.equal(order.items[0].picked, picked);
+    assert.equal(service.active, null);
+    assert.equal(service.carrying, false);
+    assert.equal(service.readyToDeliver, false);
+    assert.deepEqual(service.carryColors, []);
+    assert.equal(service.carryingReturn, true);
+    assert.equal(service.clear(), null);
+  }
+});
+
+test('service system: readiness requires nonempty items and clear accounts for picked data', () => {
+  const service = new ServiceSystem();
+  service.begin('empty', { items: [] });
+  assert.equal(service.readyToDeliver, false);
+  assert.equal(service.takeNextItem(), null);
+  assert.equal(service.carrying, false);
+  assert.equal(service.clear()?.carried, false);
+  const order = { items: [{ picked: true }] };
+  service.begin('already-picked', order);
+  assert.equal(service.carrying, false);
+  assert.equal(service.readyToDeliver, true);
+  assert.deepEqual(service.clear(), { client: 'already-picked', order, carried: true });
+  assert.equal(service.readyToDeliver, false);
+});
+
+test('service system: a new session starts with no carried stack', () => {
+  const service = new ServiceSystem();
+  service.begin('first', { items: [{ picked: false }] });
+  service.takeNextItem('#bc8875');
+  service.begin('next', { items: [{ picked: false }] });
+  assert.equal(service.carrying, false);
+  assert.equal(service.readyToDeliver, false);
+  assert.deepEqual(service.carryColors, []);
+  assert.equal(service.remainingItems().length, 1);
 });
 
 test('service system: возврат и сигнал поиска', () => {
@@ -175,9 +229,15 @@ test('service system: возврат и сигнал поиска', () => {
 
   service.carryingReturn = true;
   assert.equal(service.carryingReturn, true);
-  service.carrying = true;
+  service.begin('client', { items: [{ picked: false }] });
+  service.takeNextItem('#bc8875');
+  assert.equal(service.readyToDeliver, true);
   service.reset();
+  assert.equal(service.active, null);
   assert.equal(service.carrying, false);
+  assert.equal(service.readyToDeliver, false);
+  assert.deepEqual(service.carryColors, []);
+  assert.deepEqual(service.remainingItems(), []);
   assert.equal(service.carryingReturn, false);
   assert.equal(service.lastSignal.level, 0);
 });
