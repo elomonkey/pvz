@@ -39,6 +39,16 @@ export function findUserData(object: THREE.Object3D): Record<string, unknown> | 
   return null;
 }
 
+/** Raycaster intersects hidden meshes too; include ancestor visibility in picking. */
+export function isVisibleForPicking(object: THREE.Object3D): boolean {
+  let current: THREE.Object3D | null = object;
+  while (current) {
+    if (!current.visible) return false;
+    current = current.parent;
+  }
+  return true;
+}
+
 /**
  * Превращает тапы и клики по DOM-меткам в игровые события.
  * Не знает про механику игры: отдаёт наружу найденные userData и точку.
@@ -111,6 +121,7 @@ export class PointerController {
     this.raycaster.setFromCamera(ndc, this.camera);
 
     for (const hit of this.raycaster.intersectObjects(this.scene.children, true)) {
+      if (!isVisibleForPicking(hit.object)) continue;
       const data = findUserData(hit.object);
       if (!data) continue;
       this.onPick(data, hit.point);
