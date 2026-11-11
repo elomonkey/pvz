@@ -94,10 +94,12 @@ import { createWorld, type World } from './view/scene';
 import {
   loadBest,
   loadDecorIds,
+  loadResultsIntroSeen,
   loadScannerBreakSeen,
   loadTutorialDone,
   saveBest,
   saveDecorIds,
+  saveResultsIntroSeen,
   saveScannerBreakSeen,
   saveTutorialDone,
 } from './yandex';
@@ -536,7 +538,7 @@ export class Game {
         mode: 'done',
         kicker: 'ГОТОВО',
         title: 'Первая выдача готова!',
-        text: 'Дальше — обычная смена. Следите за терпением, стрессом и мини-квестами. Удачи!',
+        text: 'Зарплата начислится в конце смены. Дальше будут ещё клиенты и проверяющая. Следите за терпением: ушедший клиент добавляет стресс, а 100% — заявление на увольнение. Мини-квесты дают бонус к зарплате, игрушка на стойке снижает стресс. Удачи!',
         nextLabel: 'Продолжить',
         showNext: true,
       });
@@ -2327,6 +2329,10 @@ export class Game {
       this.ownedDecor,
       this.scannerBroken,
     );
+    if (this.run.shift === 1 && !loadResultsIntroSeen()) {
+      this.ui.showResultsIntro();
+      saveResultsIntroSeen();
+    }
     this.ui.setNextShiftFinal(this.run.shift >= 5);
 
     if (economy.stars === 3) this.sound.win();

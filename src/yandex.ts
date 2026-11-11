@@ -29,6 +29,7 @@ const BEST_KEY = 'pvz_tycoon_best';
 const DECOR_KEY = 'pvz_tycoon_decor';
 const TUTORIAL_KEY = 'pvz_tycoon_tutorial_done';
 const SCANNER_BREAK_KEY = 'pvz_tycoon_scanner_break_seen';
+const RESULTS_INTRO_KEY = 'pvz_tycoon_results_intro_seen';
 
 export function loadBest(): number {
   try {
@@ -85,6 +86,22 @@ export function loadScannerBreakSeen(): boolean {
 export function saveScannerBreakSeen(): void {
   try {
     localStorage.setItem(SCANNER_BREAK_KEY, '1');
+  } catch {
+    /* noop */
+  }
+}
+
+export function loadResultsIntroSeen(): boolean {
+  try {
+    return localStorage.getItem(RESULTS_INTRO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function saveResultsIntroSeen(): void {
+  try {
+    localStorage.setItem(RESULTS_INTRO_KEY, '1');
   } catch {
     /* noop */
   }
