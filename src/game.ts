@@ -1035,7 +1035,8 @@ export class Game {
 
   private startWave(wave: number): void {
     if (this.isGameOver()) return;
-    if (this.run.shift === 4 && wave === 2 && !this.queen.spawned) this.spawnQueen();
+    const queenEntering = this.run.shift === 4 && wave === 2 && !this.queen.spawned;
+    if (queenEntering) this.spawnQueen();
     this.highlightEnabled = this.scannerWorks();
     const plan = getWavePlan(this.run.shift, wave, MAX_QUEUE);
     this.world.setDayPhase(plan.dayPhase);
@@ -1062,11 +1063,14 @@ export class Game {
     this.service.resetSignal();
     this.restockCells();
     this.ui.closePanels();
-    this.ui.banner(
-      `Волна ${wave}`,
-      wave === 3 ? 'Финальный наплыв. Держитесь!' : 'Клиенты подходят к стойке',
-      2,
-    );
+    // Keep the Queen's 3s entrance; a second banner would replace its portrait immediately.
+    if (!queenEntering) {
+      this.ui.banner(
+        `Волна ${wave}`,
+        wave === 3 ? 'Финальный наплыв. Держитесь!' : 'Клиенты подходят к стойке',
+        2,
+      );
+    }
     this.updateHud();
     this.updatePrompt();
   }
