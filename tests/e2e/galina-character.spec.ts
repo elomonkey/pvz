@@ -66,15 +66,19 @@ test('Galina preserves PersonRig, animated expressions and the 3000-triangle bud
         calls: lab.renderer.info.render.calls,
       });
     }
-    const parcels: number[] = [];
-    rig.setCarry(true, '#ca8f63', 4);
+    const parcels: number[] = [],
+      colors: string[] = [];
+    rig.setCarry(true, ['#ca8f63', '#a1b2c3', '#b7c79a', '#d1a48e']);
     rig.root.traverseVisible((o: any) => {
-      if (o.userData.carryParcel !== undefined)
+      if (o.userData.carryParcel !== undefined) {
         parcels.push(o.userData.carryParcel);
+        colors.push(o.material.color.getHexString());
+      }
     });
     return {
       rows,
       parcels,
+      colors,
       blinked,
       walked,
       finite,
@@ -90,6 +94,7 @@ test('Galina preserves PersonRig, animated expressions and the 3000-triangle bud
   expect(result.finite).toBe(true);
   expect(result.expressions).toBe(3);
   expect(result.parcels).toEqual([0, 1, 2, 3]);
+  expect(result.colors).toEqual(['ca8f63', 'a1b2c3', 'b7c79a', 'd1a48e']);
   for (const row of result.rows) {
     expect(row.total).toBeGreaterThanOrEqual(1500);
     expect(row.total).toBeLessThanOrEqual(3000);
@@ -115,6 +120,7 @@ test('Galina instance resources plateau for 20 cycles and caches survive dispose
       rows = [];
     for (let cycle = 0; cycle < 20; cycle++) {
       const rig = createGalinaPerson({ ...BOSS_ARCHETYPE, boss: true });
+      rig.setCarry(true, ['#bd9063', '#a1b2c3', '#b7c79a', '#d1a48e'], 4);
       const resources = rig.body.userData.personResources;
       const owned = new Set([...resources.geometries, ...resources.materials]);
       const counts = new Map([...owned].map((o) => [o, 0]));

@@ -721,18 +721,31 @@ export function createStyledPerson(options: PersonOptions, style: CharacterStyle
   const carry = new THREE.Group();
   carry.position.set(0, 0.93, 0.31);
   body.add(carry);
+  const resourceMaterials: THREE.Material[] = [];
+  let trackCarryMaterial = (material: THREE.MeshLambertMaterial): void => {
+    ownedMaterials.add(material);
+  };
   const parcel = block(carry, [0.34, 0.3, 0.26], [0, 0, 0], '#d8b98a', 0.035);
-  const carryMaterial = (parcel.material as THREE.MeshLambertMaterial).clone();
-  parcel.material = carryMaterial;
-  ownedMaterials.add(carryMaterial);
+  const carryMaterials: THREE.MeshLambertMaterial[] = [];
+  const carryMaterialAt = (index: number): THREE.MeshLambertMaterial => {
+    let material = carryMaterials[index];
+    if (!material) {
+      material = (parcel.material as THREE.MeshLambertMaterial).clone();
+      carryMaterials[index] = material;
+      trackCarryMaterial(material);
+    }
+    return material;
+  };
+  parcel.material = carryMaterialAt(0);
   parcel.userData.carryParcel = 0;
   const carryParcels: THREE.Mesh[] = [parcel];
   const carryStep = 0.29;
   const ensureCarryParcels = (count: number): void => {
     while (carryParcels.length < Math.min(MAX_CARRY_PARCELS, count)) {
-      const stacked = new THREE.Mesh(parcel.geometry, carryMaterial);
-      stacked.position.y = carryParcels.length * carryStep;
-      stacked.userData.carryParcel = carryParcels.length;
+      const index = carryParcels.length;
+      const stacked = new THREE.Mesh(parcel.geometry, carryMaterialAt(index));
+      stacked.position.y = index * carryStep;
+      stacked.userData.carryParcel = index;
       carry.add(stacked);
       carryParcels.push(stacked);
     }
@@ -741,13 +754,18 @@ export function createStyledPerson(options: PersonOptions, style: CharacterStyle
   decal.position.y = 0.156;
   carry.add(decal);
   carry.visible = false;
+  resourceMaterials.push(...ownedMaterials);
+  trackCarryMaterial = (material: THREE.MeshLambertMaterial): void => {
+    ownedMaterials.add(material);
+    resourceMaterials.push(material);
+  };
   root.scale.setScalar(options.scale ?? 1);
   body.scale.set(profile.width, profile.upper, profile.depth);
   const baseY = profile.leg - 0.55 * profile.upper;
   body.position.y = baseY;
   head.scale.set(profile.head / profile.width, profile.head / profile.upper, profile.head / profile.depth);
-  // Only per-instance merge outputs and the carry colour clone; never shared caches.
-  const resources = { geometries: [...ownedGeometries], materials: [...ownedMaterials] };
+  // Only per-instance merge outputs and the carry colour clones; never shared caches.
+  const resources = { geometries: [...ownedGeometries], materials: resourceMaterials };
   body.userData.personResources = resources;
   for (const geometry of temporaryGeometries) geometry.dispose();
   let carrying = false,
@@ -764,18 +782,25 @@ export function createStyledPerson(options: PersonOptions, style: CharacterStyle
     legL,
     legR,
     dispose: createPersonDisposer(resources),
-    setCarry(visible, color, count = 1) {
+    setCarry(visible, color, count?) {
       carrying = visible;
       carry.visible = visible;
       heldProp.visible = !visible;
-      const amount = visible ? Math.max(1, Math.min(MAX_CARRY_PARCELS, Math.floor(count))) : 0;
+      const colors = typeof color === 'string' ? [color] : (color ?? []);
+      const requested = count ?? (typeof color === 'string' || !color ? 1 : color.length);
+      const amount = visible
+        ? Math.max(1, Math.min(MAX_CARRY_PARCELS, Math.floor(requested)))
+        : 0;
       if (visible) ensureCarryParcels(amount);
+      for (let index = 0; index < amount; index++) {
+        const value = colors[Math.min(index, colors.length - 1)];
+        if (value) carryMaterials[index].color.set(value);
+      }
       for (let index = 0; index < carryParcels.length; index++) {
         carryParcels[index].visible = index < amount;
       }
       decal.visible = amount > 0;
       decal.position.y = 0.156 + Math.max(0, amount - 1) * carryStep;
-      if (color) carryMaterial.color.set(color);
     },
     update(dt, moving, time, mood = 'idle') {
       phase += dt * profile.gait;

@@ -497,12 +497,12 @@ export function createGalinaPerson(options: PersonOptions): PersonRig {
   carry.position.set(0, 0.98, 0.365);
   body.add(carry);
   carry.visible = false;
-  const carryMaterial = mat('#c8a072').clone();
+  const carryMaterials = [mat('#c8a072').clone()];
   const parcelGeometry = chamferedBox(0.36, 0.28, 0.27, 0.025);
   const parcels: THREE.Mesh[] = [];
   const decal = createParcelTopDecal();
   carry.add(decal);
-  const resources = { geometries: owned, materials: [carryMaterial] };
+  const resources = { geometries: owned, materials: carryMaterials };
   body.userData.personResources = resources;
   let carrying = false,
     phase = 0,
@@ -517,15 +517,20 @@ export function createGalinaPerson(options: PersonOptions): PersonRig {
     legL,
     legR,
     dispose: createPersonDisposer(resources),
-    setCarry(visible, color, count = 1) {
+    setCarry(visible, color, count) {
+      const colors = typeof color === 'string' ? [color] : (color ?? []);
+      const requested =
+        count ?? (typeof color === 'string' || !color ? 1 : color.length);
       const amount = visible
-        ? Math.max(1, Math.min(MAX_CARRY_PARCELS, Math.floor(count)))
+        ? Math.max(1, Math.min(MAX_CARRY_PARCELS, Math.floor(requested)))
         : 0;
       carrying = visible;
       carry.visible = visible;
       bag.visible = !visible;
       while (parcels.length < amount) {
-        const parcel = new THREE.Mesh(parcelGeometry, carryMaterial);
+        const index = parcels.length;
+        if (index > 0) carryMaterials.push(carryMaterials[0].clone());
+        const parcel = new THREE.Mesh(parcelGeometry, carryMaterials[index]);
         parcel.position.y = parcels.length * 0.275;
         parcel.userData.carryParcel = parcels.length;
         carry.add(parcel);
@@ -533,9 +538,10 @@ export function createGalinaPerson(options: PersonOptions): PersonRig {
       }
       parcels.forEach((parcel, i) => {
         parcel.visible = i < amount;
+        const parcelColor = colors[Math.min(i, colors.length - 1)];
+        if (parcelColor) carryMaterials[i].color.set(parcelColor);
       });
       decal.position.y = 0.145 + Math.max(0, amount - 1) * 0.275;
-      if (color) carryMaterial.color.set(color);
     },
     update(dt, moving, time, mood = 'idle') {
       phase += dt * 7.8;

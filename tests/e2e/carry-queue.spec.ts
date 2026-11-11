@@ -3,7 +3,7 @@ import type * as THREE from 'three';
 import type { Client } from '../../src/client';
 import type { PersonRig } from '../../src/view/characters';
 
-test('carry stack shows the requested parcel count', async ({ page }) => {
+test('carry stack shows the requested parcel count and per-parcel colors', async ({ page }) => {
   await page.goto('/tests/visual/character-lineup.html');
   await expect(page.locator('body')).toHaveAttribute('data-ready', '1');
 
@@ -17,11 +17,16 @@ test('carry stack shows the requested parcel count', async ({ page }) => {
     ).lineup;
     const rig = lineup.previews.find((preview) => preview.id === 'player')!.rig;
     const visibleParcels = () => {
-      const parcels: { index: number; y: number }[] = [];
+      const parcels: { index: number; y: number; color: string }[] = [];
       rig.body.traverse((object) => {
         const mesh = object as THREE.Mesh;
         if (!mesh.isMesh || mesh.userData.carryParcel === undefined || !mesh.visible) return;
-        parcels.push({ index: Number(mesh.userData.carryParcel), y: mesh.position.y });
+        const material = mesh.material as THREE.MeshLambertMaterial;
+        parcels.push({
+          index: Number(mesh.userData.carryParcel),
+          y: mesh.position.y,
+          color: material.color.getHexString(),
+        });
       });
       return parcels.sort((a, b) => a.index - b.index);
     };
@@ -31,14 +36,22 @@ test('carry stack shows the requested parcel count', async ({ page }) => {
     rig.setCarry(true, '#c8a072', 3);
     const three = visibleParcels();
     rig.setCarry(false);
+    rig.setCarry(true, ['#c8a072', '#8098a8', '#d9bc83']);
+    const colored = visibleParcels();
+    rig.setCarry(false);
     const none = visibleParcels();
-    return { one, three, none };
+    return { one, three, none, colored };
   });
 
   expect(result.one).toHaveLength(1);
   expect(result.three.map((parcel) => parcel.index)).toEqual([0, 1, 2]);
   expect(result.three[1].y).toBeGreaterThan(result.three[0].y);
   expect(result.three[2].y).toBeGreaterThan(result.three[1].y);
+  expect(result.colored.map((parcel) => parcel.color)).toEqual([
+    'c8a072',
+    '8098a8',
+    'd9bc83',
+  ]);
   expect(result.none).toHaveLength(0);
 });
 
