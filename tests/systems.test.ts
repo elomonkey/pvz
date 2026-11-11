@@ -143,18 +143,23 @@ test('service system: сессия, сборка и сброс', () => {
   assert.equal(service.active?.client, client);
   assert.equal(service.remainingItems().length, 2);
 
-  const first = service.takeNextItem();
+  const first = service.takeNextItem('#bc8875');
   assert.equal(first?.cellId, 'A-1-1');
   assert.equal(service.carrying, true);
+  assert.deepEqual(service.carryColors, ['#bc8875']);
   assert.equal(service.remainingItems().length, 1);
-  const second = service.takeNextItem();
+  const second = service.takeNextItem('#8098a8');
   assert.equal(second?.cellId, 'A-2-1');
+  assert.deepEqual(service.carryColors, ['#bc8875', '#8098a8']);
   assert.equal(service.remainingItems().length, 0);
+  service.carrying = false;
+  assert.deepEqual(service.carryColors, []);
 
   const previous = service.clear();
   assert.equal(previous?.client, client);
   assert.equal(service.active, null);
   assert.equal(service.carrying, false);
+  assert.deepEqual(service.carryColors, []);
 });
 
 test('service system: возврат и сигнал поиска', () => {

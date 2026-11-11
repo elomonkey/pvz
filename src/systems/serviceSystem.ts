@@ -18,6 +18,7 @@ export interface ScannerSignal {
 export class ServiceSystem<TClient = unknown> {
   private session: ServiceSession<TClient> | null = null;
   private carried = false;
+  private carriedColors: string[] = [];
   private carriedReturn = false;
   private signal: ScannerSignal = { text: 'Сканер не уверен', level: 0 };
 
@@ -35,6 +36,11 @@ export class ServiceSystem<TClient = unknown> {
 
   set carrying(value: boolean) {
     this.carried = value;
+    if (!value) this.carriedColors.length = 0;
+  }
+
+  get carryColors(): readonly string[] {
+    return this.carriedColors;
   }
 
   get carryingReturn(): boolean {
@@ -55,6 +61,7 @@ export class ServiceSystem<TClient = unknown> {
 
   begin(client: TClient, order: Order): ServiceSession<TClient> {
     this.session = { client, order };
+    this.carriedColors.length = 0;
     return this.session;
   }
 
@@ -62,20 +69,25 @@ export class ServiceSystem<TClient = unknown> {
     const previous = this.session;
     this.session = null;
     this.carried = false;
+    this.carriedColors.length = 0;
     return previous;
   }
 
   reset(): void {
     this.session = null;
     this.carried = false;
+    this.carriedColors.length = 0;
     this.carriedReturn = false;
     this.resetSignal();
   }
 
-  takeNextItem(): OrderItem | null {
+  takeNextItem(color?: string): OrderItem | null {
     const remaining = this.remainingItems();
     const item = remaining[0] ?? null;
-    if (item) item.picked = true;
+    if (item) {
+      item.picked = true;
+      if (color) this.carriedColors.push(color);
+    }
     this.carried = true;
     return item;
   }
