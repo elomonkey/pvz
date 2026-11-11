@@ -75,6 +75,15 @@ export function saveTutorialDone(): void {
   }
 }
 
+export function resetTutorialProgress(): void {
+  try {
+    localStorage.removeItem(TUTORIAL_KEY);
+    localStorage.removeItem(RESULTS_INTRO_KEY);
+  } catch {
+    /* noop */
+  }
+}
+
 export function loadScannerBreakSeen(): boolean {
   try {
     return localStorage.getItem(SCANNER_BREAK_KEY) === '1';
