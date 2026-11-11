@@ -139,9 +139,11 @@ test('Королева: исходные заказы, примерка, воз�
     g.depositReturn();
   });
   expect(await page.evaluate(() => (window as any).game.service.carryingReturn)).toBe(false);
-  // Exercise the existing new-order handler separately: main currently fails to
-  // schedule it after a deposited return (documented baseline issue, outside UI).
-  await page.evaluate(() => (window as any).game.returnQueen());
+  // The Queen is back in fitting for a short cooldown; the real update path
+  // must schedule her new order automatically.
+  expect(await page.evaluate(() => (window as any).game.queen.cooldown)).toBe(2);
+  expect(await page.evaluate(() => (window as any).game.queen.inFitting)).toBe(true);
+  await page.evaluate(() => (window as any).game.updateQueen(2.1));
   await expect(page.locator('#banner-title')).toHaveText(banners[1][0]);
   await expect(banner).toHaveAttribute('data-entrance-emotion', 'demanding');
   expect(await page.evaluate(() => (window as any).game.queenClient.order.items.length)).toBe(3);

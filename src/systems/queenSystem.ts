@@ -115,6 +115,9 @@ export class QueenSystem {
   deliverReturn(): number {
     this.returnInHandFlag = false;
     if (this.activeFlag && this.budgetValue > 0) {
+      // The Queen goes back to the fitting room for a short cooldown,
+      // then Game.updateQueen() brings her back with a new order.
+      this.inFittingFlag = true;
       this.cooldownValue = 2;
       this.nextReturnFlag = false;
     }
