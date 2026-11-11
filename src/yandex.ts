@@ -30,6 +30,8 @@ const DECOR_KEY = 'pvz_tycoon_decor';
 const TUTORIAL_KEY = 'pvz_tycoon_tutorial_done';
 const SCANNER_BREAK_KEY = 'pvz_tycoon_scanner_break_seen';
 const RESULTS_INTRO_KEY = 'pvz_tycoon_results_intro_seen';
+const ARGUE_INTRO_KEY = 'pvz_tycoon_argue_intro_seen';
+const SHIFT4_INTRO_KEY = 'pvz_tycoon_shift4_intro_seen';
 
 export function loadBest(): number {
   try {
@@ -79,6 +81,8 @@ export function resetTutorialProgress(): void {
   try {
     localStorage.removeItem(TUTORIAL_KEY);
     localStorage.removeItem(RESULTS_INTRO_KEY);
+    localStorage.removeItem(ARGUE_INTRO_KEY);
+    localStorage.removeItem(SHIFT4_INTRO_KEY);
   } catch {
     /* noop */
   }
@@ -111,6 +115,38 @@ export function loadResultsIntroSeen(): boolean {
 export function saveResultsIntroSeen(): void {
   try {
     localStorage.setItem(RESULTS_INTRO_KEY, '1');
+  } catch {
+    /* noop */
+  }
+}
+
+export function loadArgueIntroSeen(): boolean {
+  try {
+    return localStorage.getItem(ARGUE_INTRO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function saveArgueIntroSeen(): void {
+  try {
+    localStorage.setItem(ARGUE_INTRO_KEY, '1');
+  } catch {
+    /* noop */
+  }
+}
+
+export function loadShift4IntroSeen(): boolean {
+  try {
+    return localStorage.getItem(SHIFT4_INTRO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function saveShift4IntroSeen(): void {
+  try {
+    localStorage.setItem(SHIFT4_INTRO_KEY, '1');
   } catch {
     /* noop */
   }

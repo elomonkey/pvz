@@ -92,16 +92,20 @@ import { ShiftDirector } from './systems/shiftDirector';
 import { ZinaPuzzleSystem, ZINA_PUZZLE_TIME } from './systems/zinaPuzzleSystem';
 import { createWorld, type World } from './view/scene';
 import {
+  loadArgueIntroSeen,
   loadBest,
   loadDecorIds,
   loadResultsIntroSeen,
   loadScannerBreakSeen,
+  loadShift4IntroSeen,
   loadTutorialDone,
   resetTutorialProgress,
+  saveArgueIntroSeen,
   saveBest,
   saveDecorIds,
   saveResultsIntroSeen,
   saveScannerBreakSeen,
+  saveShift4IntroSeen,
   saveTutorialDone,
 } from './yandex';
 import type { Sound } from './sound';
@@ -117,6 +121,15 @@ type TutorialStep =
   | 'cell'
   | 'deliver'
   | 'done';
+
+type MechanicCardId = 'argue' | 'shift4';
+
+interface MechanicCard {
+  id: MechanicCardId;
+  kicker: string;
+  title: string;
+  text: string;
+}
 
 type PendingAction =
   | { type: 'service'; client: Client }
@@ -165,6 +178,9 @@ export class Game {
   private tutorialOpen = false;
   private tutorialPending = false;
   private tutorialStep: TutorialStep = 'welcome';
+  private mechanicCardOpen = false;
+  private mechanicCardPending: MechanicCard | null = null;
+  private mechanicCardTimer = 0;
   private tutorialMarker!: THREE.Group;
   private tutorialMarkerRing!: THREE.Mesh;
   private tutorialMarkerArrow!: THREE.Mesh;
@@ -381,6 +397,13 @@ export class Game {
   }
 
   onTutorialNext(): void {
+    if (this.mechanicCardOpen) {
+      this.mechanicCardOpen = false;
+      this.modalOpen = false;
+      this.ui.hideTutorial();
+      this.updatePrompt();
+      return;
+    }
     if (this.scannerBreakCardOpen) {
       this.scannerBreakCardOpen = false;
       this.modalOpen = false;
@@ -598,6 +621,50 @@ export class Game {
     this.tutorialMarker.visible = false;
   }
 
+  private pendingMechanicCard(shift: number): MechanicCard | null {
+    if (shift === 2 && !loadArgueIntroSeen()) {
+      return {
+        id: 'argue',
+        kicker: 'НОВОЕ · СМЕНА 2',
+        title: 'Клиенты могут спорить',
+        text: 'Иногда клиент начинает спор. «Уступить» сразу добавляет стресс, «Спорить» — серия тапов; победа снижает стресс и добавляет репутацию. «Обаяние» снижает стресс от уступки и даёт фору в споре.',
+      };
+    }
+    if (shift === 4 && !loadShift4IntroSeen()) {
+      return {
+        id: 'shift4',
+        kicker: 'НОВОЕ · СМЕНА 4',
+        title: 'Четвёртая смена: что нового',
+        text: 'Заказы теперь могут состоять из нескольких ячеек: соберите все посылки и только потом идите к клиенту. В зале открылись две примерочные: занятые кабинки злят очередь, а Королева может занять обе.',
+      };
+    }
+    return null;
+  }
+
+  private showMechanicCard(): void {
+    const card = this.mechanicCardPending;
+    if (!card) return;
+    this.mechanicCardPending = null;
+    this.mechanicCardTimer = 0;
+    this.mechanicCardOpen = true;
+    this.modalOpen = true;
+    this.movement.clearPath();
+    this.pendingAction = null;
+    this.marker.visible = false;
+    if (card.id === 'argue') saveArgueIntroSeen();
+    else saveShift4IntroSeen();
+    this.ui.closePanels();
+    this.ui.showTutorial({
+      mode: 'done',
+      kicker: card.kicker,
+      title: card.title,
+      text: card.text,
+      nextLabel: 'Понятно',
+      showNext: true,
+    });
+    this.ui.setPrompt('');
+  }
+
   private updateTutorialMarker(): void {
     if (!this.tutorialActive) {
       this.tutorialMarker.visible = false;
@@ -672,7 +739,12 @@ export class Game {
   }
 
   debugTutorialEnabled(): boolean {
-    return !loadTutorialDone();
+    return (
+      !loadTutorialDone() ||
+      !loadResultsIntroSeen() ||
+      !loadArgueIntroSeen() ||
+      !loadShift4IntroSeen()
+    );
   }
 
   debugEnableTutorial(): void {
@@ -684,7 +756,17 @@ export class Game {
   debugDisableTutorial(): void {
     saveTutorialDone();
     saveResultsIntroSeen();
+    saveArgueIntroSeen();
+    saveShift4IntroSeen();
     this.tutorialPending = false;
+    this.mechanicCardPending = null;
+    this.mechanicCardTimer = 0;
+    if (this.mechanicCardOpen) {
+      this.mechanicCardOpen = false;
+      this.modalOpen = false;
+      this.ui.hideTutorial();
+      this.updatePrompt();
+    }
     if (!this.tutorialActive) return;
     this.tutorialActive = false;
     this.tutorialOpen = false;
@@ -715,6 +797,11 @@ export class Game {
     }
 
     if (this.helpOpen) return;
+
+    if (!this.modalOpen && this.phase === 'break' && this.mechanicCardTimer > 0) {
+      this.mechanicCardTimer -= dt;
+      if (this.mechanicCardTimer <= 0) this.showMechanicCard();
+    }
 
     if (this.modalOpen) {
       if (this.argumentSystem.active) this.updateBossArgue(dt);
@@ -855,6 +942,7 @@ export class Game {
 
   private beginShift(shift: number): void {
     if (this.isGameOver()) return;
+    const mechanicCard = this.pendingMechanicCard(shift);
     this.run.beginShift(shift);
     this.highlightEnabled = this.scannerWorks();
     this.world.setDayPhase(1);
@@ -867,7 +955,7 @@ export class Game {
     this.fittingFull = false;
     this.updateShelfProgression(shift);
     this.eventUsed = false;
-    this.director.begin(getShiftSteps(shift), 1.2);
+    this.director.begin(getShiftSteps(shift), mechanicCard ? 3.4 : 1.2);
     this.spawnQueue = [];
     this.spawnTimer = 0;
     this.phase = 'break';
@@ -882,6 +970,9 @@ export class Game {
     this.zinaPendingCellId = null;
     this.scannerBreakPending = false;
     this.scannerBreakCardOpen = false;
+    this.mechanicCardOpen = false;
+    this.mechanicCardPending = mechanicCard;
+    this.mechanicCardTimer = mechanicCard ? 3.2 : 0;
     this.pendingGameOver = false;
     this.finalBoss.reset();
     this.finalBossGalya = null;
