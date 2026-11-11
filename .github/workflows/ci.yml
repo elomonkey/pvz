@@ -38,7 +38,9 @@ jobs:
         run: npm test
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        # The GitHub runner already carries the browser system libraries.
+        # Avoid apt/Ubuntu archive DNS outages during dependency installation.
+        run: npx playwright install chromium
 
       - name: Browser smoke
         run: npm run test:e2e

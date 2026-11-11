@@ -12,6 +12,7 @@ import {
 import { createPerson, type PersonRig } from './view/characters';
 import { createStyledPerson, isCharacterStyle } from './view/characterRig';
 import { createGalinaPerson } from './view/galinaCharacter';
+import { createSanyaPerson, createZinaPerson } from './view/queueBossCharacters';
 import type { Order } from './domain/orders';
 
 export type ClientState = 'entering' | 'waiting' | 'leaving' | 'gone';
@@ -80,9 +81,13 @@ export class Client {
     const style = this.archetype.id;
     const createRig = style === 'boss'
       ? createGalinaPerson
-      : isCharacterStyle(style)
-        ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
-        : createPerson;
+      : style === 'baba-zina'
+        ? createZinaPerson
+        : style === 'sanya'
+          ? createSanyaPerson
+          : isCharacterStyle(style)
+            ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
+            : createPerson;
     this.rig = createRig({
       coat: this.archetype.coat,
       pants: this.archetype.pants,

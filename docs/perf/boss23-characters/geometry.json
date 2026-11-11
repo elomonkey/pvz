@@ -1,0 +1,123 @@
+{
+  "samples": [
+    {
+      "style": "zina",
+      "rows": [
+        {
+          "mood": "idle",
+          "carry": false,
+          "total": 2187,
+          "visible": 2009,
+          "calls": 14,
+          "ownedGeometries": 10,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "idle",
+          "carry": true,
+          "total": 2187,
+          "visible": 1977,
+          "calls": 17,
+          "ownedGeometries": 10,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "impatient",
+          "carry": false,
+          "total": 2183,
+          "visible": 2005,
+          "calls": 14,
+          "ownedGeometries": 10,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "impatient",
+          "carry": true,
+          "total": 2183,
+          "visible": 1973,
+          "calls": 17,
+          "ownedGeometries": 10,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "angry",
+          "carry": false,
+          "total": 2189,
+          "visible": 2011,
+          "calls": 14,
+          "ownedGeometries": 10,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "angry",
+          "carry": true,
+          "total": 2189,
+          "visible": 1979,
+          "calls": 17,
+          "ownedGeometries": 10,
+          "ownedMaterials": 4
+        }
+      ]
+    },
+    {
+      "style": "sanya",
+      "rows": [
+        {
+          "mood": "idle",
+          "carry": false,
+          "total": 2233,
+          "visible": 2055,
+          "calls": 13,
+          "ownedGeometries": 9,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "idle",
+          "carry": true,
+          "total": 2233,
+          "visible": 2123,
+          "calls": 17,
+          "ownedGeometries": 9,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "impatient",
+          "carry": false,
+          "total": 2233,
+          "visible": 2055,
+          "calls": 13,
+          "ownedGeometries": 9,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "impatient",
+          "carry": true,
+          "total": 2233,
+          "visible": 2123,
+          "calls": 17,
+          "ownedGeometries": 9,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "angry",
+          "carry": false,
+          "total": 2227,
+          "visible": 2049,
+          "calls": 13,
+          "ownedGeometries": 9,
+          "ownedMaterials": 4
+        },
+        {
+          "mood": "angry",
+          "carry": true,
+          "total": 2227,
+          "visible": 2117,
+          "calls": 17,
+          "ownedGeometries": 9,
+          "ownedMaterials": 4
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

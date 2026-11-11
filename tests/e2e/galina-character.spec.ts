@@ -165,7 +165,7 @@ test('Galina instance resources plateau for 20 cycles and caches survive dispose
   for (const row of result.rows.slice(4)) expect(row).toEqual(result.rows[4]);
 });
 
-test('both Galina encounters use the new factory; the other four bosses stay legacy', async ({
+test('both Galina encounters use the Galina factory; no other boss uses it', async ({
   page,
 }) => {
   const errors: string[] = [];

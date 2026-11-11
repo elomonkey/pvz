@@ -1,0 +1,47 @@
+{
+  "revision": "32abba270a8ae3e8407a9ed64458e988d6cc4338",
+  "label": "after",
+  "method": "seed 73129, 1280x900 DPR1, actual shift 2/3 encounters, help service paused, world animated; 1.5s warmup + 5s RAF",
+  "browser": "158.0.8127.18",
+  "rows": [
+    {
+      "shift": 2,
+      "characterTriangles": {
+        "total": 2013,
+        "visible": 2011
+      },
+      "frameMs": {
+        "avg": 114.00909090909092,
+        "p95": 116.80000000000018,
+        "max": 133.29999999999927
+      },
+      "frames": 44,
+      "drawCalls": 123,
+      "triangles": 70201,
+      "geometries": 89,
+      "textures": 16,
+      "programs": 9,
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    },
+    {
+      "shift": 3,
+      "characterTriangles": {
+        "total": 2057,
+        "visible": 2055
+      },
+      "frameMs": {
+        "avg": 114.77045454545456,
+        "p95": 116.70000000000073,
+        "max": 116.79999999999927
+      },
+      "frames": 44,
+      "drawCalls": 122,
+      "triangles": 70245,
+      "geometries": 88,
+      "textures": 16,
+      "programs": 9,
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    }
+  ],
+  "errors": []
+}
