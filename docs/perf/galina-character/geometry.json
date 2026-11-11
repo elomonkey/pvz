@@ -1,0 +1,108 @@
+{
+  "rows": [
+    {
+      "pose": "idle",
+      "characters": [
+        {
+          "total": 9398,
+          "visible": 8796
+        },
+        {
+          "total": 1838,
+          "visible": 1836
+        }
+      ]
+    },
+    {
+      "pose": "walking",
+      "characters": [
+        {
+          "total": 9398,
+          "visible": 8796
+        },
+        {
+          "total": 1838,
+          "visible": 1836
+        }
+      ]
+    },
+    {
+      "pose": "impatient",
+      "characters": [
+        {
+          "total": 9398,
+          "visible": 9032
+        },
+        {
+          "total": 1838,
+          "visible": 1836
+        }
+      ]
+    },
+    {
+      "pose": "angry",
+      "characters": [
+        {
+          "total": 9398,
+          "visible": 9032
+        },
+        {
+          "total": 1840,
+          "visible": 1838
+        }
+      ]
+    },
+    {
+      "pose": "carry",
+      "characters": [
+        {
+          "total": 9398,
+          "visible": 9098
+        },
+        {
+          "total": 1882,
+          "visible": 1714
+        }
+      ]
+    }
+  ],
+  "max": [
+    {
+      "mood": "idle",
+      "carry": false,
+      "total": 2014,
+      "visible": 1836
+    },
+    {
+      "mood": "idle",
+      "carry": true,
+      "total": 2014,
+      "visible": 1846
+    },
+    {
+      "mood": "impatient",
+      "carry": false,
+      "total": 2014,
+      "visible": 1836
+    },
+    {
+      "mood": "impatient",
+      "carry": true,
+      "total": 2014,
+      "visible": 1846
+    },
+    {
+      "mood": "angry",
+      "carry": false,
+      "total": 2016,
+      "visible": 1838
+    },
+    {
+      "mood": "angry",
+      "carry": true,
+      "total": 2016,
+      "visible": 1848
+    }
+  ],
+  "errors": []
+}

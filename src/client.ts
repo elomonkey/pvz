@@ -11,6 +11,7 @@ import {
 } from './data';
 import { createPerson, type PersonRig } from './view/characters';
 import { createStyledPerson, isCharacterStyle } from './view/characterRig';
+import { createGalinaPerson } from './view/galinaCharacter';
 import type { Order } from './domain/orders';
 
 export type ClientState = 'entering' | 'waiting' | 'leaving' | 'gone';
@@ -77,9 +78,11 @@ export class Client {
     this.state = this.isMenu ? 'waiting' : 'entering';
 
     const style = this.archetype.id;
-    const createRig = isCharacterStyle(style)
-      ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
-      : createPerson;
+    const createRig = style === 'boss'
+      ? createGalinaPerson
+      : isCharacterStyle(style)
+        ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
+        : createPerson;
     this.rig = createRig({
       coat: this.archetype.coat,
       pants: this.archetype.pants,
