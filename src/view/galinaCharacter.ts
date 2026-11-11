@@ -276,11 +276,11 @@ export function createGalinaPerson(options: PersonOptions): PersonRig {
       [-0.345, 0.81],
       [-0.38, 0.82],
     ],
-    -0.173,
+    -0.23,
     p.leather,
     0.012,
   );
-  block(bag, [0.043, 0.026, 0.42], [-0.236, 1.275, 0.01], p.leather, 0.008);
+  block(bag, [0.043, 0.026, 0.46], [-0.236, 1.275, -0.004], p.leather, 0.008);
   batch(bag);
 
   const armL = new THREE.Group(),
