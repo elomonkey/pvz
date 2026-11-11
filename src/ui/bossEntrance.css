@@ -1,4 +1,4 @@
-/* Sanya's existing three-second banner, with the shared paper silhouette.
+/* Existing timed boss banners, with the shared paper silhouette.
    No modal, focus trap, backdrop, input interception or gameplay timer. */
 .boss-entrance-portrait,
 .boss-entrance-frame,
@@ -38,6 +38,21 @@
   aspect-ratio: 1;
   background: url('../assets/sanya-portrait.webp') no-repeat center / contain;
   z-index: 1;
+}
+.boss-entrance[data-entrance-character='queen'] .boss-entrance-portrait {
+  background-image: url('../assets/queen-expressions.webp');
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+}
+.boss-entrance[data-entrance-emotion='annoyed'] .boss-entrance-portrait {
+  background-position: 50% 50%;
+}
+.boss-entrance[data-entrance-emotion='satisfied'] .boss-entrance-portrait {
+  background-position: 100% 50%;
+}
+.boss-entrance[data-entrance-character='queen'] .banner-title {
+  max-width: 100%;
+  font-size: clamp(20px, 2.3vw, 32px);
 }
 .boss-entrance .banner-title {
   grid-column: 2;

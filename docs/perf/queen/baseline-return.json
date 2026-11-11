@@ -1,0 +1,25 @@
+{
+  "baseline": "9e3ac6d (main before visual pass)",
+  "unchangedFiles": [
+    "src/game.ts",
+    "src/systems/queenSystem.ts"
+  ],
+  "steps": [
+    "spawn(20)",
+    "deliver(3)",
+    "startFitting(6)",
+    "tickCooldown(6)",
+    "beginReturn(true)",
+    "takeReturn()",
+    "deliverReturn()",
+    "tickCooldown(2.1)"
+  ],
+  "state": {
+    "active": true,
+    "budget": 17,
+    "inFitting": false,
+    "cooldown": 0,
+    "returnInHand": false,
+    "readyToReturn": false
+  }
+}
