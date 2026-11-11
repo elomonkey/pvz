@@ -96,6 +96,14 @@
 
         <div id="toasts" class="toasts"></div>
         <div id="banner" class="banner hidden">
+          <div class="boss-entrance-portrait" aria-hidden="true"></div>
+          <svg class="boss-entrance-frame" viewBox="345 600 990 350" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <use href="#galya-frame-compact" class="dialogue-frame-shadow" transform="translate(14 18)" />
+            <use href="#galya-frame-compact" class="dialogue-frame-outline" />
+            <use href="#galya-frame-compact" class="dialogue-frame-paper" />
+            <use href="#dialogue-frame-slashes" />
+          </svg>
+          <svg class="boss-entrance-tape" viewBox="0 0 108 30" preserveAspectRatio="none" aria-hidden="true" focusable="false"><use href="#galya-tape-edge" fill="var(--dialogue-gold)" /></svg>
           <div class="banner-title" id="banner-title"></div>
           <div class="banner-sub" id="banner-sub"></div>
         </div>
@@ -261,7 +269,7 @@
                 <use href="#galya-frame-compact" class="dialogue-frame-outline" />
                 <use href="#galya-frame-compact" class="dialogue-frame-paper" />
               </g>
-              <g class="dialogue-frame-slashes">
+              <g id="dialogue-frame-slashes" class="dialogue-frame-slashes">
                 <polygon points="922,900 946,873 980,870 956,897" />
                 <polygon points="970,899 994,872 1028,869 1004,896" />
                 <polygon points="1018,898 1042,871 1076,868 1052,895" />
