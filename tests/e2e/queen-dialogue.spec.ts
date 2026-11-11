@@ -7,6 +7,60 @@ const banners = [
   ['Королева ушла', 'Примерочные открыты. Обычные клиенты тоже могут ими пользоваться.', 'satisfied'],
 ] as const;
 
+for (const viewport of [{ width: 1400, height: 900 }, { width: 390, height: 844 }]) {
+  test(`Королева: вход при обычном переходе ко второй волне (${viewport.width})`, async ({ page }, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.setViewportSize(viewport);
+    await page.addInitScript(() => {
+      for (const key of ['pvz_tycoon_tutorial_done', 'pvz_tycoon_shift4_intro_seen']) localStorage.setItem(key, '1');
+    });
+    await page.goto('/');
+    await page.waitForFunction(() => window.game);
+    const state = await page.evaluate(() => {
+      const g = (window as any).game;
+      g.renderer.setAnimationLoop(null);
+      g.debugSetShift(4);
+      g.update(1.3); // First wave, through the actual director.
+      const first = document.getElementById('banner-title')!.textContent;
+      g.clearClients();
+      g.spawnQueue = []; // Skip serving the remaining first-wave clients only.
+      g.update(.01); // Normal checkWaveComplete -> break.
+      const between = g.phase;
+      g.update(5.3); // Normal updateBreak -> executeStep -> startWave(2).
+      g.renderer.render(g.scene, g.camera);
+      (window as any).labelRenderer.render(g.scene, g.camera);
+      return {
+        first, between, phase: g.phase, modal: g.modalOpen,
+        title: document.getElementById('banner-title')!.textContent,
+        profile: document.getElementById('banner')!.dataset.entranceCharacter,
+        queen: g.queenClient?.archetype.id, budget: g.queen.budget,
+        ordinaryPending: g.spawnQueue.length,
+      };
+    });
+    await testInfo.attach('natural-wave-transition', { body: JSON.stringify(state, null, 2), contentType: 'application/json' });
+    expect(state.first).toBe('Волна 1');
+    expect(state.between).toBe('break');
+    expect(state.phase).toBe('playing');
+    expect(state.modal).toBe(false);
+    expect(state.queen).toBe('fitting-queen');
+    expect(state.budget).toBeGreaterThanOrEqual(20);
+    expect(state.budget).toBeLessThanOrEqual(30);
+    expect(state.ordinaryPending).toBeGreaterThan(0);
+    expect(state.title).toBe(banners[0][0]);
+    expect(state.profile).toBe('queen');
+    const banner = page.locator('#banner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toHaveAttribute('data-entrance-emotion', 'demanding');
+    await expect(page.locator('.boss-entrance-portrait')).toBeVisible();
+    await expect(page.locator('#banner-sub')).toHaveText(banners[0][1]);
+    await page.screenshot({ path: testInfo.outputPath('queen-natural-entry.png'), animations: 'disabled' });
+    await expect(banner).toHaveClass(/hidden/, { timeout: 4500 });
+    expect(errors).toEqual([]);
+  });
+}
+
 async function setup(page: Page) {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
