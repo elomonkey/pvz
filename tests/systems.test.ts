@@ -437,6 +437,10 @@ test('queen: бюджет, примерки и возвраты', () => {
   assert.equal(queen.returnInHand, true);
   assert.equal(queen.deliverReturn(), 2);
   assert.equal(queen.cooldown, 2);
+  assert.equal(queen.inFitting, true);
+  assert.equal(queen.readyToReturn, false);
+  queen.tickCooldown(2.1);
+  assert.equal(queen.readyToReturn, true);
 
   queen.finish();
   assert.equal(queen.active, false);
