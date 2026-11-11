@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { PersonOptions, PersonRig } from './characters';
 import { mergeStaticMeshesToVertexColor, roundedBox, VERTEX_COLOR_MATERIAL } from './kit';
 import { cachedGeometry, contactShadow, createParcelTopDecal, mat } from './primitives';
-import { createPersonDisposer } from './personResources';
+import { createPersonDisposer, MAX_CARRY_PARCELS } from './personResources';
 
 /** One flat bevel per edge: 44 triangles, rather than a subdivided rounded box. */
 function chamferedBox(w: number, h: number, d: number, radius: number): THREE.BufferGeometry {
@@ -725,6 +725,18 @@ export function createStyledPerson(options: PersonOptions, style: CharacterStyle
   const carryMaterial = (parcel.material as THREE.MeshLambertMaterial).clone();
   parcel.material = carryMaterial;
   ownedMaterials.add(carryMaterial);
+  parcel.userData.carryParcel = 0;
+  const carryParcels: THREE.Mesh[] = [parcel];
+  const carryStep = 0.29;
+  const ensureCarryParcels = (count: number): void => {
+    while (carryParcels.length < Math.min(MAX_CARRY_PARCELS, count)) {
+      const stacked = new THREE.Mesh(parcel.geometry, carryMaterial);
+      stacked.position.y = carryParcels.length * carryStep;
+      stacked.userData.carryParcel = carryParcels.length;
+      carry.add(stacked);
+      carryParcels.push(stacked);
+    }
+  };
   const decal = createParcelTopDecal();
   decal.position.y = 0.156;
   carry.add(decal);
@@ -752,10 +764,17 @@ export function createStyledPerson(options: PersonOptions, style: CharacterStyle
     legL,
     legR,
     dispose: createPersonDisposer(resources),
-    setCarry(visible, color) {
+    setCarry(visible, color, count = 1) {
       carrying = visible;
       carry.visible = visible;
       heldProp.visible = !visible;
+      const amount = visible ? Math.max(1, Math.min(MAX_CARRY_PARCELS, Math.floor(count))) : 0;
+      if (visible) ensureCarryParcels(amount);
+      for (let index = 0; index < carryParcels.length; index++) {
+        carryParcels[index].visible = index < amount;
+      }
+      decal.visible = amount > 0;
+      decal.position.y = 0.156 + Math.max(0, amount - 1) * carryStep;
       if (color) carryMaterial.color.set(color);
     },
     update(dt, moving, time, mood = 'idle') {

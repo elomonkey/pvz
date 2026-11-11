@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createStyledPerson } from './characterRig';
-import { createPersonDisposer } from './personResources';
+import { createPersonDisposer, MAX_CARRY_PARCELS } from './personResources';
 import type {
   Archetype,
   HairStyle,
@@ -41,7 +41,7 @@ export interface PersonRig {
   legR: THREE.Group;
   /** Release only this rig's owned GPU resources, after removing it from the scene. */
   dispose: () => void;
-  setCarry: (visible: boolean, color?: string) => void;
+  setCarry: (visible: boolean, color?: string, count?: number) => void;
   update: (dt: number, moving: boolean, time: number, mood?: 'idle' | 'impatient' | 'angry') => void;
 }
 
@@ -557,6 +557,18 @@ function createLegacyPerson(options: PersonOptions): PersonRig {
   const carryMaterial = (carriedParcel.material as THREE.MeshLambertMaterial).clone();
   carriedParcel.material = carryMaterial;
   ownedMaterials.add(carryMaterial);
+  carriedParcel.userData.carryParcel = 0;
+  const carryParcels: THREE.Mesh[] = [carriedParcel];
+  const carryStep = 0.29;
+  const ensureCarryParcels = (count: number): void => {
+    while (carryParcels.length < Math.min(MAX_CARRY_PARCELS, count)) {
+      const stacked = new THREE.Mesh(carriedParcel.geometry, carryMaterial);
+      stacked.position.y = carryParcels.length * carryStep;
+      stacked.userData.carryParcel = carryParcels.length;
+      carry.add(stacked);
+      carryParcels.push(stacked);
+    }
+  };
   carry.add(carriedParcel);
   const carryDecal = createParcelTopDecal();
   carryDecal.position.set(0, 0.156, 0);
@@ -625,9 +637,16 @@ function createLegacyPerson(options: PersonOptions): PersonRig {
     legL,
     legR,
     dispose: createPersonDisposer(resources),
-    setCarry(visible: boolean, color?: string) {
+    setCarry(visible: boolean, color?: string, count = 1) {
       carrying = visible;
       carry.visible = visible;
+      const amount = visible ? Math.max(1, Math.min(MAX_CARRY_PARCELS, Math.floor(count))) : 0;
+      if (visible) ensureCarryParcels(amount);
+      for (let index = 0; index < carryParcels.length; index++) {
+        carryParcels[index].visible = index < amount;
+      }
+      carryDecal.visible = amount > 0;
+      carryDecal.position.y = 0.156 + Math.max(0, amount - 1) * carryStep;
       if (color) carryMaterial.color.set(color);
     },
     update(dt: number, moving: boolean, time: number, mood = 'idle') {

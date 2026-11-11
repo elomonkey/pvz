@@ -46,7 +46,6 @@ export class Client {
   state: ClientState;
   queueIndex: number;
   hasShouted = false;
-  leaveTimer = 0;
   /** Может ли этот клиент начать спор (ролл на спавне, со 2-й смены). */
   willArgue = false;
   /** Спор уже начался — повторно не запускаем. */
@@ -64,6 +63,7 @@ export class Client {
   private enteringThroughDoor = false;
   private entryPath: Vec2[] = [];
   private exitingThroughDoor = false;
+  private exitWaypoint: Vec2 | null = null;
 
   constructor(options: ClientOptions) {
     this.id = options.id;
@@ -180,6 +180,7 @@ export class Client {
     this.state = 'waiting';
     this.enteringThroughDoor = false;
     this.entryPath = [];
+    this.exitWaypoint = null;
     this.label.visible = true;
     this.root.rotation.y = Math.PI - 0.14;
     this.updateBar();
@@ -192,6 +193,7 @@ export class Client {
     this.state = state;
     this.enteringThroughDoor = false;
     this.entryPath = [];
+    this.exitWaypoint = null;
     this.label.visible = true;
     this.root.rotation.y = Math.PI;
     this.root.visible = true;
@@ -205,6 +207,7 @@ export class Client {
     this.state = 'entering';
     this.enteringThroughDoor = false;
     this.entryPath = [];
+    this.exitWaypoint = null;
     this.label.visible = true;
     this.root.visible = true;
     this.label.element.style.display = '';
@@ -243,21 +246,18 @@ export class Client {
     this.tagEl.classList.add('shouting');
   }
 
-  leave(delay = 0): void {
+  leave(_delay = 0): void {
     if (this.state === 'leaving' || this.state === 'gone') return;
     this.tagEl.classList.add('leaving');
-    if (delay > 0) {
-      this.leaveTimer = delay;
-    } else {
-      this.leaveTimer = 0;
-      this.beginExit();
-    }
+    // Step out of the queue immediately so the next client never walks into us.
+    this.beginExit();
   }
 
   private beginExit(): void {
     this.state = 'leaving';
     this.exitingThroughDoor = true;
     this.entryPath = [];
+    this.exitWaypoint = { x: this.doorPoint.x, z: this.root.position.z };
     this.target = { ...this.doorPoint };
     this.tagEl.classList.add('leaving');
   }
@@ -280,16 +280,6 @@ export class Client {
     }
 
     if (this.state === 'entering' || this.state === 'waiting') {
-      if (this.leaveTimer > 0) {
-        this.leaveTimer -= dt;
-        if (this.leaveTimer <= 0) {
-          this.beginExit();
-        }
-        this.rig.update(dt, false, time, 'idle');
-        this.updateBar();
-        return;
-      }
-
       const dx = this.target.x - this.root.position.x;
       const dz = this.target.z - this.root.position.z;
       const dist = Math.hypot(dx, dz);
@@ -337,16 +327,22 @@ export class Client {
       }
     } else if (this.state === 'leaving') {
       if (this.exitingThroughDoor) {
-        const dxDoor = this.doorPoint.x - this.root.position.x;
-        const dzDoor = this.doorPoint.z - this.root.position.z;
-        if (Math.hypot(dxDoor, dzDoor) < 0.08) {
+        const target = this.exitWaypoint ?? this.doorPoint;
+        const dxDoor = target.x - this.root.position.x;
+        const dzDoor = target.z - this.root.position.z;
+        const doorDistance = Math.hypot(dxDoor, dzDoor);
+        if (doorDistance < 0.08) {
+          if (this.exitWaypoint) {
+            this.exitWaypoint = null;
+            return;
+          }
           this.exitingThroughDoor = false;
           this.target = { ...EXIT_POINT };
           return;
         }
-        const step = Math.min(this.speed * 1.25 * dt, Math.hypot(dxDoor, dzDoor));
-        this.root.position.x += (dxDoor / Math.hypot(dxDoor, dzDoor)) * step;
-        this.root.position.z += (dzDoor / Math.hypot(dxDoor, dzDoor)) * step;
+        const step = Math.min(this.speed * 1.25 * dt, doorDistance);
+        this.root.position.x += (dxDoor / doorDistance) * step;
+        this.root.position.z += (dzDoor / doorDistance) * step;
         this.root.rotation.y = Math.atan2(dxDoor, dzDoor);
         this.rig.update(dt, true, time, 'idle');
         return;

@@ -1,5 +1,8 @@
 import type { BufferGeometry, Material } from 'three';
 
+/** Maximum number of parcels shown in the stack above the bottom one. */
+export const MAX_CARRY_PARCELS = 4;
+
 /** Explicit ownership list: never infer ownership by traversing a character. */
 export interface PersonResources {
   geometries: BufferGeometry[];
