@@ -110,7 +110,7 @@ test('Галя: спор, смена эмоций, победа и отложе�
   expect(errors).toEqual([]);
 });
 
-test('Галя: финальные реплики и fallback других персонажей не меняются', async ({ page }) => {
+test('Галя: финальные реплики, переход к Зине и fallback клиента работают', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -134,8 +134,8 @@ test('Галя: финальные реплики и fallback других пе�
     game.update(0.01);
   });
   await expect(page.locator('#boss-zina-view')).toBeVisible();
-  expect(await page.locator('#boss-modal').getAttribute('data-portrait-character')).toBeNull();
-  await expect(page.locator('.dialogue-portrait')).toBeHidden();
+  await expect(page.locator('#boss-modal')).toHaveAttribute('data-portrait-character', 'zina');
+  await expect(page.locator('.dialogue-portrait')).toBeVisible();
   await page.evaluate(() =>
     (window as any).ui.showClientArgue('Студент', 'Я тут полчаса стою! Почему так долго?', 5),
   );

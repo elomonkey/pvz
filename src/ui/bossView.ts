@@ -242,9 +242,13 @@ export class BossView {
     this.updateZinaTimer(time / total);
     this.modal.classList.remove('hidden');
     this.actions?.onClosePanels();
+    this.scene.open('zina', 'puzzle', time / total < 0.28 ? 'angry' : 'stern');
   }
 
   renderZinaPuzzle(board: (number | null)[], target: number[]): void {
+    const focusedTile = this.zinaPuzzle.contains(document.activeElement)
+      ? (document.activeElement as HTMLElement).dataset.tileIndex
+      : undefined;
     const targets = [0, 1, 3, 4];
     clear(this.zinaPuzzle);
 
@@ -302,16 +306,24 @@ export class BossView {
       }
       this.zinaPuzzle.appendChild(tile);
     });
+    // Rebuilding the board must not drop keyboard focus after a tile moves.
+    if (this.scene.active && focusedTile !== undefined) {
+      const tile = this.zinaPuzzle.querySelector<HTMLElement>(`[data-tile-index="${focusedTile}"]`);
+      if (tile) tile.focus({ preventScroll: true });
+      else this.scene.focusControl();
+    }
   }
 
   updateZinaTimer(ratio: number): void {
     setProgressFill(this.zinaTimerFill, ratio);
     this.zinaTimerFill.classList.toggle('danger', ratio < 0.28);
+    this.scene.setEmotion(ratio < 0.28 ? 'angry' : 'stern', false);
   }
 
   setZinaFeedback(text: string, good: boolean): void {
     this.zinaFeedback.textContent = text;
     this.zinaFeedback.classList.toggle('good', good);
+    if (!good && text) this.scene.pulse();
   }
 
   startBossMash(): void {
@@ -357,7 +369,9 @@ export class BossView {
     this.resultTitle.classList.toggle('lose', !success);
     if (this.scene.active && finalQuote) this.quote.textContent = finalQuote;
     this.scene.setMode('result');
-    this.scene.setEmotion(success ? 'surprised' : 'stern');
+    this.scene.setEmotion(
+      success ? 'surprised' : this.modal.dataset.portraitCharacter === 'zina' ? 'angry' : 'stern',
+    );
   }
 
   hideBoss(): void {

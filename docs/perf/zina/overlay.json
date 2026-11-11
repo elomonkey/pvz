@@ -1,0 +1,41 @@
+{
+  "build": "production preview",
+  "browser": "158.0.8127.18",
+  "viewport": {
+    "width": 1600,
+    "height": 960
+  },
+  "method": "same shift-2 encounter, service paused; 1s warmup + 5s RAF each; intro excluded; WebGL counters exclude CSS atlas memory",
+  "rows": [
+    {
+      "stage": "scene-only",
+      "frames": 38,
+      "frameMs": {
+        "avg": 132.88947368421054,
+        "p95": 150,
+        "max": 150
+      },
+      "drawCalls": 122,
+      "triangles": 78488,
+      "geometries": 88,
+      "textures": 16,
+      "programs": 10
+    },
+    {
+      "stage": "zina-puzzle",
+      "frames": 38,
+      "frameMs": {
+        "avg": 134.20526315789476,
+        "p95": 150.10000000000036,
+        "max": 150.10000000000218
+      },
+      "drawCalls": 122,
+      "triangles": 78488,
+      "geometries": 88,
+      "textures": 16,
+      "programs": 10
+    }
+  ],
+  "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "errors": []
+}
