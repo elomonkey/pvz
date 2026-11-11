@@ -197,7 +197,18 @@ export class NavGrid {
     return !this.isBlockedCell(c, r);
   }
 
-  private nearestFree(c0: number, r0: number): { c: number; r: number } {
+  /** Resolves a click/action target to a guaranteed walkable point. */
+  resolveTarget(target: Vec2): Vec2 | null {
+    if (this.isWalkable(target.x, target.z)) return { x: target.x, z: target.z };
+    const { c, r } = this.worldToGrid(target.x, target.z);
+    if (this.isBlockedCell(c, r)) {
+      const free = this.nearestFree(c, r);
+      return free ? this.gridToWorld(free.c, free.r) : null;
+    }
+    return this.gridToWorld(c, r);
+  }
+
+  private nearestFree(c0: number, r0: number): { c: number; r: number } | null {
     if (!this.isBlockedCell(c0, r0)) return { c: c0, r: r0 };
     for (let radius = 1; radius < Math.max(this.cols, this.rows); radius++) {
       for (let dr = -radius; dr <= radius; dr++) {
@@ -209,7 +220,7 @@ export class NavGrid {
         }
       }
     }
-    return { c: 0, r: 0 };
+    return null;
   }
 
   private heuristic(c1: number, r1: number, c2: number, r2: number): number {
@@ -219,16 +230,22 @@ export class NavGrid {
   }
 
   findPath(start: Vec2, target: Vec2): Vec2[] {
+    const resolved = this.resolveTarget(target);
+    if (!resolved) return [];
+
     let s = this.worldToGrid(start.x, start.z);
-    let e = this.worldToGrid(target.x, target.z);
-    if (this.isBlockedCell(s.c, s.r)) s = this.nearestFree(s.c, s.r);
-    if (this.isBlockedCell(e.c, e.r)) e = this.nearestFree(e.c, e.r);
+    if (this.isBlockedCell(s.c, s.r)) {
+      const free = this.nearestFree(s.c, s.r);
+      if (!free) return [];
+      s = free;
+    }
+    const e = this.worldToGrid(resolved.x, resolved.z);
 
     const startIdx = this.idx(s.c, s.r);
     const endIdx = this.idx(e.c, e.r);
     const total = this.cols * this.rows;
 
-    if (startIdx === endIdx) return [start, target];
+    if (startIdx === endIdx) return [start, resolved];
 
     const gScore = new Float32Array(total).fill(Number.POSITIVE_INFINITY);
     const cameFrom = new Int32Array(total).fill(-1);
@@ -284,10 +301,7 @@ export class NavGrid {
       this.gridToWorld(index % this.cols, Math.floor(index / this.cols)),
     );
     raw[0] = { x: start.x, z: start.z };
-
-    if (this.isWalkable(target.x, target.z)) {
-      raw.push({ x: target.x, z: target.z });
-    }
+    raw.push(resolved);
 
     return this.smooth(raw);
   }
