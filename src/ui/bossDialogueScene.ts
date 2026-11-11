@@ -11,6 +11,10 @@ const PROFILES = {
     atlas: new URL('../assets/zina-expressions.webp', import.meta.url).href,
     frames: { stern: '0%', angry: '50%', surprised: '100%' },
   },
+  valera: {
+    atlas: new URL('../assets/valera-expressions.webp', import.meta.url).href,
+    frames: { stern: '0%', angry: '50%', surprised: '100%' },
+  },
 } as const;
 
 /** Stages the existing BossView DOM; never owns dialogue text or game callbacks. */
@@ -22,12 +26,21 @@ export class BossDialogueScene {
   private readonly portrait: HTMLElement;
   private readonly card: HTMLElement;
   private readonly effect: HTMLElement;
+  private readonly partner: HTMLElement;
   private animations: Animation[] = [];
 
   constructor(private readonly modal: HTMLElement) {
     this.portrait = modal.querySelector('.dialogue-portrait-art')!;
     this.card = modal.querySelector('.boss-modal')!;
     this.effect = modal.querySelector('.dialogue-impact')!;
+    const partner = document.createElement('div');
+    partner.className = 'family-partner';
+    partner.setAttribute('aria-hidden', 'true');
+    this.partner = document.createElement('div');
+    this.partner.className = 'family-partner-art';
+    this.partner.style.backgroundImage = `url("${PROFILES.valera.atlas}")`;
+    partner.appendChild(this.partner);
+    modal.querySelector('.boss-stage')!.appendChild(partner);
     // One atlas per profile, loaded before the first entrance (never per encounter).
     for (const profile of Object.values(PROFILES)) {
       const preload = new Image();
@@ -91,6 +104,16 @@ export class BossDialogueScene {
     this.setEmotion(surprised ? 'surprised' : 'angry');
   }
 
+  /** Both speakers share the existing phase transcript and single continuation. */
+  openFamily(phase: string): void {
+    const number = phase.match(/\d+/)?.[0];
+    const middle = number === '2';
+    this.open('galya', 'final', middle ? 'stern' : 'angry');
+    this.partner.style.backgroundPosition = `${PROFILES.valera.frames[
+      number === '3' ? 'angry' : middle ? 'surprised' : 'stern'
+    ]} 50%`;
+  }
+
   pulse(): void {
     if (!this.active || this.motion.matches) return;
     this.cancelAnimations();
@@ -116,7 +139,12 @@ export class BossDialogueScene {
   }
 
   focusControl(): void {
-    if (this.active) this.controls()[0]?.focus({ preventScroll: true });
+    if (!this.active) return;
+    const controls = this.controls();
+    const first = this.modal.dataset.dialogueMode === 'final'
+      ? controls.find(control => control.tagName === 'BUTTON')
+      : controls[0];
+    first?.focus({ preventScroll: true });
   }
 
   close(): void {

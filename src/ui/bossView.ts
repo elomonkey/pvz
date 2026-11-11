@@ -11,6 +11,7 @@ import {
 } from './components';
 import { BossDialogueScene } from './bossDialogueScene';
 import './bossDialogue.css';
+import './finalBossDialogue.css';
 
 export interface BossActions {
   onServe: () => void;
@@ -118,8 +119,8 @@ export class BossView {
     this.finalDone.textContent = button;
     this.modal.classList.remove('hidden');
     this.actions?.onClosePanels();
-    // Galya's existing family dialogue is kept intact, including Valera's lines.
-    this.scene.open('galya', 'final', phase.includes('2') ? 'surprised' : 'angry');
+    this.finalDialogue.scrollTop = 0;
+    this.scene.openFamily(phase);
   }
 
   showBoss(serveStress: number, line: string, name = 'Галя'): void {

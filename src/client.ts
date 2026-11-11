@@ -14,6 +14,7 @@ import { createStyledPerson, isCharacterStyle } from './view/characterRig';
 import { createGalinaPerson } from './view/galinaCharacter';
 import { createSanyaPerson, createZinaPerson } from './view/queueBossCharacters';
 import { createQueenPerson } from './view/queenCharacter';
+import { createValeraPerson } from './view/valeraCharacter';
 import type { Order } from './domain/orders';
 
 export type ClientState = 'entering' | 'waiting' | 'leaving' | 'gone';
@@ -88,9 +89,11 @@ export class Client {
           ? createSanyaPerson
           : style === 'fitting-queen'
             ? createQueenPerson
-            : isCharacterStyle(style)
-              ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
-              : createPerson;
+            : style === 'valera'
+              ? createValeraPerson
+              : isCharacterStyle(style)
+                ? (options: Parameters<typeof createPerson>[0]) => createStyledPerson(options, style)
+                : createPerson;
     this.rig = createRig({
       coat: this.archetype.coat,
       pants: this.archetype.pants,
