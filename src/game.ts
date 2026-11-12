@@ -755,7 +755,8 @@ export class Game {
       !loadTutorialDone() ||
       !loadResultsIntroSeen() ||
       !loadArgueIntroSeen() ||
-      !loadShift4IntroSeen()
+      !loadShift4IntroSeen() ||
+      !loadScannerBreakSeen()
     );
   }
 
@@ -770,6 +771,7 @@ export class Game {
     saveResultsIntroSeen();
     saveArgueIntroSeen();
     saveShift4IntroSeen();
+    saveScannerBreakSeen();
     this.tutorialPending = false;
     this.mechanicCardPending = null;
     this.mechanicCardTimer = 0;
