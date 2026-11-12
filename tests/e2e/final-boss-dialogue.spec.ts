@@ -193,6 +193,19 @@ test('one line per tap preserves all final phases, real Valera bag, fitting walk
     served: 3,
     debuff: false,
   });
+  const cleanup = await page.evaluate(() => {
+    const g = (window as any).game;
+    for (let frame = 0; frame < 600; frame++) g.update(1 / 60);
+    return {
+      phase: g.phase,
+      clients: g.clients.map((client: any) => ({
+        id: client.id,
+        state: client.state,
+        archetype: client.archetype.id,
+      })),
+    };
+  });
+  expect(cleanup).toEqual({ phase: 'results', clients: [] });
   expect(errors).toEqual([]);
 });
 test('every individual line fits compact screens, keyboard focus and reduced motion survive profile switches', async ({
