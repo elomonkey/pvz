@@ -14,19 +14,20 @@ import { FinalBossSystem } from '../src/systems/finalBossSystem.ts';
 import { QueenSystem } from '../src/systems/queenSystem.ts';
 import { PlayerMovement } from '../src/systems/playerMovement.ts';
 import { ZinaPuzzleSystem, isZinaSolved } from '../src/systems/zinaPuzzleSystem.ts';
+import { WarehouseState } from '../src/systems/warehouseSystem.ts';
 import { bossKindForShift } from '../src/domain/bosses.ts';
 import { allocateOrderItems, availableOrderCells } from '../src/domain/orderAllocation.ts';
 
 function allocationCells() {
   return Array.from({ length: 9 }, (_, index) => ({
     id: `${index / 3 | 0}-${index % 3}`, shelfIndex: index / 3 | 0,
-    column: index % 3, level: 0, parcel: { visible: true },
+    column: index % 3, level: 0, available: true,
   }));
 }
 
 test('allocator: one visible active unreserved cell is the only possible item, even with constant RNG', () => {
   const cells = allocationCells();
-  for (const cell of cells) cell.parcel.visible = cell.shelfIndex === 2 || cell.id === '1-2';
+  for (const cell of cells) cell.available = cell.shelfIndex === 2 || cell.id === '1-2';
   const candidates = availableOrderCells(cells, 2, new Set());
   const items = allocateOrderItems(candidates, 1, { random: () => 0 });
   assert.deepEqual(items.map(item => item.cellId), ['1-2']);
@@ -35,7 +36,7 @@ test('allocator: one visible active unreserved cell is the only possible item, e
 for (const desired of [2, 3]) {
   test(`allocator: deficit for ${desired} items never duplicates or invents stock`, () => {
     const cells = allocationCells();
-    cells[0].parcel.visible = false;
+    cells[0].available = false;
     const candidates = availableOrderCells(cells, 1, new Set(['0-1']));
     const items = allocateOrderItems(candidates, desired, { random: () => 0 });
     assert.deepEqual(items.map(item => item.cellId), ['0-2']);
@@ -46,9 +47,9 @@ for (const desired of [2, 3]) {
 test('allocator: restocking visible flags does not make reserved cells available', () => {
   const cells = allocationCells();
   const reserved = new Set(cells.map(cell => cell.id));
-  for (const cell of cells) cell.parcel.visible = false;
+  for (const cell of cells) cell.available = false;
   assert.deepEqual(availableOrderCells(cells, 2, reserved), []);
-  for (const cell of cells) cell.parcel.visible = true;
+  for (const cell of cells) cell.available = true;
   assert.deepEqual(allocateOrderItems(availableOrderCells(cells, 2, reserved), 3), []);
   reserved.delete('1-2');
   assert.deepEqual(allocateOrderItems(availableOrderCells(cells, 2, reserved), 3).map(item => item.cellId), ['1-2']);
@@ -64,7 +65,7 @@ test('allocator: already selected cells are excluded without mutating inputs', (
 
 test('allocator: mixed actual cell comes from the same available shelf only', () => {
   const cells = allocationCells();
-  cells[1].parcel.visible = false;
+  cells[1].available = false;
   const reserved = new Set(['1-1']);
   const candidates = availableOrderCells(cells, 2, reserved);
   const [item] = allocateOrderItems(candidates, 1, { mixed: true, random: () => 0 });
@@ -85,7 +86,7 @@ for (const desired of [2, 3, 4]) {
     assert.equal(items.length, desired);
     assert.deepEqual(items.map(item => item.shelf), Array.from({ length: desired }, (_, index) => index % 3));
     assert.equal(new Set(items.map(item => item.cellId)).size, desired);
-    assert.ok(cells.every(cell => cell.parcel.visible));
+    assert.ok(cells.every(cell => cell.available));
   });
 }
 
@@ -102,6 +103,60 @@ test('allocator: ordinary shelf choice is not biased towards longer shelves', ()
   const values = [0.8, 0];
   const [item] = allocateOrderItems(cells, 1, { random: () => values.shift()! });
   assert.equal(item.shelf, 2);
+});
+
+function warehouseCells() {
+  return [
+    { id: 'A-1-1', shelfIndex: 0, column: 0, level: 0, color: '#aaa' },
+    { id: 'A-1-2', shelfIndex: 0, column: 0, level: 1, color: '#bbb' },
+    { id: 'B-1-1', shelfIndex: 1, column: 0, level: 0, color: '#ccc' },
+    { id: 'C-1-1', shelfIndex: 2, column: 0, level: 0, color: '#ddd' },
+  ];
+}
+
+test('warehouse: stock, reservations and active shelves', () => {
+  const warehouse = new WarehouseState(warehouseCells());
+
+  assert.deepEqual(warehouse.available(2).map((cell) => cell.id), ['A-1-1', 'A-1-2', 'B-1-1']);
+  assert.equal(warehouse.isAvailable('C-1-1', 2), false);
+  assert.equal(warehouse.isAvailable('C-1-1', 3), true);
+
+  warehouse.consume('A-1-1');
+  assert.equal(warehouse.hasStock('A-1-1'), false);
+  assert.equal(warehouse.isAvailable('A-1-1', 3), false);
+  warehouse.setStock('A-1-1', true);
+  assert.equal(warehouse.hasStock('A-1-1'), true);
+
+  warehouse.reserve(['A-1-2', 'B-1-1']);
+  assert.equal(warehouse.isReserved('A-1-2'), true);
+  assert.deepEqual(warehouse.available(2).map((cell) => cell.id), ['A-1-1']);
+  warehouse.release(['A-1-2']);
+  assert.deepEqual(warehouse.available(2).map((cell) => cell.id), ['A-1-1', 'A-1-2']);
+
+  warehouse.clearReservations();
+  assert.equal(warehouse.isReserved('B-1-1'), false);
+});
+
+test('warehouse: restock keeps carried cells empty and reset clears all state', () => {
+  const warehouse = new WarehouseState(warehouseCells());
+  warehouse.consume('A-1-1');
+  warehouse.consume('B-1-1');
+  warehouse.reserve(['A-1-1']);
+
+  warehouse.restock(new Set(['A-1-1']));
+  assert.equal(warehouse.hasStock('A-1-1'), false);
+  assert.equal(warehouse.hasStock('B-1-1'), true);
+  assert.equal(warehouse.isReserved('A-1-1'), true);
+
+  warehouse.reset();
+  assert.equal(warehouse.hasStock('A-1-1'), true);
+  assert.equal(warehouse.isReserved('A-1-1'), false);
+  assert.deepEqual(warehouse.available(3).map((cell) => cell.id), [
+    'A-1-1',
+    'A-1-2',
+    'B-1-1',
+    'C-1-1',
+  ]);
 });
 
 test('shift director: старт, передышка и шаги', () => {

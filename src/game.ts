@@ -53,7 +53,7 @@ import { Client } from './client';
 import { EventBus } from './core/eventBus';
 import type { GameEvents } from './domain/events';
 import type { Order, OrderItem } from './domain/orders';
-import { allocateOrderItems, availableOrderCells } from './domain/orderAllocation';
+import { allocateOrderItems } from './domain/orderAllocation';
 import {
   CLIENT_ARGUE_MASH_TIME,
   CLIENT_ARGUE_WIN_THRESHOLD,
@@ -89,6 +89,7 @@ import { ServiceSystem, type ServiceSession } from './systems/serviceSystem';
 import { FinalBossSystem } from './systems/finalBossSystem';
 import { QueenSystem } from './systems/queenSystem';
 import { ShiftDirector } from './systems/shiftDirector';
+import { WarehouseState, type WarehouseCell } from './systems/warehouseSystem';
 import { ZinaPuzzleSystem, ZINA_PUZZLE_TIME } from './systems/zinaPuzzleSystem';
 import { createWorld, type World } from './view/scene';
 import {
@@ -160,7 +161,7 @@ export class Game {
   private readonly marker: THREE.Mesh;
   private readonly markerMaterial: THREE.MeshBasicMaterial;
   private readonly pointerController: PointerController;
-  private readonly reservedCells = new Set<string>();
+  private readonly warehouse: WarehouseState;
 
   private readonly movement = new PlayerMovement(PLAYER_START);
   private pendingAction: PendingAction | null = null;
@@ -242,6 +243,15 @@ export class Game {
     this.ui = ui;
     this.sound = sound;
     this.world = createWorld(scene);
+    this.warehouse = new WarehouseState(
+      this.world.cells.map((cell) => ({
+        id: cell.id,
+        shelfIndex: cell.shelfIndex,
+        column: cell.column,
+        level: cell.level,
+        color: cell.color,
+      })),
+    );
 
     this.player = createPerson({
       coat: '#2d5f9a',
@@ -1124,15 +1134,11 @@ export class Game {
     return this.progression.orderSize(this.run.shift);
   }
 
-  private ensureShelfStock(required: number) {
-    let candidates = availableOrderCells(
-      this.world.cells, this.progression.activeShelfCount, this.reservedCells,
-    );
+  private ensureShelfStock(required: number): WarehouseCell[] {
+    let candidates = this.warehouse.available(this.progression.activeShelfCount);
     if (candidates.length < required) {
       this.restockCells();
-      candidates = availableOrderCells(
-        this.world.cells, this.progression.activeShelfCount, this.reservedCells,
-      );
+      candidates = this.warehouse.available(this.progression.activeShelfCount);
     }
     return candidates;
   }
@@ -1154,10 +1160,7 @@ export class Game {
   private createAllocatedOrder(items: OrderItem[]): Order | null {
     const first = items[0];
     if (!first) return null;
-    for (const item of items) {
-      this.reservedCells.add(item.cellId);
-      this.reservedCells.add(item.actualCellId);
-    }
+    this.warehouse.reserve(items.flatMap((item) => [item.cellId, item.actualCellId]));
     return {
       items,
       shelf: first.shelf,
@@ -1199,10 +1202,7 @@ export class Game {
   private releaseOrder(order: Order | null): void {
     if (!order || order.released) return;
     order.released = true;
-    for (const item of order.items) {
-      this.reservedCells.delete(item.cellId);
-      this.reservedCells.delete(item.actualCellId);
-    }
+    this.warehouse.release(order.items.flatMap((item) => [item.cellId, item.actualCellId]));
   }
 
   private onClientPatienceZero(client: Client): void {
@@ -1523,18 +1523,8 @@ export class Game {
     this.updateStressUi();
   }
 
-  private pickZinaCell(): {
-    id: string;
-    shelfIndex: number;
-    column: number;
-    level: number;
-  } | null {
-    const free = this.world.cells.filter(
-      (cell) =>
-        cell.shelfIndex < this.progression.activeShelfCount &&
-        cell.parcel.visible &&
-        !this.reservedCells.has(cell.id),
-    );
+  private pickZinaCell(): WarehouseCell | null {
+    const free = this.warehouse.available(this.progression.activeShelfCount);
     return free.length > 0 ? pick(free) : null;
   }
 
@@ -1843,13 +1833,11 @@ export class Game {
     this.restockCells();
     const pendingCell = this.zinaPendingCellId;
     const cell =
-      this.world.cells.find(
-        (value) =>
-          value.id === pendingCell &&
-          value.shelfIndex < this.progression.activeShelfCount &&
-          value.parcel.visible &&
-          !this.reservedCells.has(value.id),
-      ) ?? this.pickZinaCell();
+      (pendingCell
+        ? this.warehouse
+            .available(this.progression.activeShelfCount)
+            .find((value) => value.id === pendingCell)
+        : null) ?? this.pickZinaCell();
     if (!cell) {
       this.zinaOrderPending = false;
       this.zinaPendingCellId = null;
@@ -1858,7 +1846,7 @@ export class Game {
     }
 
     const order = this.createZinaOrder(cell);
-    this.reservedCells.add(cell.id);
+    this.warehouse.reserve([cell.id]);
     this.zinaPendingCellId = null;
     this.zinaOrderPending = false;
     zina.isBoss = false;
@@ -2791,7 +2779,7 @@ export class Game {
         order.searchMode = true;
         order.checkedCells.push(order.cellId);
         const displayed = this.world.cells.find((value) => value.id === order.cellId);
-        if (displayed) displayed.parcel.visible = false;
+        if (displayed) this.setCellStock(displayed.id, false);
         active.client.setPatience(active.client.patience + 15);
         this.service.resetSignal();
         this.addStress(2);
@@ -2820,10 +2808,10 @@ export class Game {
   }
 
   private takeParcel(
-    cell: { parcel: THREE.Object3D; color: string },
+    cell: { id: string; parcel: THREE.Object3D; color: string },
     order: Order,
   ): void {
-    cell.parcel.visible = false;
+    this.setCellStock(cell.id, false);
     this.service.takeNextItem(cell.color);
 
     this.service.active?.client.setTarget(true);
@@ -3071,7 +3059,7 @@ export class Game {
     this.service.reset();
     this.scannerPanel.closeScanner();
     this.player.setCarry(false);
-    this.reservedCells.clear();
+    this.warehouse.clearReservations();
   }
 
   private restockCells(): void {
@@ -3084,9 +3072,20 @@ export class Game {
         carried.add(item.actualCellId);
       }
     }
+    this.warehouse.restock(carried);
+    this.syncWarehouseView();
+  }
+
+  private syncWarehouseView(): void {
     for (const cell of this.world.cells) {
-      cell.parcel.visible = !carried.has(cell.id);
+      cell.parcel.visible = this.warehouse.hasStock(cell.id);
     }
+  }
+
+  private setCellStock(id: string, stocked: boolean): void {
+    this.warehouse.setStock(id, stocked);
+    const cell = this.world.cells.find((value) => value.id === id);
+    if (cell) cell.parcel.visible = stocked;
   }
 
   private updateProximity(): void {
