@@ -709,6 +709,14 @@ src/
 - Реализация `spawnBoss/spawnSanya/updateBossApproach/triggerBossModal/startZinaMiniGame/zinaPuzzleMove/updateZinaGame/finishZinaGame/onBossDone/startZinaOrder/finishBossStep` удалена из `Game`; остались тонкие обёртки и getters для e2e/dev-консоли.
 - Unit-тесты на фейковом host покрывают появление Гали, Zina-загадку/провал, Zina-заказ, Саню, потерю по терпению, game over и scanner break. Build, 85 unit и 67 e2e проходят; тексты, тайминги, награды и UI не менялись.
 
+### 6.55. ArgumentScenario: argue/mash-поток вне Game — issue #66
+
+- Новый `systems/argumentScenario.ts` владеет `argueClient` и ведёт клиентские споры и спор с Галей: старт, уступку, mash, taunt-реплики, победу/поражение, награды, scanner break и pending game over.
+- `ArgumentSystem` остался чистой state-машиной; `Game` хранит его для e2e и `update`, а также service, очередь, UI/sound и границы боя. Правила и наборы реплик передаются сценарию явно.
+- Реализация `tryStartClientArgument/startClientArgueMash/resolveClientArgueConcede/finishClientArgueMash/onBossServe/onBossArgue/mashBoss/updateBossArgue/finishBossMash` удалена из `Game`; остались публичные обёртки и `argumentSystem` для e2e.
+- Unit-тесты на фейковом host покрывают клиентский старт/уступку/mash, победу и поражение, обслуживание Гали, победу с buff/scanner break и поражение с pending game over. Build, 90 unit и 67 e2e проходят; тексты, формулы, тайминги, награды и UI не менялись.
+- AUD-04 закрыт: Queen, финальный босс, lifecycle обычных боссов и argue/mash вынесены из `Game`.
+
 ### Исторические метрики до визуальных проходов
 
 Актуальные фиксированные сцены и методика — в 6.23 и [perf-отчёте](perf/PR5_REPORT.md).

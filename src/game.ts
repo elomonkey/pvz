@@ -78,7 +78,8 @@ import { createPerson, type PersonRig } from './view/characters';
 import { PointerController } from './input/pointerController';
 import { PlayerMovement } from './systems/playerMovement';
 import { NavGrid } from './nav';
-import { ArgumentSystem, type MashState } from './systems/argumentSystem';
+import { ArgumentSystem } from './systems/argumentSystem';
+import { ArgumentScenario } from './systems/argumentScenario';
 import { BossEncounter } from './systems/bossEncounter';
 import { BossScenario, type OrdinaryBossKind } from './systems/bossScenario';
 import {
@@ -231,7 +232,7 @@ export class Game {
     return this.bossScenario.zinaPendingCellId;
   }
   private readonly argumentSystem = new ArgumentSystem();
-  private argueClient: Client | null = null;
+  private readonly argumentScenario: ArgumentScenario;
   private readonly zina = new ZinaPuzzleSystem();
   private scannerBroken = false;
   private scannerBreakPending = false;
@@ -457,6 +458,68 @@ export class Game {
       updateHud: () => this.updateHud(),
       updateStressUi: () => this.updateStressUi(),
       updatePrompt: () => this.updatePrompt(),
+    });
+    this.argumentScenario = new ArgumentScenario(this.argumentSystem, {
+      ui: this.ui,
+      sound: this.sound,
+      shift: () => this.run.shift,
+      charm: () => this.run.upgrades.charm,
+      phase: () => this.phase,
+      isModalOpen: () => this.modalOpen,
+      isGameOver: () => this.isGameOver(),
+      bossResolved: () => this.boss.resolved,
+      resolveBoss: () => this.boss.resolve(),
+      resetZina: () => this.zina.reset(),
+      bossClient: () => this.bossClient,
+      queueFront: () => this.queue[0] ?? null,
+      serviceActive: () => this.service.hasActive,
+      carryingReturn: () => this.service.carryingReturn,
+      isExcludedClient: (client) =>
+        client === this.queenClient || client === this.finalBossGalya,
+      openDialogue: () => {
+        this.encounter.openModal();
+        this.movement.clearPath();
+        this.pendingAction = null;
+        this.marker.visible = false;
+      },
+      breakScanner: () => this.breakScanner(),
+      setPendingGameOver: () => {
+        this.pendingGameOver = true;
+      },
+      stress: () => this.run.stress,
+      setStress: (value) => {
+        this.run.stress = value;
+      },
+      addStress: (amount, deferGameOver) => this.addStress(amount, deferGameOver),
+      addReputation: (amount) => this.addReputation(amount),
+      setBuff: (seconds) => {
+        this.run.buffTimer = seconds;
+        this.ui.setBuff(seconds);
+      },
+      setScanSpeed: (value) => this.ui.setScanSpeed(value),
+      emitBossDefeated: () => this.events.emit('bossDefeated', { kind: 'boss' }),
+      emitArgumentResolved: (kind, won) =>
+        this.events.emit('argumentResolved', { kind, won }),
+      updateHud: () => this.updateHud(),
+      updateStressUi: () => this.updateStressUi(),
+      updatePrompt: () => this.updatePrompt(),
+    }, {
+      mashDuration: CLIENT_ARGUE_MASH_TIME,
+      winThreshold: CLIENT_ARGUE_WIN_THRESHOLD,
+      startValue: calculateArgueStartValue,
+      serveStress: calculateServeStress,
+      concedeStress: calculateConcedeStress,
+      pushback: (charm) => 0.05 * (1 - 0.1 * charm),
+    }, {
+      client: () => pick(CLIENT_ARGUE_LINES),
+      clientConcede: () => pick(CLIENT_ARGUE_CONCEDE_LINES),
+      clientWin: () => pick(CLIENT_ARGUE_WIN_LINES),
+      clientLose: () => pick(CLIENT_ARGUE_LOSE_LINES),
+      clientTaunts: CLIENT_ARGUE_TAUNTS,
+      bossTaunts: BOSS_ARGUE_LINES,
+      bossServed: BOSS_SERVED_LINE,
+      bossWin: BOSS_WIN_LINE,
+      bossLose: BOSS_LOSE_LINE,
     });
 
     this.player = createPerson({
@@ -1183,8 +1246,7 @@ export class Game {
     this.encounter.closeHelp();
     this.bossScenario.reset();
     this.boss.reset();
-    this.argumentSystem.clear();
-    this.argueClient = null;
+    this.argumentScenario.reset();
     this.zina.reset();
     this.scannerBreakPending = false;
     this.encounter.closeScannerBreakCard();
@@ -1521,255 +1583,23 @@ export class Game {
   }
 
   private tryStartClientArgument(client: Client): boolean {
-    if (this.run.shift < 2 || !client.willArgue || client.argueTriggered) return false;
-    if (
-      client.isBoss ||
-      client.isMenu ||
-      client === this.queenClient ||
-      client === this.finalBossGalya
-    ) {
-      return false;
-    }
-    if (client.state !== 'waiting' || this.queue[0] !== client) return false;
-    if (this.service.active || this.service.carryingReturn) return false;
-
-    client.argueTriggered = true;
-    this.argumentSystem.open('client');
-    this.argueClient = client;
-    this.encounter.openModal();
-    this.movement.clearPath();
-    this.pendingAction = null;
-    this.marker.visible = false;
-
-    const line = pick(CLIENT_ARGUE_LINES);
-    client.showBubble(line, 999);
-    this.ui.showClientArgue(
-      client.archetype.name,
-      line,
-      calculateConcedeStress(this.run.upgrades.charm),
-    );
-    this.sound.boss();
-    this.updatePrompt();
-    return true;
-  }
-
-  private startClientArgueMash(): void {
-    if (this.argumentSystem.isResolved) return;
-    const startValue = calculateArgueStartValue(this.run.upgrades.charm);
-    const mash = this.argumentSystem.startMash({
-      startValue,
-      duration: CLIENT_ARGUE_MASH_TIME,
-      pushbackPerSecond: 0.05 * (1 - 0.1 * this.run.upgrades.charm),
-    });
-    this.ui.showBossArgue();
-    this.ui.startBossMash();
-    this.ui.setBossMarker(mash.mashValue);
-    this.ui.pushBossTaunt(CLIENT_ARGUE_TAUNTS[0]);
-    this.updateBossTimerUi(1);
-    this.argueClient?.showBubble('Вы меня не переспорите!', 999);
-    this.sound.boss();
-  }
-
-  private resolveClientArgueConcede(): void {
-    if (this.argumentSystem.isResolved) return;
-    this.argumentSystem.resolve();
-    const client = this.argueClient;
-    const before = this.run.stress;
-    this.addStress(calculateConcedeStress(this.run.upgrades.charm), true);
-    const gained = Math.max(0, Math.round(this.run.stress - before));
-    const line = pick(CLIENT_ARGUE_CONCEDE_LINES);
-    client?.showBubble(line, 4);
-    this.ui.showBossResult(
-      'Вы уступили',
-      `Спор улажен. Стресс +${gained}. Клиент ждёт свой заказ.`,
-      false,
-      line,
-    );
-    this.events.emit('argumentResolved', { kind: 'client', won: false });
-    this.updateHud();
-    this.updateStressUi();
-  }
-
-  private finishClientArgueMash(argue: MashState): void {
-    if (this.argumentSystem.isResolved) return;
-    this.argumentSystem.resolve();
-    const client = this.argueClient;
-    const won = argue.mashValue > CLIENT_ARGUE_WIN_THRESHOLD;
-
-    if (won) {
-      const before = this.run.stress;
-      this.addStress(-8, true);
-      const drop = Math.max(0, Math.round(before - this.run.stress));
-      this.addReputation(0.1);
-      if (client) {
-        client.setPatience(Math.min(client.maxPatience, client.patience + 5));
-      }
-      this.ui.showBossResult(
-        'Вы победили в споре!',
-        `Клиент признал вашу правоту. Стресс −${drop}, репутация +0,1.`,
-        true,
-        pick(CLIENT_ARGUE_WIN_LINES),
-      );
-    } else {
-      const before = this.run.stress;
-      this.addStress(10, true);
-      const gained = Math.max(0, Math.round(this.run.stress - before));
-      this.addReputation(-0.2);
-      if (client) {
-        client.setPatience(Math.max(3, client.patience - 4));
-      }
-      this.ui.showBossResult(
-        'Клиент настоял на своём',
-        `Спор проигран. Стресс +${gained}, репутация −0,2. Придётся обслужить.`,
-        false,
-        pick(CLIENT_ARGUE_LOSE_LINES),
-      );
-    }
-    this.events.emit('argumentResolved', { kind: 'client', won });
-    this.updateHud();
-    this.updateStressUi();
+    return this.argumentScenario.tryStartClientArgument(client);
   }
 
   onBossServe(): void {
-    if (!this.modalOpen) return;
-    if (this.argumentSystem.context === 'client') {
-      this.resolveClientArgueConcede();
-      return;
-    }
-    if (this.phase !== 'boss' || this.boss.resolved) return;
-    this.boss.resolve();
-    if (this.run.shift === 1) this.breakScanner();
-    const before = this.run.stress;
-    this.addStress(calculateServeStress(this.run.upgrades.charm), true);
-    const actual = Math.round(this.run.stress - before);
-    this.ui.showBossResult(
-      'Обслужили',
-      `Тётка довольна, но вы выгорели. Желание уволиться +${actual}.${
-        this.run.shift === 1 ? ' Напоследок Галя разбила сканер: подсветка ячеек отключена.' : ''
-      }`,
-      false,
-      BOSS_SERVED_LINE,
-    );
-    this.sound.lose();
-    this.updateHud();
-    this.updateStressUi();
+    this.argumentScenario.onBossServe();
   }
 
   onBossArgue(): void {
-    if (!this.modalOpen) return;
-    if (this.argumentSystem.context === 'client') {
-      this.startClientArgueMash();
-      return;
-    }
-    if (this.phase !== 'boss' || this.boss.resolved) return;
-    this.argumentSystem.open('boss');
-    const startValue = calculateArgueStartValue(this.run.upgrades.charm);
-    const mash = this.argumentSystem.startMash({
-      startValue,
-      duration: CLIENT_ARGUE_MASH_TIME,
-      pushbackPerSecond: 0.05 * (1 - 0.1 * this.run.upgrades.charm),
-    });
-    this.ui.showBossArgue();
-    this.ui.startBossMash();
-    this.ui.setBossMarker(mash.mashValue);
-    this.ui.pushBossTaunt(BOSS_ARGUE_LINES[0]);
-    this.updateBossTimerUi(1);
-    this.bossClient?.showBubble('Вы меня не переспорите!', 999);
-    this.sound.boss();
+    this.argumentScenario.onBossArgue();
   }
 
   mashBoss(): void {
-    if (!this.modalOpen) return;
-    const argue = this.argumentSystem.press();
-    if (!argue) return;
-    this.ui.setBossMarker(argue.mashValue);
-    this.maybeShowBossTaunt(argue);
-    this.sound.click();
-    if (argue.mashTaps % 5 === 0) this.sound.win();
-  }
-
-  private maybeShowBossTaunt(argue: MashState): void {
-    // Стартовая реплика и далее каждые 15% пути от старта до победы.
-    const lines =
-      this.argumentSystem.context === 'client' ? CLIENT_ARGUE_TAUNTS : BOSS_ARGUE_LINES;
-    const span = Math.max(0.1, 1 - argue.startValue);
-    const progress = clamp((argue.mashValue - argue.startValue) / span, 0, 1);
-    const target = Math.min(lines.length - 1, Math.floor(progress / 0.15));
-    while (argue.tauntIndex <= target) {
-      this.ui.pushBossTaunt(lines[argue.tauntIndex]);
-      argue.tauntIndex++;
-    }
+    this.argumentScenario.mash();
   }
 
   private updateBossArgue(dt: number): void {
-    if (!this.modalOpen) return;
-    const finished = this.argumentSystem.update(dt);
-    this.updateBossTimerUi(this.argumentSystem.timeRatio);
-    const argue = this.argumentSystem.mashState;
-    if (argue) this.ui.setBossMarker(argue.mashValue);
-    if (finished) this.finishBossMash();
-  }
-
-  private updateBossTimerUi(ratio: number): void {
-    this.ui.updateBossTimer(ratio);
-  }
-
-  private finishBossMash(): void {
-    const finished = this.argumentSystem.consumeFinished();
-    if (!finished) return;
-    const { kind, state: argue } = finished;
-
-    if (kind === 'client') {
-      this.finishClientArgueMash(argue);
-      return;
-    }
-
-    this.boss.resolve();
-    this.zina.reset();
-    if (this.run.shift === 1) this.breakScanner();
-    const scannerNote =
-      this.run.shift === 1 ? ' Галя разбила сканер: подсветка ячеек отключена.' : '';
-    const won = argue.mashValue > CLIENT_ARGUE_WIN_THRESHOLD;
-
-    if (won) {
-      const beforeWin = this.run.stress;
-      this.addStress(-30);
-      const drop = Math.max(0, Math.round(beforeWin - this.run.stress));
-      this.run.buffTimer = 20;
-      this.ui.setBuff(20);
-      this.ui.setScanSpeed(1.5);
-      this.ui.showBossResult(
-        'Вы победили в споре!',
-        `Тётка отступила. Желание уволиться −${drop}, скорость и обслуживание ускорены на 20 секунд.${scannerNote}`,
-        true,
-        BOSS_WIN_LINE,
-      );
-      this.events.emit('bossDefeated', { kind: 'boss' });
-    } else {
-      const before = this.run.stress;
-      if (before >= 50) {
-        this.run.stress = 100;
-        this.pendingGameOver = true;
-        this.ui.showBossResult(
-          'Тётка победила',
-          `Вы проиграли спор. Желание уволиться было слишком высоким — заявление подписано.${scannerNote}`,
-          false,
-          BOSS_LOSE_LINE,
-        );
-      } else {
-        this.run.stress = 85;
-        this.ui.showBossResult(
-          'Тётка победила',
-          `Вы проиграли спор. Желание уволиться достигло критического уровня.${scannerNote}`,
-          false,
-          BOSS_LOSE_LINE,
-        );
-      }
-    }
-
-    this.events.emit('argumentResolved', { kind: 'boss', won });
-    this.updateHud();
-    this.updateStressUi();
+    this.argumentScenario.update(dt);
   }
 
   onBossDone(): void {
@@ -1818,7 +1648,7 @@ export class Game {
       this.encounter.enterBoss();
       this.boss.begin('sanya');
       this.boss.trigger();
-      this.argumentSystem.clear();
+      this.argumentScenario.reset();
       this.zina.reset();
       this.pendingGameOver = false;
       return order;
@@ -1866,15 +1696,10 @@ export class Game {
     context: 'client' | 'boss' | null;
     client: Client | null;
   } {
-    const context = this.argumentSystem.context;
-    const client = this.argueClient;
     this.ui.hideBoss();
     this.encounter.closeModal();
     this.bossClient?.hideBubble();
-    client?.hideBubble();
-    this.argumentSystem.clear();
-    this.argueClient = null;
-    return { context, client };
+    return this.argumentScenario.closeDialogue();
   }
 
   private spawnFinalBoss(): void {
@@ -1925,8 +1750,7 @@ export class Game {
     this.bossScenario.reset();
     this.boss.begin('final');
     this.boss.trigger();
-    this.argumentSystem.clear();
-    this.argueClient = null;
+    this.argumentScenario.reset();
     this.zina.reset();
     this.pendingGameOver = false;
     this.service.carryingReturn = false;
@@ -2205,8 +2029,7 @@ export class Game {
     this.ui.setQuests([], false);
     this.ui.setOrderChip(null);
     this.ui.updateStress(100);
-    this.argumentSystem.clear();
-    this.argueClient = null;
+    this.argumentScenario.reset();
     this.bossScenario.reset();
     this.ui.closePanels();
 
@@ -2234,8 +2057,7 @@ export class Game {
     this.service.reset();
     this.scannerPanel.closeScanner();
     this.player.setCarry(false);
-    this.argumentSystem.clear();
-    this.argueClient = null;
+    this.argumentScenario.reset();
     this.boss.reset();
     this.zina.reset();
     this.pendingGameOver = false;
@@ -2713,8 +2535,7 @@ export class Game {
     this.encounter.closeModal();
     this.encounter.closeHelp();
     this.director.reset();
-    this.argumentSystem.clear();
-    this.argueClient = null;
+    this.argumentScenario.reset();
     this.boss.reset();
     this.zina.reset();
     this.bossScenario.reset();

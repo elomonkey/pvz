@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 
 import { ShiftDirector } from '../src/systems/shiftDirector.ts';
 import { ArgumentSystem } from '../src/systems/argumentSystem.ts';
+import {
+  ArgumentScenario,
+  type ArgumentScenarioHost,
+} from '../src/systems/argumentScenario.ts';
 import { ServiceSystem } from '../src/systems/serviceSystem.ts';
 import {
   ScannerPanelSystem,
@@ -1603,6 +1607,237 @@ test('boss scenario: onBossDone обрабатывает game over и scanner br
   scanner.scenario.onBossDone();
   assert.equal(scanner.calls.scannerCard, 1);
   assert.equal(scanner.calls.endShift, 1);
+});
+
+function argumentClientStub() {
+  return {
+    willArgue: true,
+    argueTriggered: false,
+    isBoss: false,
+    isMenu: false,
+    state: 'waiting',
+    archetype: { name: 'Клиент' },
+    maxPatience: 30,
+    patience: 20,
+    bubbles: [] as string[],
+    showBubble(text: string) { this.bubbles.push(text); },
+    hideBubble() {},
+    setPatience(value: number) { this.patience = value; },
+  } as any;
+}
+
+function argumentHarness(options: {
+  shift?: number;
+  stress?: number;
+  winThreshold?: number;
+} = {}) {
+  const calls = {
+    openDialogue: 0,
+    clientArgue: [] as unknown[][],
+    bossArgue: 0,
+    startMash: 0,
+    taunts: [] as string[],
+    results: [] as unknown[][],
+    bossSounds: 0,
+    loseSounds: 0,
+    clickSounds: 0,
+    winSounds: 0,
+    resolveBoss: 0,
+    resetZina: 0,
+    breakScanner: 0,
+    pendingGameOver: 0,
+    stress: [] as number[],
+    reputation: [] as number[],
+    buff: [] as number[],
+    scanSpeed: [] as number[],
+    bossDefeated: 0,
+    argumentResolved: [] as { kind: string; won: boolean }[],
+    huds: 0,
+    stresses: 0,
+    prompts: 0,
+  };
+  let shift = options.shift ?? 2;
+  let stress = options.stress ?? 20;
+  let modalOpen = true;
+  let bossResolved = false;
+  let excluded = false;
+  const system = new ArgumentSystem();
+  const client = argumentClientStub();
+  const bossClient = {
+    bubbles: [] as string[],
+    showBubble(text: string) { this.bubbles.push(text); },
+  } as any;
+
+  const ui: any = {
+    showClientArgue: (...args: unknown[]) => calls.clientArgue.push(args),
+    showBossArgue: () => calls.bossArgue++,
+    startBossMash: () => calls.startMash++,
+    setBossMarker: () => {},
+    pushBossTaunt: (line: string) => calls.taunts.push(line),
+    updateBossTimer: () => {},
+    showBossResult: (...args: unknown[]) => calls.results.push(args),
+  };
+  const sound: any = {
+    boss: () => calls.bossSounds++,
+    lose: () => calls.loseSounds++,
+    click: () => calls.clickSounds++,
+    win: () => calls.winSounds++,
+  };
+
+  const host: ArgumentScenarioHost = {
+    ui,
+    sound,
+    shift: () => shift,
+    charm: () => 0,
+    phase: () => 'boss',
+    isModalOpen: () => modalOpen,
+    isGameOver: () => false,
+    bossResolved: () => bossResolved,
+    resolveBoss: () => {
+      bossResolved = true;
+      calls.resolveBoss++;
+    },
+    resetZina: () => calls.resetZina++,
+    bossClient: () => bossClient,
+    queueFront: () => client,
+    serviceActive: () => false,
+    carryingReturn: () => false,
+    isExcludedClient: () => excluded,
+    openDialogue: () => calls.openDialogue++,
+    breakScanner: () => calls.breakScanner++,
+    setPendingGameOver: () => calls.pendingGameOver++,
+    stress: () => stress,
+    setStress: (value) => {
+      stress = value;
+    },
+    addStress: (amount) => {
+      stress = Math.max(0, Math.min(100, stress + amount));
+      calls.stress.push(amount);
+    },
+    addReputation: (amount) => calls.reputation.push(amount),
+    setBuff: (seconds) => calls.buff.push(seconds),
+    setScanSpeed: (value) => calls.scanSpeed.push(value),
+    emitBossDefeated: () => calls.bossDefeated++,
+    emitArgumentResolved: (kind, won) =>
+      calls.argumentResolved.push({ kind, won }),
+    updateHud: () => calls.huds++,
+    updateStressUi: () => calls.stresses++,
+    updatePrompt: () => calls.prompts++,
+  };
+
+  const rules = {
+    mashDuration: 6,
+    winThreshold: options.winThreshold ?? 0.03,
+    startValue: () => 0,
+    serveStress: () => 20,
+    concedeStress: () => 4,
+    pushback: () => 0,
+  };
+  const lines = {
+    client: () => 'client-line',
+    clientConcede: () => 'concede-line',
+    clientWin: () => 'client-win-line',
+    clientLose: () => 'client-lose-line',
+    clientTaunts: ['client-taunt-0', 'client-taunt-1'],
+    bossTaunts: ['boss-taunt-0', 'boss-taunt-1'],
+    bossServed: 'boss-served-line',
+    bossWin: 'boss-win-line',
+    bossLose: 'boss-lose-line',
+  };
+
+  return {
+    scenario: new ArgumentScenario(system, host, rules, lines),
+    system,
+    client,
+    bossClient,
+    calls,
+    getStress: () => stress,
+    setShift: (value: number) => { shift = value; },
+    setModal: (value: boolean) => { modalOpen = value; },
+    setExcluded: (value: boolean) => { excluded = value; },
+  };
+}
+
+test('argument scenario: клиентский спор стартует, уступает и закрывается', () => {
+  const h = argumentHarness();
+  assert.equal(h.scenario.tryStartClientArgument(h.client), true);
+  assert.equal(h.system.context, 'client');
+  assert.equal(h.client.argueTriggered, true);
+  assert.equal(h.calls.openDialogue, 1);
+  assert.equal(h.client.bubbles.at(-1), 'client-line');
+
+  h.scenario.onBossServe();
+  assert.equal(h.system.isResolved, true);
+  assert.equal(h.getStress(), 24);
+  assert.equal(h.calls.results.at(-1)?.[0], 'Вы уступили');
+  assert.deepEqual(h.calls.argumentResolved.at(-1), { kind: 'client', won: false });
+
+  const closed = h.scenario.closeDialogue();
+  assert.equal(closed.context, 'client');
+  assert.equal(closed.client, h.client);
+  assert.equal(h.scenario.argueClient, null);
+
+  const early = argumentHarness({ shift: 1 });
+  assert.equal(early.scenario.tryStartClientArgument(early.client), false);
+});
+
+test('argument scenario: клиентский mash даёт победу и поражение', () => {
+  const win = argumentHarness();
+  win.scenario.tryStartClientArgument(win.client);
+  win.scenario.onBossArgue();
+  for (let index = 0; index < 3; index++) win.scenario.mash();
+  win.scenario.update(10);
+  assert.deepEqual(win.calls.argumentResolved.at(-1), { kind: 'client', won: true });
+  assert.equal(win.client.patience, 25);
+  assert.deepEqual(win.calls.reputation, [0.1]);
+  assert.equal(win.getStress(), 12);
+
+  const loss = argumentHarness({ winThreshold: 0.5 });
+  loss.scenario.tryStartClientArgument(loss.client);
+  loss.scenario.onBossArgue();
+  loss.scenario.update(10);
+  assert.deepEqual(loss.calls.argumentResolved.at(-1), { kind: 'client', won: false });
+  assert.equal(loss.client.patience, 16);
+  assert.deepEqual(loss.calls.reputation, [-0.2]);
+  assert.equal(loss.getStress(), 30);
+});
+
+test('argument scenario: обслуживание Гали даёт стресс и ломает сканер', () => {
+  const h = argumentHarness({ shift: 1, stress: 20 });
+  h.scenario.onBossServe();
+  assert.equal(h.calls.resolveBoss, 1);
+  assert.equal(h.calls.breakScanner, 1);
+  assert.equal(h.getStress(), 40);
+  assert.equal(h.calls.results.at(-1)?.[0], 'Обслужили');
+  assert.equal(h.calls.loseSounds, 1);
+});
+
+test('argument scenario: победа над Галей даёт buff, репутацию события и scanner break', () => {
+  const h = argumentHarness({ shift: 1, stress: 20 });
+  h.scenario.onBossArgue();
+  for (let index = 0; index < 20; index++) h.scenario.mash();
+  h.scenario.update(10);
+
+  assert.equal(h.calls.resolveBoss, 1);
+  assert.equal(h.calls.resetZina, 1);
+  assert.equal(h.calls.breakScanner, 1);
+  assert.deepEqual(h.calls.buff, [20]);
+  assert.deepEqual(h.calls.scanSpeed, [1.5]);
+  assert.equal(h.getStress(), 0);
+  assert.equal(h.calls.bossDefeated, 1);
+  assert.deepEqual(h.calls.argumentResolved.at(-1), { kind: 'boss', won: true });
+  assert.equal(h.calls.results.at(-1)?.[0], 'Вы победили в споре!');
+});
+
+test('argument scenario: поражение Гале выставляет pending game over при высоком стрессе', () => {
+  const h = argumentHarness({ shift: 2, stress: 60 });
+  h.scenario.onBossArgue();
+  h.scenario.update(10);
+
+  assert.equal(h.getStress(), 100);
+  assert.equal(h.calls.pendingGameOver, 1);
+  assert.equal(h.calls.bossDefeated, 0);
+  assert.deepEqual(h.calls.argumentResolved.at(-1), { kind: 'boss', won: false });
 });
 
 test('движение: путь, прибытие и сохранение направления', () => {
