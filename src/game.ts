@@ -65,6 +65,7 @@ import {
 } from './domain/arguments';
 import { bossKindForShift } from './domain/bosses';
 import { QUEST_REWARD, evaluateShift, upgradeCost } from './domain/economy';
+import { createProgressSnapshot, progressResumeShift, type ProgressSnapshot, type ProgressStage } from './domain/save';
 import { ShiftProgression } from './domain/progression';
 import { QuestLog, type QuestId } from './domain/quests';
 import { RunState } from './domain/run';
@@ -101,14 +102,17 @@ import {
   loadArgueIntroSeen,
   loadBest,
   loadDecorIds,
+  loadProgress,
   loadResultsIntroSeen,
   loadScannerBreakSeen,
   loadShift4IntroSeen,
   loadTutorialDone,
+  clearProgress,
   resetTutorialProgress,
   saveArgueIntroSeen,
   saveBest,
   saveDecorIds,
+  saveProgress,
   saveResultsIntroSeen,
   saveScannerBreakSeen,
   saveShift4IntroSeen,
@@ -206,6 +210,8 @@ export class Game {
   private time = 0;
 
   private readonly run = new RunState();
+  private savedProgress: ProgressSnapshot | null = null;
+  private progressCheckpoint: { stage: ProgressStage; shift: number } | null = null;
   private best = 0;
   private readonly questLog = new QuestLog();
   private questUiTimer = 0;
@@ -632,13 +638,24 @@ export class Game {
 
   start(): void {
     this.best = loadBest();
+    this.savedProgress = loadProgress();
     this.ui.setBest(this.best);
     this.ownedDecor = this.createRunDecor();
     this.world.applyDecor(this.ownedDecor);
     this.setupMenu();
-    this.ui.showStart(this.best);
+    this.showStart();
     this.ui.updateStress(0);
     this.updateHud();
+  }
+
+  private showStart(): void {
+    this.ui.showStart(this.best, this.continueLabel());
+  }
+
+  private continueLabel(): string | null {
+    if (!this.savedProgress) return null;
+    const shift = progressResumeShift(this.savedProgress);
+    return shift === null ? null : `Продолжить · смена ${shift}`;
   }
 
   setBest(best: number): void {
@@ -1204,6 +1221,9 @@ export class Game {
 
   startNewGame(): void {
     // An explicit new run is allowed to leave the terminal state.
+    this.progressCheckpoint = null;
+    this.savedProgress = null;
+    clearProgress();
     this.encounter.enterMenu();
     this.clearClients();
     this.run.reset();
@@ -1222,6 +1242,68 @@ export class Game {
     this.ui.setTutorialTarget(null);
     this.ui.hideTutorial();
     this.beginShift(1);
+  }
+
+  continueGame(): void {
+    const snapshot = loadProgress();
+    const resumeShift = snapshot ? progressResumeShift(snapshot) : null;
+    if (!snapshot || resumeShift === null) {
+      this.startNewGame();
+      return;
+    }
+
+    this.encounter.enterMenu();
+    this.clearClients();
+    this.applyProgressSnapshot(snapshot);
+    this.best = loadBest();
+    this.scannerBreakPending = false;
+    this.encounter.closeScannerBreakCard();
+    this.bossScenario.reset();
+    this.tutorialActive = false;
+    this.encounter.closeTutorial();
+    this.tutorialPending = !loadTutorialDone();
+    this.tutorialStep = 'welcome';
+    this.clearTutorialMarker();
+    this.ui.setTutorialTarget(null);
+    this.ui.hideTutorial();
+    this.ui.hideStart();
+    this.beginShift(resumeShift);
+  }
+
+  private applyProgressSnapshot(snapshot: ProgressSnapshot): void {
+    this.run.money = snapshot.money;
+    this.run.totalServed = snapshot.totalServed;
+    this.run.totalEarned = snapshot.totalEarned;
+    this.run.reputation = snapshot.reputation;
+    this.run.upgrades = { ...snapshot.upgrades };
+    this.scannerBroken = snapshot.scannerBroken;
+
+    this.ownedDecor = this.createRunDecor();
+    const savedDecor = new Set(snapshot.decor);
+    for (const item of DECOR_ITEMS) {
+      if (savedDecor.has(item.id)) this.ownedDecor[item.id] = true;
+    }
+    this.world.applyDecor(this.ownedDecor);
+    this.savedProgress = snapshot;
+  }
+
+  private persistProgress(): void {
+    if (!this.progressCheckpoint) return;
+    const snapshot = createProgressSnapshot({
+      stage: this.progressCheckpoint.stage,
+      shift: this.progressCheckpoint.shift,
+      money: this.run.money,
+      totalServed: this.run.totalServed,
+      totalEarned: this.run.totalEarned,
+      reputation: this.run.reputation,
+      upgrades: this.run.upgrades,
+      scannerBroken: this.scannerBroken,
+      decor: (Object.keys(this.ownedDecor) as DecorId[]).filter(
+        (id) => this.ownedDecor[id],
+      ),
+    });
+    saveProgress(snapshot);
+    this.savedProgress = snapshot;
   }
 
   private beginShift(shift: number): void {
@@ -1292,6 +1374,8 @@ export class Game {
     );
     this.updateHud();
     this.updatePrompt();
+    this.progressCheckpoint = { stage: 'shift', shift };
+    this.persistProgress();
     if (shift === 1 && this.tutorialPending) {
       this.startTutorial();
     }
@@ -1942,6 +2026,15 @@ export class Game {
     }
     this.ui.setNextShiftFinal(this.run.shift >= 5);
 
+    if (this.run.shift >= 5) {
+      this.progressCheckpoint = null;
+      this.savedProgress = null;
+      clearProgress();
+    } else {
+      this.progressCheckpoint = { stage: 'results', shift: this.run.shift };
+      this.persistProgress();
+    }
+
     if (economy.stars === 3) this.sound.win();
     else this.sound.deliver();
   }
@@ -1977,6 +2070,7 @@ export class Game {
     this.sound.cash();
     this.updateHud();
     this.ui.updateShop(this.run.upgrades, this.run.money, this.ownedDecor, this.scannerBroken);
+    this.persistProgress();
   }
 
   buyDecor(id: DecorId): void {
@@ -1999,10 +2093,14 @@ export class Game {
     this.sound.cash();
     this.updateHud();
     this.ui.updateShop(this.run.upgrades, this.run.money, this.ownedDecor, this.scannerBroken);
+    this.persistProgress();
   }
 
   private gameOver(): void {
     if (this.phase === 'gameover') return;
+    this.progressCheckpoint = null;
+    this.savedProgress = null;
+    clearProgress();
     this.encounter.enterGameOver();
     this.pendingGameOver = false;
     this.zina.reset();
@@ -2045,6 +2143,9 @@ export class Game {
   }
 
   restartGame(): void {
+    this.progressCheckpoint = null;
+    this.savedProgress = null;
+    clearProgress();
     this.clearClients();
     this.run.reset();
     this.ownedDecor = this.createRunDecor();
@@ -2078,7 +2179,7 @@ export class Game {
     this.ui.updateStress(0);
     this.ui.setPrompt('');
     this.setupMenu();
-    this.ui.showStart(this.best);
+    this.showStart();
     this.updateHud();
   }
 

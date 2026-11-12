@@ -1246,6 +1246,13 @@ button {
   font-size: 11px;
 }
 
+.start-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
 .start-best {
   margin-top: 10px;
   color: var(--slate);
