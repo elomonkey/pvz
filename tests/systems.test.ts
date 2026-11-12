@@ -212,6 +212,39 @@ test('encounter coordinator: modal/help pause and reset', () => {
   assert.equal(encounter.inputBlocked, true);
 });
 
+test('encounter coordinator: tutorial, mechanic and scanner overlays', () => {
+  const encounter = new EncounterCoordinator();
+  encounter.enterPlaying();
+
+  encounter.openTutorial();
+  assert.equal(encounter.tutorialOpen, true);
+  assert.equal(encounter.overlayOpen, true);
+  encounter.closeTutorial();
+  assert.equal(encounter.tutorialOpen, false);
+
+  encounter.openMechanicCard();
+  assert.equal(encounter.mechanicCardOpen, true);
+  assert.equal(encounter.overlayOpen, true);
+  encounter.closeMechanicCard();
+  assert.equal(encounter.mechanicCardOpen, false);
+
+  encounter.openScannerBreakCard();
+  assert.equal(encounter.scannerBreakCardOpen, true);
+  assert.equal(encounter.overlayOpen, true);
+  encounter.closeScannerBreakCard();
+  assert.equal(encounter.scannerBreakCardOpen, false);
+  assert.equal(encounter.overlayOpen, false);
+
+  encounter.openTutorial();
+  encounter.openMechanicCard();
+  encounter.openScannerBreakCard();
+  encounter.reset();
+  assert.equal(encounter.tutorialOpen, false);
+  assert.equal(encounter.mechanicCardOpen, false);
+  assert.equal(encounter.scannerBreakCardOpen, false);
+  assert.equal(encounter.overlayOpen, false);
+});
+
 test('shift director: старт, передышка и шаги', () => {
   const director = new ShiftDirector();
   director.begin(

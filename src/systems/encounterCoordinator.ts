@@ -14,6 +14,9 @@ export class EncounterCoordinator {
   private phaseValue: EncounterPhase = 'menu';
   private modal = false;
   private help = false;
+  private tutorial = false;
+  private mechanicCard = false;
+  private scannerBreakCard = false;
 
   get phase(): EncounterPhase {
     return this.phaseValue;
@@ -25,6 +28,22 @@ export class EncounterCoordinator {
 
   get helpOpen(): boolean {
     return this.help;
+  }
+
+  get tutorialOpen(): boolean {
+    return this.tutorial;
+  }
+
+  get mechanicCardOpen(): boolean {
+    return this.mechanicCard;
+  }
+
+  get scannerBreakCardOpen(): boolean {
+    return this.scannerBreakCard;
+  }
+
+  get overlayOpen(): boolean {
+    return this.tutorial || this.mechanicCard || this.scannerBreakCard;
   }
 
   get paused(): boolean {
@@ -82,9 +101,36 @@ export class EncounterCoordinator {
     this.modal = false;
   }
 
+  openTutorial(): void {
+    this.tutorial = true;
+  }
+
+  closeTutorial(): void {
+    this.tutorial = false;
+  }
+
+  openMechanicCard(): void {
+    this.mechanicCard = true;
+  }
+
+  closeMechanicCard(): void {
+    this.mechanicCard = false;
+  }
+
+  openScannerBreakCard(): void {
+    this.scannerBreakCard = true;
+  }
+
+  closeScannerBreakCard(): void {
+    this.scannerBreakCard = false;
+  }
+
   reset(): void {
     this.phaseValue = 'menu';
     this.modal = false;
     this.help = false;
+    this.tutorial = false;
+    this.mechanicCard = false;
+    this.scannerBreakCard = false;
   }
 }
