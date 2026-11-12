@@ -11,6 +11,7 @@ import {
 } from '../src/systems/scannerPanelSystem.ts';
 import { BossEncounter } from '../src/systems/bossEncounter.ts';
 import { FinalBossSystem } from '../src/systems/finalBossSystem.ts';
+import { FinalBossScenario, type FinalBossScenarioHost } from '../src/systems/finalBossScenario.ts';
 import { QueenSystem } from '../src/systems/queenSystem.ts';
 import { QueenScenario, type QueenScenarioHost } from '../src/systems/queenScenario.ts';
 import { EncounterCoordinator } from '../src/systems/encounterCoordinator.ts';
@@ -977,6 +978,293 @@ test('queen scenario: finish и clearForResults очищают клиента и
   assert.equal(hidden.label.visible, false);
   assert.ok(results.calls.released.includes(hiddenOrder));
   assert.equal(results.queue.length, 0);
+});
+
+function finalBossClientStub(kind: 'galya' | 'valera') {
+  return {
+    kind,
+    order: null as any,
+    state: 'waiting',
+    isBoss: true,
+    maxPatience: 999,
+    patience: 999,
+    patienceDrainMultiplier: 1,
+    hasShouted: false,
+    arrived: false,
+    queueIndex: 0,
+    target: null as any,
+    bubbles: [] as string[],
+    root: {
+      visible: true,
+      position: {
+        x: 0, y: 0, z: 0,
+        set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
+      },
+      rotation: { y: 0 },
+    },
+    label: {
+      visible: true,
+      element: {
+        classList: {
+          removed: [] as string[],
+          remove(name: string) { this.removed.push(name); },
+        },
+      },
+    },
+    rig: {
+      carries: [] as unknown[],
+      setCarry(value: boolean, color?: string) { this.carries.push([value, color]); },
+    },
+    preplaceAtFront() { this.root.position.set(0.4, 0, 1.15); this.state = 'waiting'; },
+    placeAt(point: { x: number; z: number }) {
+      this.root.position.set(point.x, 0, point.z);
+      this.state = 'waiting';
+    },
+    showBubble(text: string) { this.bubbles.push(text); },
+    hideBubble() {},
+    setTarget() {},
+    walkTo(point: { x: number; z: number }) { this.target = point; this.state = 'entering'; },
+    isAt() { return this.arrived; },
+    setPatience(value: number) { this.patience = value; },
+    setQueueIndex(index: number) { this.queueIndex = index; },
+    leave() { this.state = 'leaving'; },
+  };
+}
+
+function finalBossHarness() {
+  const calls = {
+    prepare: 0,
+    created: [] as string[],
+    added: [] as { kind: string; queue: string }[],
+    dequeued: [] as string[],
+    orderCounts: [] as number[],
+    released: [] as unknown[],
+    fitting: [] as { occupied: boolean[]; full: boolean; resetTimers: boolean; active: boolean }[],
+    fittingRooms: [] as unknown[][],
+    dialogues: [] as { phase: string; lines: unknown[]; button: string }[],
+    closedDialogues: 0,
+    stress: [] as number[],
+    reputation: [] as number[],
+    outcomes: [] as boolean[],
+    deliveries: [] as { client: string; order: unknown }[],
+    returnCarries: [] as string[],
+    clearedReturns: 0,
+    debuff: 0,
+    status: [] as unknown[][],
+    banners: [] as unknown[][],
+    toasts: [] as unknown[][],
+    bossSounds: 0,
+    shoutSounds: 0,
+    deliverSounds: 0,
+    pickupSounds: 0,
+    winSounds: 0,
+    refresh: 0,
+    finished: 0,
+  };
+  let shift = 5;
+  let gameOver = false;
+  let returnAllowed = true;
+  let dialogueOpen = false;
+  let orderId = 0;
+
+  const points = {
+    queueFront: { x: 0.4, z: 1.15 },
+    fitting: { x: 3.15, z: 2.8 },
+  };
+  const makeOrder = (count: number) => ({ id: `order-${++orderId}`, count } as any);
+  const galya = finalBossClientStub('galya');
+  const valera = finalBossClientStub('valera');
+
+  const ui: any = {
+    setFinalBossDebuff: () => {},
+    setFinalBossStatus: (...args: unknown[]) => calls.status.push(args),
+    setScanSpeed: () => {},
+    closePanels: () => {},
+    setOrderChip: () => {},
+    banner: (...args: unknown[]) => calls.banners.push(args),
+    toast: (...args: unknown[]) => calls.toasts.push(args),
+    setFittingRooms: (...args: unknown[]) => calls.fittingRooms.push(args),
+  };
+  const sound: any = {
+    boss: () => calls.bossSounds++,
+    shout: () => calls.shoutSounds++,
+    deliver: () => calls.deliverSounds++,
+    pickup: () => calls.pickupSounds++,
+    win: () => calls.winSounds++,
+  };
+
+  const host: FinalBossScenarioHost = {
+    ui,
+    sound,
+    points,
+    shift: () => shift,
+    isGameOver: () => gameOver,
+    prepareEncounter: () => calls.prepare++,
+    createClient: (kind) => {
+      calls.created.push(kind);
+      return kind === 'galya' ? (galya as any) : (valera as any);
+    },
+    addClient: (client: any, queue) => calls.added.push({ kind: client.kind, queue }),
+    dequeue: (client: any) => calls.dequeued.push(client.kind),
+    createBarcodeOrder: (count) => {
+      calls.orderCounts.push(count);
+      return makeOrder(count);
+    },
+    releaseOrder: (order) => calls.released.push(order),
+    patienceMultiplier: () => 1,
+    applyDebuffEffects: () => calls.debuff++,
+    setFittingState: (occupied, full, resetTimers, active) =>
+      calls.fitting.push({
+        occupied: [...occupied],
+        full,
+        resetTimers,
+        active,
+      }),
+    dialogueLines: (phase) => [
+      { speaker: 'narrator', text: `phase ${phase}`, tone: 'narrator' },
+    ] as any,
+    openDialogue: (phase, lines, button) => {
+      calls.dialogues.push({ phase, lines: [...lines], button });
+      dialogueOpen = true;
+    },
+    closeDialogue: () => {
+      calls.closedDialogues++;
+      dialogueOpen = false;
+    },
+    isDialogueOpen: () => dialogueOpen,
+    addStress: (amount) => calls.stress.push(amount),
+    addReputation: (amount) => calls.reputation.push(amount),
+    markOutcome: (success) => calls.outcomes.push(success),
+    completeDelivery: (client: any, order) => {
+      client.order = null;
+      client.state = 'waiting';
+      calls.deliveries.push({ client: client.kind, order });
+    },
+    canTakeReturn: () => returnAllowed,
+    beginReturnCarry: (client: any) => calls.returnCarries.push(client.kind),
+    clearReturnCarry: () => calls.clearedReturns++,
+    nextTauntDelay: () => 0,
+    shoutLine: () => 'Быстрее!',
+    refreshUi: () => calls.refresh++,
+    finishShift: () => calls.finished++,
+  };
+
+  const system = new FinalBossSystem();
+  return {
+    scenario: new FinalBossScenario(system, host),
+    system,
+    calls,
+    galya,
+    valera,
+    points,
+    setShift: (value: number) => { shift = value; },
+    setGameOver: (value: boolean) => { gameOver = value; },
+    setReturnAllowed: (value: boolean) => { returnAllowed = value; },
+  };
+}
+
+test('final boss scenario: spawn создаёт Галю и Валеру и открывает entrance', () => {
+  const h = finalBossHarness();
+  h.scenario.spawn();
+
+  assert.equal(h.calls.prepare, 1);
+  assert.equal(h.scenario.galya, h.galya);
+  assert.equal(h.scenario.valera, h.valera);
+  assert.deepEqual(h.calls.created, ['galya', 'valera']);
+  assert.deepEqual(h.calls.added, [
+    { kind: 'galya', queue: 'back' },
+    { kind: 'valera', queue: 'none' },
+  ]);
+  assert.deepEqual(h.calls.dialogues[0]?.phase, 'ФАЗА 1 / 3');
+  assert.deepEqual(h.calls.dialogues[0]?.button, 'Дальше');
+  assert.equal(h.calls.status.at(-1)?.[2], 'скандал на входе');
+  assert.ok(h.valera.label.element.classList.removed.includes('boss'));
+
+  h.setShift(4);
+  h.scenario.spawn();
+  assert.equal(h.calls.prepare, 1);
+});
+
+test('final boss scenario: entrance → три штрихкода → примерка → три возврата', () => {
+  const h = finalBossHarness();
+  h.scenario.spawn();
+  h.scenario.onDialogueDone();
+
+  assert.equal(h.scenario.order?.count, 2);
+  assert.deepEqual(h.calls.orderCounts, [2]);
+  assert.equal(h.calls.debuff, 1);
+  h.scenario.update(0.01);
+  assert.ok(h.calls.stress.includes(2));
+  assert.equal(h.calls.shoutSounds, 1);
+
+  h.scenario.handleDelivery({ client: h.galya as any, order: h.scenario.order! });
+  assert.equal(h.scenario.order?.count, 3);
+  assert.deepEqual(h.calls.orderCounts, [2, 3]);
+
+  h.scenario.handleDelivery({ client: h.galya as any, order: h.scenario.order! });
+  assert.equal(h.calls.dialogues.at(-1)?.phase, 'ФАЗА 2 / 3');
+  h.scenario.onDialogueDone();
+  assert.equal(h.scenario.order?.count, 4);
+  assert.deepEqual(h.calls.orderCounts, [2, 3, 4]);
+
+  h.scenario.handleDelivery({ client: h.galya as any, order: h.scenario.order! });
+  assert.equal(h.scenario.order, null);
+  assert.deepEqual(h.valera.target, h.points.fitting);
+
+  h.valera.arrived = true;
+  h.valera.state = 'waiting';
+  h.scenario.update(0);
+  assert.equal(h.calls.dialogues.at(-1)?.phase, 'ФАЗА 3 / 3');
+  assert.deepEqual(h.calls.fitting.at(-1), {
+    occupied: [true, false],
+    full: false,
+    resetTimers: false,
+    active: true,
+  });
+
+  h.scenario.onDialogueDone();
+  assert.equal(h.scenario.galya?.order, null);
+  assert.ok(h.scenario.galya?.rig.carries.some((value) => JSON.stringify(value) === JSON.stringify([true, '#d95d5d'])));
+
+  for (let index = 0; index < 3; index++) {
+    h.scenario.takeReturn();
+    assert.equal(h.calls.returnCarries.length, index + 1);
+    const left = h.system.depositReturn();
+    h.scenario.handleReturnDeposited(left);
+    if (index < 2) {
+      assert.equal(h.scenario.galya?.state, 'waiting');
+    }
+  }
+
+  assert.deepEqual(h.calls.outcomes, [true]);
+  assert.deepEqual(h.calls.reputation, [0.5]);
+  assert.equal(h.calls.finished, 1);
+  assert.equal(h.scenario.galya, null);
+  assert.equal(h.scenario.valera, null);
+  assert.equal(h.galya.state, 'leaving');
+  assert.equal(h.valera.state, 'leaving');
+});
+
+test('final boss scenario: failure и game over очищают клиентов без награды', () => {
+  const h = finalBossHarness();
+  h.scenario.spawn();
+  h.scenario.finish(false);
+
+  assert.deepEqual(h.calls.outcomes, [false]);
+  assert.deepEqual(h.calls.reputation, []);
+  assert.equal(h.calls.finished, 1);
+  assert.equal(h.scenario.galya, null);
+  assert.equal(h.scenario.valera, null);
+  assert.equal(h.galya.state, 'leaving');
+  assert.equal(h.valera.state, 'leaving');
+
+  const gameOver = finalBossHarness();
+  gameOver.scenario.spawn();
+  gameOver.scenario.clearForGameOver();
+  assert.equal(gameOver.scenario.galya, null);
+  assert.equal(gameOver.scenario.valera, null);
+  assert.equal(gameOver.galya.root.visible, false);
+  assert.equal(gameOver.valera.label.visible, false);
 });
 
 test('движение: путь, прибытие и сохранение направления', () => {
