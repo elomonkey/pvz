@@ -38,12 +38,6 @@ export class DevConsole {
         this.game?.debugSetShift(Number(button.dataset.devShift));
       });
     }
-    window.addEventListener('keydown', (event) => {
-      if (event.code === 'F2' || event.code === 'Backquote') {
-        event.preventDefault();
-        this.toggle();
-      }
-    });
   }
 
   toggle(force?: boolean): void {

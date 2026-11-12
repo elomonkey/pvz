@@ -33,6 +33,7 @@ async function setup(page: Page) {
       done();
     };
   });
+  await expect(page.locator('#boss-modal')).toBeVisible();
   return errors;
 }
 async function original(page: Page, phase: number) {

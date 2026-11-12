@@ -1,0 +1,228 @@
+{
+  "label": "baseline",
+  "method": "Chromium 1400x900, production preview :4178; cold browser context, then same-context reload; gzipSync level 6, decimal bytes; transferred is CDP encodedDataLength including HTTP headers; wireStatus shows actual 304 revalidation behind a cached 200 response",
+  "assets": [
+    {
+      "file": "assets/galya-expressions-DKeOCBNL.webp",
+      "raw": 175702,
+      "gzip": 175158
+    },
+    {
+      "file": "assets/index-BOciwlIS.js",
+      "raw": 871157,
+      "gzip": 227071
+    },
+    {
+      "file": "assets/index-Ce3NIHZy.css",
+      "raw": 68078,
+      "gzip": 13612
+    },
+    {
+      "file": "assets/queen-expressions-v2-C-_wsNof.webp",
+      "raw": 215370,
+      "gzip": 214961
+    },
+    {
+      "file": "assets/sanya-portrait-DFj7hjHx.webp",
+      "raw": 141554,
+      "gzip": 140871
+    },
+    {
+      "file": "assets/valera-expressions-Bf2ZCEGz.webp",
+      "raw": 225162,
+      "gzip": 225062
+    },
+    {
+      "file": "assets/zina-expressions-C5VAbQL9.webp",
+      "raw": 228628,
+      "gzip": 228345
+    }
+  ],
+  "chunks": null,
+  "initial": {
+    "jsRequests": 1,
+    "raw": 871157,
+    "gzip": 227071,
+    "assetRequests": 7,
+    "assetRaw": 1925651
+  },
+  "phases": {
+    "coldMenu": [
+      {
+        "file": "assets/index-BOciwlIS.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 227616,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      }
+    ],
+    "startShift": [],
+    "shop": [],
+    "boss": [],
+    "bossReopen": [],
+    "devConsole": [],
+    "devReopen": [],
+    "warmMenu": [
+      {
+        "file": "assets/index-BOciwlIS.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      }
+    ]
+  },
+  "assetPhases": {
+    "coldMenu": [
+      {
+        "file": "assets/index-BOciwlIS.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 227616,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/index-Ce3NIHZy.css",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 13977,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/sanya-portrait-DFj7hjHx.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 141824,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/queen-expressions-v2-C-_wsNof.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 215640,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/galya-expressions-DKeOCBNL.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 175972,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/zina-expressions-C5VAbQL9.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 228898,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/valera-expressions-Bf2ZCEGz.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 225432,
+        "cacheControl": "no-cache",
+        "encoding": null
+      }
+    ],
+    "startShift": [],
+    "shop": [],
+    "boss": [
+      {
+        "file": "assets/galya-expressions-DKeOCBNL.webp",
+        "status": 200,
+        "wireStatus": null,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": "no-cache",
+        "encoding": null
+      }
+    ],
+    "bossReopen": [],
+    "devConsole": [],
+    "devReopen": [],
+    "warmMenu": [
+      {
+        "file": "assets/index-BOciwlIS.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/index-Ce3NIHZy.css",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/galya-expressions-DKeOCBNL.webp",
+        "status": 304,
+        "wireStatus": null,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": null,
+        "encoding": null
+      },
+      {
+        "file": "assets/sanya-portrait-DFj7hjHx.webp",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/queen-expressions-v2-C-_wsNof.webp",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/zina-expressions-C5VAbQL9.webp",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/valera-expressions-Bf2ZCEGz.webp",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": "no-cache",
+        "encoding": null
+      }
+    ]
+  },
+  "errors": []
+}
