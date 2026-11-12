@@ -12,6 +12,7 @@ import {
 import { BossEncounter } from '../src/systems/bossEncounter.ts';
 import { FinalBossSystem } from '../src/systems/finalBossSystem.ts';
 import { QueenSystem } from '../src/systems/queenSystem.ts';
+import { QueenScenario, type QueenScenarioHost } from '../src/systems/queenScenario.ts';
 import { EncounterCoordinator } from '../src/systems/encounterCoordinator.ts';
 import { PlayerMovement } from '../src/systems/playerMovement.ts';
 import { ZinaPuzzleSystem, isZinaSolved } from '../src/systems/zinaPuzzleSystem.ts';
@@ -756,6 +757,226 @@ test('queen: повторная примерка и сброс', () => {
   assert.equal(queen.inFitting, false);
   assert.equal(queen.fittings, 0);
   assert.equal(queen.irritation, 1);
+});
+
+function queenScenarioHarness() {
+  const calls = {
+    createdOrders: [] as number[],
+    released: [] as unknown[],
+    added: [] as unknown[],
+    enqueued: [] as unknown[],
+    dequeued: [] as unknown[],
+    reputation: [] as number[],
+    clearFitting: [] as boolean[],
+    occupyFitting: 0,
+    patience: 0,
+    hud: 0,
+    prompt: 0,
+    queenStatus: [] as unknown[][],
+    banners: [] as unknown[][],
+    toasts: [] as unknown[][],
+    boss: 0,
+    win: 0,
+    pickup: 0,
+    beginReturnCarry: 0,
+  };
+  const clients: any[] = [];
+  const queue: any[] = [];
+  let orderId = 0;
+  let orderAvailable = true;
+  let serviceActive = false;
+
+  const makeOrder = () => ({ id: `order-${++orderId}` } as any);
+  const makeClient = (order: any) => {
+    const client: any = {
+      order,
+      state: 'waiting',
+      arrived: false,
+      bubbles: [] as string[],
+      root: {
+        visible: true,
+        position: {
+          x: 0, y: 0, z: 0,
+          set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
+        },
+        rotation: { y: 0 },
+      },
+      label: { visible: true },
+      rig: {
+        carries: [] as unknown[],
+        setCarry(value: boolean, color?: string) { this.carries.push([value, color]); },
+      },
+      showBubble(text: string) { this.bubbles.push(text); },
+      hideBubble() {},
+      setTarget() {},
+      walkTo(point: unknown) { this.target = point; this.state = 'entering'; },
+      isAt() { return this.arrived; },
+      setPatience() {},
+      leave() { this.state = 'leaving'; },
+    };
+    return client;
+  };
+
+  const ui: any = {
+    setQueenStatus: (...args: unknown[]) => calls.queenStatus.push(args),
+    banner: (...args: unknown[]) => calls.banners.push(args),
+    toast: (...args: unknown[]) => calls.toasts.push(args),
+  };
+  const sound: any = {
+    boss: () => calls.boss++,
+    win: () => calls.win++,
+    pickup: () => calls.pickup++,
+  };
+  const host: QueenScenarioHost = {
+    ui,
+    sound,
+    nextBudget: () => 20,
+    queenLine: () => 'queen-line',
+    returnLine: () => 'return-line',
+    createOrder: (maxItems) => {
+      calls.createdOrders.push(maxItems);
+      return orderAvailable ? makeOrder() : null;
+    },
+    releaseOrder: (order) => calls.released.push(order),
+    createClient: (order) => makeClient(order),
+    addClient: (client) => {
+      calls.added.push(client);
+      clients.push(client);
+    },
+    enqueueFront: (client) => {
+      calls.enqueued.push(client);
+      if (!queue.includes(client)) queue.unshift(client);
+    },
+    dequeue: (client) => {
+      calls.dequeued.push(client);
+      const index = queue.indexOf(client);
+      if (index >= 0) queue.splice(index, 1);
+    },
+    isServiceActive: () => serviceActive,
+    canTakeReturn: () => true,
+    beginReturnCarry: () => calls.beginReturnCarry++,
+    orderCells: () => 'A-1',
+    addReputation: (amount) => calls.reputation.push(amount),
+    clearFitting: (resetTimers) => calls.clearFitting.push(resetTimers),
+    occupyFitting: () => calls.occupyFitting++,
+    refreshPatience: () => calls.patience++,
+    updateHud: () => calls.hud++,
+    updatePrompt: () => calls.prompt++,
+  };
+
+  return {
+    scenario: new QueenScenario(host, new QueenSystem()),
+    calls,
+    clients,
+    queue,
+    setOrderAvailable: (value: boolean) => { orderAvailable = value; },
+    setServiceActive: (value: boolean) => { serviceActive = value; },
+  };
+}
+
+test('queen scenario: появление ждёт реальный заказ и не дублирует клиента', () => {
+  const h = queenScenarioHarness();
+  h.setOrderAvailable(false);
+  h.scenario.spawn();
+  assert.equal(h.scenario.queen.spawned, false);
+  assert.equal(h.scenario.client, null);
+  assert.equal(h.clients.length, 0);
+
+  h.setOrderAvailable(true);
+  h.scenario.spawn();
+  assert.equal(h.scenario.queen.spawned, true);
+  assert.equal(h.clients.length, 1);
+  assert.equal(h.queue.length, 1);
+  assert.equal(h.queue[0], h.scenario.client);
+  assert.ok(h.scenario.queen.budget >= 20 && h.scenario.queen.budget <= 30);
+  assert.deepEqual(h.calls.createdOrders, [3, 3]);
+
+  h.scenario.spawn();
+  assert.equal(h.clients.length, 1);
+  assert.equal(h.queue.length, 1);
+});
+
+test('queen scenario: примерка ждёт возврата с возвратом и отдаёт его игроку', () => {
+  const h = queenScenarioHarness();
+  h.scenario.spawn();
+  const queen = h.scenario.client!;
+
+  h.scenario.queen.deliver(3);
+  h.scenario.sendToFitting();
+  assert.equal(h.scenario.walkingToFitting, true);
+  assert.equal(h.queue.length, 0);
+  assert.deepEqual(h.calls.clearFitting, [false]);
+
+  queen.arrived = true;
+  queen.state = 'waiting';
+  h.scenario.update(0, false);
+  assert.equal(h.scenario.queen.inFitting, true);
+  assert.equal(h.scenario.walkingToFitting, false);
+  assert.equal(h.calls.occupyFitting, 1);
+
+  h.setServiceActive(true);
+  h.scenario.update(6.1, false);
+  assert.equal(h.scenario.queen.hasReturn, false);
+  h.setServiceActive(false);
+  h.scenario.update(0.01, false);
+  assert.equal(h.scenario.queen.hasReturn, true);
+  assert.equal(queen.order, null);
+  assert.equal(queen.state, 'entering');
+  assert.equal(h.queue[0], queen);
+  assert.equal(h.calls.banners.at(-1)?.[0], 'Королева вернулась с возвратом');
+
+  h.scenario.takeReturn();
+  assert.equal(h.scenario.queen.returnInHand, true);
+  assert.equal(h.calls.beginReturnCarry, 1);
+  assert.equal(h.queue.length, 0);
+  assert.equal(queen.root.visible, false);
+  assert.equal(queen.label.visible, false);
+});
+
+test('queen scenario: после примерки выбирает новый заказ вместо возврата', () => {
+  const h = queenScenarioHarness();
+  h.scenario.spawn();
+  const queen = h.scenario.client!;
+  const previousOrder = queen.order;
+
+  h.scenario.queen.startFitting(0, () => 1);
+  h.scenario.queen.startFitting(0, () => 1);
+  assert.equal(h.scenario.queen.nextReturn, false);
+
+  queen.state = 'gone';
+  h.scenario.update(0.01, false);
+  assert.notEqual(queen.order, previousOrder);
+  assert.equal(queen.state, 'entering');
+  assert.equal(h.queue[0], queen);
+  assert.ok(h.calls.released.includes(previousOrder));
+  assert.equal(h.calls.clearFitting.at(-1), true);
+  assert.equal(h.calls.banners.at(-1)?.[0], 'Королева вернулась');
+});
+
+test('queen scenario: finish и clearForResults очищают клиента и состояние', () => {
+  const finished = queenScenarioHarness();
+  finished.scenario.spawn();
+  const leaving = finished.scenario.client!;
+  finished.scenario.finish();
+  assert.equal(finished.scenario.client, null);
+  assert.equal(finished.scenario.queen.active, false);
+  assert.equal(leaving.state, 'leaving');
+  assert.equal(finished.queue.length, 0);
+  assert.deepEqual(finished.calls.reputation, [0.5]);
+  assert.equal(finished.calls.win, 1);
+  assert.equal(finished.calls.clearFitting.at(-1), true);
+
+  const results = queenScenarioHarness();
+  results.scenario.spawn();
+  const hidden = results.scenario.client!;
+  const hiddenOrder = hidden.order;
+  results.scenario.clearForResults();
+  assert.equal(results.scenario.client, null);
+  assert.equal(results.scenario.queen.spawned, false);
+  assert.equal(hidden.root.visible, false);
+  assert.equal(hidden.label.visible, false);
+  assert.ok(results.calls.released.includes(hiddenOrder));
+  assert.equal(results.queue.length, 0);
 });
 
 test('движение: путь, прибытие и сохранение направления', () => {

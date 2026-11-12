@@ -678,7 +678,7 @@ src/
 
 - `EncounterCoordinator` дополнительно владеет `tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen` и `overlayOpen`; добавлены `open*/close*` методы.
 - `Game` заменил три прямых поля на read-only getters и вызовы координатора; reset очищает все overlay-флаги.
-- Поведение карточек, тексты, DOM, таймеры и `inputBlocked` не менялись. Сценарные состояния боссов остаются следующим срезом AUD-04/AUD-07.
+- Поведение карточек, тексты, DOM, таймеры и `inputBlocked` не менялись. Сценарные состояния боссов остаются следующим срезом AUD-04/AUD-07; Queen вынесен в 6.52.
 - Unit-тесты покрывают открытие/закрытие каждого overlay и reset. Build, 72 unit и 66 e2e проходят.
 
 ### 6.51. Финальные клиенты не застревают в leaving — issue #57
@@ -687,6 +687,13 @@ src/
 - `endShift()` теперь очищает клиентов через штатный `clearClients()` до показа итогов; `Game.update()` в results дополнительно доигрывает leaving-клиентов, если они остались.
 - Focused regression в `final-boss-dialogue.spec.ts`: после финала и 600 обновлений `clients` пуст, phase остаётся `results`.
 - Build, 72 unit и 66 e2e проходят; пятисменный тест Sol после rebase также проходит. UI, баланс и порядок финальных реплик не менялись.
+
+### 6.52. QueenScenario: сценарий Королевы вне Game — issue #59
+
+- Новый `systems/queenScenario.ts` владеет клиентом Королевы, флагом похода в примерочную и переходами: появление, примерка, автоматический возврат с новым заказом или возвратом, финальный уход. `QueenSystem` остался владельцем бюджета, кулдауна примерки и состояния возврата.
+- `Game` передаёт сценарию заказы, клиента, очередь, service, UI/sound, репутацию и общее состояние примерочных через host-интерфейс. Разделяемые примерочные пока остаются в `Game`, потому что их использует и финальный босс.
+- Реализация `spawnQueen/updateQueen/sendQueenToFitting/enterQueenFitting/returnQueen/returnQueenWithReturn/finishQueen/takeQueenReturn` удалена из `Game`; остались тонкие обёртки `spawnQueen/updateQueen/returnQueen/takeQueenReturn` и getters для e2e/dev-консоли.
+- Unit-тесты на фейковом host покрывают ожидание заказа, отсутствие дублей, примерку и возврат с возвратом, выбор нового заказа, `takeReturn`, `finish` и `clearForResults`. Build, 76 unit и 67 e2e проходят; тексты, тайминги, баланс, UI и сцена не менялись.
 
 ### Исторические метрики до визуальных проходов
 

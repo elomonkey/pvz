@@ -88,6 +88,7 @@ import {
 import { ServiceSystem, type ServiceSession } from './systems/serviceSystem';
 import { EncounterCoordinator, type EncounterPhase } from './systems/encounterCoordinator';
 import { FinalBossSystem } from './systems/finalBossSystem';
+import { QueenScenario } from './systems/queenScenario';
 import { QueenSystem } from './systems/queenSystem';
 import { ShiftDirector } from './systems/shiftDirector';
 import { WarehouseState, type WarehouseCell } from './systems/warehouseSystem';
@@ -144,7 +145,6 @@ interface WaveConfig {
 }
 
 const PLAYER_SPEED = 3.15;
-const FITTING_POINT: Vec2 = { x: 3.15, z: 2.8 };
 
 export class Game {
   private readonly scene: THREE.Scene;
@@ -229,9 +229,16 @@ export class Game {
   private highlightEnabled = true;
   private pendingGameOver = false;
 
-  private queenClient: Client | null = null;
-  private readonly queen = new QueenSystem();
-  private queenWalkingToFitting = false;
+  private readonly queenScenario: QueenScenario;
+  private get queen() {
+    return this.queenScenario.queen;
+  }
+  private get queenClient(): Client | null {
+    return this.queenScenario.client;
+  }
+  private get queenWalkingToFitting(): boolean {
+    return this.queenScenario.walkingToFitting;
+  }
   private fittingActive = false;
   private fittingOccupied = [false, false];
   private fittingTimers = [0, 0];
@@ -264,6 +271,34 @@ export class Game {
         color: cell.color,
       })),
     );
+    this.queenScenario = new QueenScenario({
+      ui: this.ui,
+      sound: this.sound,
+      nextBudget: () => randInt(20, 30),
+      queenLine: () => pick(QUEEN_LINES),
+      returnLine: () => pick(QUEEN_RETURN_LINES),
+      createOrder: (maxItems) => this.createOrder(false, maxItems),
+      releaseOrder: (order) => this.releaseOrder(order),
+      createClient: (order) => this.createQueenClient(order),
+      addClient: (client) => {
+        this.clients.push(client);
+      },
+      enqueueFront: (client) => {
+        this.queue.unshift(client);
+        this.updateQueue();
+      },
+      dequeue: (client) => this.removeFromQueue(client),
+      isServiceActive: () => this.service.hasActive,
+      canTakeReturn: (client) => this.canTakeQueenReturn(client),
+      beginReturnCarry: () => this.beginQueenReturnCarry(),
+      orderCells: (order) => this.orderCellList(order),
+      addReputation: (amount) => this.addReputation(amount),
+      clearFitting: (resetTimers) => this.clearFittingRooms(resetTimers),
+      occupyFitting: () => this.occupyQueenFitting(),
+      refreshPatience: () => this.updatePatienceMultipliers(),
+      updateHud: () => this.updateHud(),
+      updatePrompt: () => this.updatePrompt(),
+    }, new QueenSystem());
 
     this.player = createPerson({
       coat: '#2d5f9a',
@@ -974,9 +1009,7 @@ export class Game {
     this.highlightEnabled = this.scannerWorks();
     this.world.setDayPhase(1);
 
-    this.queen.reset();
-    this.queenWalkingToFitting = false;
-    this.queenClient = null;
+    this.queenScenario.reset();
     this.fittingActive = isFittingActive(shift);
     this.fittingOccupied = [false, false];
     this.fittingTimers = [5, 9];
@@ -2259,17 +2292,7 @@ export class Game {
     this.run.totalServed += this.run.served;
 
     // Королева и примерочные не должны оставаться на экране итогов.
-    const queen = this.queenClient;
-    if (queen) {
-      this.removeFromQueue(queen);
-      this.releaseOrder(queen.order);
-      queen.root.visible = false;
-      queen.label.visible = false;
-      queen.hideBubble();
-    }
-    this.queen.reset();
-    this.queenWalkingToFitting = false;
-    this.queenClient = null;
+    this.queenScenario.clearForResults();
     this.fittingOccupied = [false, false];
     this.fittingFull = false;
     this.fittingTimers = [5, 9];
@@ -2421,8 +2444,7 @@ export class Game {
     this.pendingAction = null;
     this.service.reset();
     this.player.setCarry(false);
-    this.queen.reset();
-    this.queenWalkingToFitting = false;
+    this.queenScenario.stop();
     this.finalBoss.reset();
     if (this.finalBossGalya) {
       this.finalBossGalya.root.visible = false;
@@ -2858,13 +2880,13 @@ export class Game {
       this.setHighlight(-1, -1);
       this.sound.deliver();
       if (left <= 0) {
-        this.finishQueen();
+        this.queenScenario.finish();
       } else {
         this.ui.toast(
           `Королева получила ${active.order.items.length} товара. Осталось ${left}.`,
           'success',
         );
-        this.sendQueenToFitting();
+        this.queenScenario.sendToFitting();
       }
       this.updateHud();
       this.updatePrompt();
@@ -2941,9 +2963,7 @@ export class Game {
     if (this.isGameOver()) return;
     this.clearClients();
     this.updateShelfProgression(1);
-    this.queen.reset();
-    this.queenWalkingToFitting = false;
-    this.queenClient = null;
+    this.queenScenario.reset();
     this.ui.setQueenStatus(false, 0);
     this.fittingActive = false;
     this.fittingOccupied = [false, false];
@@ -3211,12 +3231,27 @@ export class Game {
   }
 
   private spawnQueen(): void {
-    if (this.queen.spawned) return;
-    const budget = randInt(20, 30);
-    const order = this.createOrder(false, Math.min(3, budget));
-    if (!order) return; // updateQueen retries without spawning an orderless client.
-    this.queen.spawn(budget);
+    this.queenScenario.spawn();
+  }
 
+  private updateQueen(dt: number): void {
+    const step = this.director.currentStep;
+    this.queenScenario.update(
+      dt,
+      this.run.shift === 4 && step?.type === 'wave' && step.wave >= 2,
+    );
+  }
+
+  // Keep the e2e/dev-console entry point while QueenScenario owns the flow.
+  private returnQueen(): void {
+    this.queenScenario.returnQueen();
+  }
+
+  private takeQueenReturn(): void {
+    this.queenScenario.takeReturn();
+  }
+
+  private createQueenClient(order: Order): Client {
     const queen = new Client({
       scene: this.scene,
       id: this.nextClientId++,
@@ -3228,216 +3263,28 @@ export class Game {
     });
     queen.onGone = (value) => this.onClientGone(value);
     queen.onLabelClick = (value) => this.onClientLabelClick(value);
-    this.queenClient = queen;
-    this.clients.push(queen);
-    this.queue.unshift(queen);
-    this.updateQueue();
-    this.updatePatienceMultipliers();
-    this.ui.setQueenStatus(true, this.queen.budget);
-
-    queen.rig.setCarry(false);
-    queen.showBubble(pick(QUEEN_LINES), 999);
-    this.ui.banner(
-      'Королева примерочной',
-      'Она занимает примерочные, злит очередь и приносит возвраты.',
-      3,
-    );
-    this.ui.toast('Королева примерочной уже здесь!', 'boss');
-    this.sound.boss();
-    this.updateHud();
-    this.updatePrompt();
+    return queen;
   }
 
-  private updateQueen(dt: number): void {
-    const step = this.director.currentStep;
-    if (this.run.shift === 4 && !this.queen.spawned && step?.type === 'wave' && step.wave >= 2) {
-      this.spawnQueen();
-    }
-    if (!this.queen.active || !this.queenClient) return;
-    const queen = this.queenClient;
-
-    if (this.queenWalkingToFitting) {
-      if (queen.state === 'waiting' && queen.isAt(FITTING_POINT, 0.2)) {
-        this.enterQueenFitting();
-      }
-      return;
-    }
-
-    if (queen.state === 'gone') {
-      // Пока игрок несёт возврат, Королева ждёт, а не возвращается с новым заказом.
-      if (this.queen.returnInHand) return;
-      this.queen.tickCooldown(dt);
-      // Если игрок в этот момент обслуживает другого клиента, Королева
-      // остаётся в примерочной и ждёт, а не зависает навсегда.
-      if (this.queen.readyToReturn && !this.service.active) {
-        if (this.queen.nextReturn) this.returnQueenWithReturn();
-        else this.returnQueen();
-      }
-      return;
-    }
-
-    // Пока Королева стоит с возвратом, она не меняет заказ и не врывается:
-    // игрок должен забрать возврат и отнести его в шкафчик.
-    if (queen.state !== 'waiting') return;
-  }
-
-  private sendQueenToFitting(): void {
-    const queen = this.queenClient;
-    if (!queen || this.queenWalkingToFitting) return;
-    this.removeFromQueue(queen);
-    queen.hideBubble();
-    queen.setTarget(false);
-    queen.rig.setCarry(false);
-    queen.walkTo(FITTING_POINT);
-    this.queenWalkingToFitting = true;
-    this.fittingOccupied = [false, false];
-    this.fittingFull = false;
-    this.ui.setFittingRooms(0, 2, true);
-    this.updatePatienceMultipliers();
-    this.ui.toast(
-      'Королева идёт в примерочную. Она может вернуться с возвратом.',
-      'boss',
-    );
-  }
-
-  private enterQueenFitting(): void {
-    this.queenWalkingToFitting = false;
-    const queen = this.queenClient;
-    if (!queen) return;
-    queen.hideBubble();
-    queen.rig.setCarry(false);
-    queen.state = 'gone';
-    queen.root.visible = true;
-    queen.label.visible = true;
-    queen.root.position.set(FITTING_POINT.x, 0, FITTING_POINT.z);
-    queen.root.rotation.y = -0.4;
-    this.queen.startFitting(6);
-    this.fittingOccupied = [true, true];
-    this.fittingFull = true;
-    this.updatePatienceMultipliers();
-    this.ui.setFittingRooms(2, 2, true);
-    this.ui.toast(
-      'Королева заняла обе примерочные. Она может вернуться с возвратом.',
-      'boss',
-    );
-  }
-
-  private returnQueen(): void {
-    const queen = this.queenClient;
-    if (!queen || !this.queen.active) return;
-    this.releaseOrder(queen.order);
-    const order = this.createOrder(false, Math.min(3, this.queen.budget));
-    if (!order) return; // Keep the fitting cooldown ready; updateQueen retries.
-    this.queen.beginReturn(false);
-    this.fittingOccupied = [false, false];
-    this.fittingFull = false;
-    this.fittingTimers = [5, 9];
-    this.ui.setFittingRooms(0, 2, true);
-    this.updatePatienceMultipliers();
-    queen.order = order;
-    queen.setPatience(999);
-    queen.state = 'entering';
-    queen.root.visible = true;
-    queen.label.visible = true;
-    // Выходит из примерочной, а не телепортируется к стойке.
-    queen.root.position.set(3.15, 0, 2.8);
-    queen.root.rotation.y = -0.4;
-    queen.rig.setCarry(false);
-    queen.showBubble(pick(QUEEN_LINES), 2);
-    this.queue.unshift(queen);
-    this.updateQueue();
-    this.updatePatienceMultipliers();
-    this.ui.banner('Королева вернулась', 'Она снова впереди и с новыми товарами.', 2.2);
-    this.ui.toast(`Королева требует ${this.orderCellList(queen.order)}`, 'boss');
-    this.updateHud();
-    this.updatePrompt();
-  }
-
-  private returnQueenWithReturn(): void {
-    const queen = this.queenClient;
-    if (!queen || !this.queen.active) return;
-    this.queen.beginReturn(true);
-    this.fittingOccupied = [false, false];
-    this.fittingFull = false;
-    this.fittingTimers = [5, 9];
-    this.ui.setFittingRooms(0, 2, true);
-    this.updatePatienceMultipliers();
-    this.releaseOrder(queen.order);
-    queen.order = null;
-    queen.setPatience(999);
-    queen.state = 'entering';
-    queen.root.visible = true;
-    queen.label.visible = true;
-    // Выходит из примерочной с возвратом, а не телепортируется к стойке.
-    queen.root.position.set(3.15, 0, 2.8);
-    queen.root.rotation.y = -0.4;
-    queen.rig.setCarry(true, '#d95d5d');
-    queen.showBubble(pick(QUEEN_RETURN_LINES), 999);
-    this.queue.unshift(queen);
-    this.updateQueue();
-    this.updatePatienceMultipliers();
-    this.ui.banner(
-      'Королева вернулась с возвратом',
-      'Заберите возврат и отнесите его в шкафчик «Возврат».',
-      3,
-    );
-    this.ui.toast('Королева принесла возврат!', 'boss');
-    this.sound.boss();
-    this.updateHud();
-    this.updatePrompt();
-  }
-
-  private finishQueen(): void {
-    const queen = this.queenClient;
-    this.queen.finish();
-    this.queenWalkingToFitting = false;
-    this.fittingOccupied = [false, false];
-    this.fittingFull = false;
-    this.fittingTimers = [5, 9];
-    this.ui.setFittingRooms(0, 2, true);
-    if (queen) {
-      this.removeFromQueue(queen);
-      queen.leave(0);
-    }
-    this.queenClient = null;
-    this.ui.setQueenStatus(false, 0);
-    this.updatePatienceMultipliers();
-    this.ui.banner(
-      'Королева ушла',
-      'Примерочные открыты. Обычные клиенты тоже могут ими пользоваться.',
-      3,
-    );
-    this.addReputation(0.5);
-    this.sound.win();
-    this.updateHud();
-    this.updatePrompt();
-  }
-
-  private takeQueenReturn(): void {
-    const queen = this.queenClient;
-    if (!queen || !this.queen.hasReturn) return;
+  private canTakeQueenReturn(queen: Client): boolean {
     if (this.service.carryingReturn) {
       this.ui.toast('У вас уже есть возврат. Сдайте его в шкафчик «Возврат».', 'error');
-      return;
+      return false;
     }
     if (this.service.active) {
       this.ui.toast('Сначала завершите текущий заказ', 'error');
-      return;
+      return false;
     }
     if (!this.isServableFront(queen)) {
       this.ui.toast('Королева уже не ждёт у стойки', 'error');
-      return;
+      return false;
     }
+    return true;
+  }
 
-    this.queen.takeReturn();
+  private beginQueenReturnCarry(): void {
     this.service.carryingReturn = true;
     this.player.setCarry(true, '#d95d5d');
-    this.removeFromQueue(queen);
-    queen.hideBubble();
-    queen.rig.setCarry(false);
-    queen.state = 'gone';
-    queen.root.visible = false;
-    queen.label.visible = false;
     this.service.clear();
     this.scannerPanel.closeScanner();
     this.ui.closePanels();
@@ -3446,6 +3293,19 @@ export class Game {
     this.sound.pickup();
     this.updateHud();
     this.updatePrompt();
+  }
+
+  private clearFittingRooms(resetTimers: boolean): void {
+    this.fittingOccupied = [false, false];
+    this.fittingFull = false;
+    if (resetTimers) this.fittingTimers = [5, 9];
+    this.ui.setFittingRooms(0, 2, true);
+  }
+
+  private occupyQueenFitting(): void {
+    this.fittingOccupied = [true, true];
+    this.fittingFull = true;
+    this.ui.setFittingRooms(2, 2, true);
   }
 
   private depositReturn(): void {
