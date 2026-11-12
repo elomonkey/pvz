@@ -83,6 +83,7 @@ export function resetTutorialProgress(): void {
     localStorage.removeItem(RESULTS_INTRO_KEY);
     localStorage.removeItem(ARGUE_INTRO_KEY);
     localStorage.removeItem(SHIFT4_INTRO_KEY);
+    localStorage.removeItem(SCANNER_BREAK_KEY);
   } catch {
     /* noop */
   }
