@@ -647,6 +647,7 @@
 | `src/systems/serviceSystem.ts` | Единственный владелец активного обслуживания: picked, стопка/цвета, carrying, readyToDeliver и снимок clear() |
 | `src/systems/warehouseSystem.ts` | Складское состояние: stock ячеек, резервы заказов, доступность активных полок и restock |
 | `src/systems/encounterCoordinator.ts` | Верхнеуровневый phase, modal/help и единая pause-политика |
+| `src/systems/queenScenario.ts` | Сценарий Королевы: появление, примерка, возврат, новый заказ и уход |
 | `src/systems/playerMovement.ts` | Позиция, путь, направление и прибытие игрока |
 | `src/view/scene.ts` | Сборка сцены и применение оформления |
 | `src/view/kit.ts` | Палитра, материалы, скруглённые примитивы и merge-утилиты low-poly кита |
@@ -673,7 +674,7 @@
 
 Позиция заказа (`currentItem`, `cellId`, `shelf`, `actual*`, `mixed`) вычисляется из `items`. `createOrderRecord()` создаёт getter-поля, поэтому после взятия посылки UI и сканер автоматически переходят к следующему item; ручной `syncOrderTarget()` не нужен.
 
-`EncounterCoordinator` хранит phase, общие pause-состояния (`modalOpen`, `helpOpen`) и overlay-флаги (`tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарии боссов пока остаются в Game — это следующий срез AUD-04/AUD-07.
+`EncounterCoordinator` хранит phase, общие pause-состояния (`modalOpen`, `helpOpen`) и overlay-флаги (`tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарий Королевы вынесен в `QueenScenario` (6.52); сценарии остальных боссов пока остаются в Game — это следующий срез AUD-04/AUD-07.
 
 ### Запуск
 
