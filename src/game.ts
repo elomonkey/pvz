@@ -38,7 +38,6 @@ import {
   SHELF_LETTERS,
   THANKS_LINES,
   UPGRADES,
-  cellId,
   clamp,
   createDecorState,
   pick,
@@ -54,6 +53,7 @@ import { Client } from './client';
 import { EventBus } from './core/eventBus';
 import type { GameEvents } from './domain/events';
 import type { Order, OrderItem } from './domain/orders';
+import { allocateOrderItems, availableOrderCells } from './domain/orderAllocation';
 import {
   CLIENT_ARGUE_MASH_TIME,
   CLIENT_ARGUE_WIN_THRESHOLD,
@@ -1090,9 +1090,11 @@ export class Game {
   }
 
   private spawnNext(): void {
-    const config = this.spawnQueue.shift();
+    const config = this.spawnQueue[0];
     if (!config) return;
     const order = this.createOrder(config.mixed);
+    if (!order) return; // Keep this arrival queued until stock becomes available.
+    this.spawnQueue.shift();
     const client = new Client({
       scene: this.scene,
       id: this.nextClientId++,
@@ -1122,145 +1124,40 @@ export class Game {
     return this.progression.orderSize(this.run.shift);
   }
 
-  private cellOnShelf(id: string): boolean {
-    return this.world.cells.some((cell) => cell.id === id && cell.parcel.visible);
-  }
-
-  private ensureShelfStock(): void {
-    const hasVisible = this.world.cells.some(
-      (cell) =>
-        cell.shelfIndex < this.progression.activeShelfCount && cell.parcel.visible,
+  private ensureShelfStock(required: number) {
+    let candidates = availableOrderCells(
+      this.world.cells, this.progression.activeShelfCount, this.reservedCells,
     );
-    if (!hasVisible) this.restockCells();
+    if (candidates.length < required) {
+      this.restockCells();
+      candidates = availableOrderCells(
+        this.world.cells, this.progression.activeShelfCount, this.reservedCells,
+      );
+    }
+    return candidates;
   }
 
-  private createOrder(mixedRequested: boolean, forcedCount?: number): Order {
-    this.ensureShelfStock();
-    const items: OrderItem[] = [];
+  private createOrder(mixedRequested: boolean, forcedCount?: number): Order | null {
     const desired = forcedCount ?? this.orderSize();
-
-    for (let index = 0; index < desired; index++) {
-      let shelf = 0;
-      let column = 0;
-      let level = 0;
-      let id = '';
-      let attempts = 0;
-      do {
-        shelf = randInt(0, this.progression.activeShelfCount - 1);
-        column = randInt(0, SHELF_DEFS[shelf].columns - 1);
-        level = randInt(0, 2);
-        id = cellId(shelf, column, level);
-        attempts++;
-      } while (
-        (this.reservedCells.has(id) ||
-          !this.cellOnShelf(id) ||
-          items.some((item) => item.cellId === id)) &&
-        attempts < 200
-      );
-
-      if (items.some((item) => item.cellId === id)) break;
-      items.push({
-        shelf,
-        column,
-        level,
-        cellId: id,
-        actualShelf: shelf,
-        actualColumn: column,
-        actualLevel: level,
-        actualCellId: id,
-        mixed: false,
-        picked: false,
-      });
-    }
-
-    const first = items[0];
-    let mixed = false;
-    if (mixedRequested && items.length === 1) {
-      const candidates = this.world.cells.filter(
-        (cell) =>
-          cell.shelfIndex === first.shelf &&
-          cell.id !== first.cellId &&
-          cell.parcel.visible &&
-          !this.reservedCells.has(cell.id),
-      );
-      if (candidates.length > 0) {
-        const candidate = pick(candidates);
-        first.actualShelf = candidate.shelfIndex;
-        first.actualColumn = candidate.column;
-        first.actualLevel = candidate.level;
-        first.actualCellId = candidate.id;
-        first.mixed = candidate.id !== first.cellId;
-        mixed = first.mixed;
-      }
-    }
-
-    for (const item of items) {
-      this.reservedCells.add(item.cellId);
-      this.reservedCells.add(item.actualCellId);
-    }
-
-    return {
-      items,
-      shelf: first.shelf,
-      column: first.column,
-      level: first.level,
-      cellId: first.cellId,
-      actualShelf: first.actualShelf,
-      actualColumn: first.actualColumn,
-      actualLevel: first.actualLevel,
-      actualCellId: first.actualCellId,
-      mixed,
-      scanned: false,
-      searchMode: false,
-      mixedTriggered: false,
-      checkedCells: [],
-    };
+    const items = allocateOrderItems(this.ensureShelfStock(desired), desired, { mixed: mixedRequested });
+    return this.createAllocatedOrder(items);
   }
 
-  private createFinalBossBarcodeOrder(count: number): Order {
-    this.ensureShelfStock();
-    const items: OrderItem[] = [];
+  private createFinalBossBarcodeOrder(count: number): Order | null {
     const shelfCount = Math.min(3, this.progression.activeShelfCount);
+    const items = allocateOrderItems(this.ensureShelfStock(count), count, {
+      preferredShelf: index => index < shelfCount ? index : randInt(0, shelfCount - 1),
+    });
+    return this.createAllocatedOrder(items);
+  }
 
-    for (let index = 0; index < count; index++) {
-      const shelf = index < shelfCount ? index : randInt(0, shelfCount - 1);
-      const definition = SHELF_DEFS[shelf];
-      let column = 0;
-      let level = 0;
-      let id = '';
-      let attempts = 0;
-      do {
-        column = randInt(0, definition.columns - 1);
-        level = randInt(0, 2);
-        id = cellId(shelf, column, level);
-        attempts++;
-      } while (
-        (this.reservedCells.has(id) ||
-          !this.cellOnShelf(id) ||
-          items.some((item) => item.cellId === id)) &&
-        attempts < 200
-      );
-      if (items.some((item) => item.cellId === id)) continue;
-      items.push({
-        shelf,
-        column,
-        level,
-        cellId: id,
-        actualShelf: shelf,
-        actualColumn: column,
-        actualLevel: level,
-        actualCellId: id,
-        mixed: false,
-        picked: false,
-      });
-    }
-
-    if (items.length === 0) return this.createOrder(false, Math.max(1, count));
+  private createAllocatedOrder(items: OrderItem[]): Order | null {
+    const first = items[0];
+    if (!first) return null;
     for (const item of items) {
       this.reservedCells.add(item.cellId);
       this.reservedCells.add(item.actualCellId);
     }
-    const first = items[0];
     return {
       items,
       shelf: first.shelf,
@@ -1271,7 +1168,7 @@ export class Game {
       actualColumn: first.actualColumn,
       actualLevel: first.actualLevel,
       actualCellId: first.actualCellId,
-      mixed: false,
+      mixed: first.mixed,
       scanned: false,
       searchMode: false,
       mixedTriggered: false,
@@ -1478,6 +1375,9 @@ export class Game {
     // Саня вводит механики: 4 заказа сразу, а после него — многоячейковые заказы.
     this.progression.setMultiOrders(true);
     this.clearClients();
+    // clearClients releases all reservations/carry, then allocation restocks.
+    const order = this.createOrder(false, 4);
+    if (!order) return;
     this.phase = 'boss';
     this.boss.begin('sanya');
     this.boss.trigger();
@@ -1490,7 +1390,7 @@ export class Game {
       scene: this.scene,
       id: this.nextClientId++,
       archetype: SANYA_ARCHETYPE,
-      order: this.createOrder(false, 4),
+      order,
       patience: 34,
       queueIndex: 0,
     });
@@ -2193,7 +2093,9 @@ export class Game {
       return;
     }
     const count = this.finalBoss.startBarcode(index);
-    this.finalBossOrder = this.createFinalBossBarcodeOrder(count);
+    const order = this.createFinalBossBarcodeOrder(count);
+    if (!order) return; // collect + no order is retried by updateFinalBoss.
+    this.finalBossOrder = order;
     galya.order = this.finalBossOrder;
     galya.state = 'waiting';
     galya.root.position.set(QUEUE_SPOTS[0].x, 0, QUEUE_SPOTS[0].z);
@@ -2267,6 +2169,10 @@ export class Game {
     if (!this.finalBoss.active) return;
 
     if (this.finalBoss.stage === 'collect' && this.finalBossGalya) {
+      if (!this.finalBossOrder) {
+        this.startFinalBossBarcode(this.finalBoss.barcode);
+        if (!this.finalBossOrder) return;
+      }
       if (this.finalBoss.tickTaunt(dt)) {
         const line = pick(GALYA_SHOUT_LINES);
         this.finalBossGalya.showBubble(line, 2.2);
@@ -3336,13 +3242,16 @@ export class Game {
 
   private spawnQueen(): void {
     if (this.queen.spawned) return;
-    this.queen.spawn(randInt(20, 30));
+    const budget = randInt(20, 30);
+    const order = this.createOrder(false, Math.min(3, budget));
+    if (!order) return; // updateQueen retries without spawning an orderless client.
+    this.queen.spawn(budget);
 
     const queen = new Client({
       scene: this.scene,
       id: this.nextClientId++,
       archetype: QUEEN_ARCHETYPE,
-      order: this.createOrder(false, Math.min(3, this.queen.budget)),
+      order,
       patience: 999,
       queueIndex: 0,
       isBoss: true,
@@ -3370,6 +3279,10 @@ export class Game {
   }
 
   private updateQueen(dt: number): void {
+    const step = this.director.currentStep;
+    if (this.run.shift === 4 && !this.queen.spawned && step?.type === 'wave' && step.wave >= 2) {
+      this.spawnQueen();
+    }
     if (!this.queen.active || !this.queenClient) return;
     const queen = this.queenClient;
 
@@ -3442,14 +3355,16 @@ export class Game {
   private returnQueen(): void {
     const queen = this.queenClient;
     if (!queen || !this.queen.active) return;
+    this.releaseOrder(queen.order);
+    const order = this.createOrder(false, Math.min(3, this.queen.budget));
+    if (!order) return; // Keep the fitting cooldown ready; updateQueen retries.
     this.queen.beginReturn(false);
     this.fittingOccupied = [false, false];
     this.fittingFull = false;
     this.fittingTimers = [5, 9];
     this.ui.setFittingRooms(0, 2, true);
     this.updatePatienceMultipliers();
-    this.releaseOrder(queen.order);
-    queen.order = this.createOrder(false, Math.min(3, this.queen.budget));
+    queen.order = order;
     queen.setPatience(999);
     queen.state = 'entering';
     queen.root.visible = true;

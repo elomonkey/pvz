@@ -15,6 +15,94 @@ import { QueenSystem } from '../src/systems/queenSystem.ts';
 import { PlayerMovement } from '../src/systems/playerMovement.ts';
 import { ZinaPuzzleSystem, isZinaSolved } from '../src/systems/zinaPuzzleSystem.ts';
 import { bossKindForShift } from '../src/domain/bosses.ts';
+import { allocateOrderItems, availableOrderCells } from '../src/domain/orderAllocation.ts';
+
+function allocationCells() {
+  return Array.from({ length: 9 }, (_, index) => ({
+    id: `${index / 3 | 0}-${index % 3}`, shelfIndex: index / 3 | 0,
+    column: index % 3, level: 0, parcel: { visible: true },
+  }));
+}
+
+test('allocator: one visible active unreserved cell is the only possible item, even with constant RNG', () => {
+  const cells = allocationCells();
+  for (const cell of cells) cell.parcel.visible = cell.shelfIndex === 2 || cell.id === '1-2';
+  const candidates = availableOrderCells(cells, 2, new Set());
+  const items = allocateOrderItems(candidates, 1, { random: () => 0 });
+  assert.deepEqual(items.map(item => item.cellId), ['1-2']);
+});
+
+for (const desired of [2, 3]) {
+  test(`allocator: deficit for ${desired} items never duplicates or invents stock`, () => {
+    const cells = allocationCells();
+    cells[0].parcel.visible = false;
+    const candidates = availableOrderCells(cells, 1, new Set(['0-1']));
+    const items = allocateOrderItems(candidates, desired, { random: () => 0 });
+    assert.deepEqual(items.map(item => item.cellId), ['0-2']);
+    assert.equal(new Set(items.map(item => item.cellId)).size, items.length);
+  });
+}
+
+test('allocator: restocking visible flags does not make reserved cells available', () => {
+  const cells = allocationCells();
+  const reserved = new Set(cells.map(cell => cell.id));
+  for (const cell of cells) cell.parcel.visible = false;
+  assert.deepEqual(availableOrderCells(cells, 2, reserved), []);
+  for (const cell of cells) cell.parcel.visible = true;
+  assert.deepEqual(allocateOrderItems(availableOrderCells(cells, 2, reserved), 3), []);
+  reserved.delete('1-2');
+  assert.deepEqual(allocateOrderItems(availableOrderCells(cells, 2, reserved), 3).map(item => item.cellId), ['1-2']);
+});
+
+test('allocator: already selected cells are excluded without mutating inputs', () => {
+  const cells = allocationCells();
+  const selected = new Set(['0-0', '0-1']);
+  assert.deepEqual(availableOrderCells(cells, 1, new Set(), selected).map(cell => cell.id), ['0-2']);
+  assert.equal(cells.length, 9);
+  assert.equal(selected.size, 2);
+});
+
+test('allocator: mixed actual cell comes from the same available shelf only', () => {
+  const cells = allocationCells();
+  cells[1].parcel.visible = false;
+  const reserved = new Set(['1-1']);
+  const candidates = availableOrderCells(cells, 2, reserved);
+  const [item] = allocateOrderItems(candidates, 1, { mixed: true, random: () => 0 });
+  assert.equal(item.cellId, '0-0');
+  assert.equal(item.actualCellId, '0-2');
+  assert.equal(item.actualShelf, item.shelf);
+  assert.equal(item.mixed, true);
+  assert.equal(reserved.size, 1);
+  const [single] = allocateOrderItems([cells[0], cells[3]], 1, { mixed: true, random: () => 0 });
+  assert.equal(single.actualCellId, single.cellId);
+  assert.equal(single.mixed, false);
+});
+
+for (const desired of [2, 3, 4]) {
+  test(`allocator: final barcode keeps ${desired} items and preferred shelves`, () => {
+    const cells = allocationCells();
+    const items = allocateOrderItems(cells, desired, { preferredShelf: index => index % 3, random: () => 0 });
+    assert.equal(items.length, desired);
+    assert.deepEqual(items.map(item => item.shelf), Array.from({ length: desired }, (_, index) => index % 3));
+    assert.equal(new Set(items.map(item => item.cellId)).size, desired);
+    assert.ok(cells.every(cell => cell.parcel.visible));
+  });
+}
+
+test('allocator: an exhausted preferred shelf falls back to other active candidates', () => {
+  const cells = allocationCells();
+  const candidates = availableOrderCells(cells, 2, new Set(['0-0', '0-1', '0-2']));
+  const items = allocateOrderItems(candidates, 4, { preferredShelf: () => 0, random: () => 0 });
+  assert.equal(items.length, 3);
+  assert.ok(items.every(item => item.shelf === 1));
+});
+
+test('allocator: ordinary shelf choice is not biased towards longer shelves', () => {
+  const cells = allocationCells().slice(0, 7);
+  const values = [0.8, 0];
+  const [item] = allocateOrderItems(cells, 1, { random: () => values.shift()! });
+  assert.equal(item.shelf, 2);
+});
 
 test('shift director: старт, передышка и шаги', () => {
   const director = new ShiftDirector();
