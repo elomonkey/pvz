@@ -52,7 +52,7 @@ import {
 import { Client } from './client';
 import { EventBus } from './core/eventBus';
 import type { GameEvents } from './domain/events';
-import type { Order, OrderItem } from './domain/orders';
+import { createOrderRecord, type Order, type OrderItem } from './domain/orders';
 import { allocateOrderItems } from './domain/orderAllocation';
 import {
   CLIENT_ARGUE_MASH_TIME,
@@ -1158,40 +1158,9 @@ export class Game {
   }
 
   private createAllocatedOrder(items: OrderItem[]): Order | null {
-    const first = items[0];
-    if (!first) return null;
+    if (items.length === 0) return null;
     this.warehouse.reserve(items.flatMap((item) => [item.cellId, item.actualCellId]));
-    return {
-      items,
-      shelf: first.shelf,
-      column: first.column,
-      level: first.level,
-      cellId: first.cellId,
-      actualShelf: first.actualShelf,
-      actualColumn: first.actualColumn,
-      actualLevel: first.actualLevel,
-      actualCellId: first.actualCellId,
-      mixed: first.mixed,
-      scanned: false,
-      searchMode: false,
-      mixedTriggered: false,
-      checkedCells: [],
-    };
-  }
-
-  private syncOrderTarget(order: Order): OrderItem | null {
-    const item = order.items.find((value) => !value.picked);
-    if (!item) return null;
-    order.shelf = item.shelf;
-    order.column = item.column;
-    order.level = item.level;
-    order.cellId = item.cellId;
-    order.actualShelf = item.actualShelf;
-    order.actualColumn = item.actualColumn;
-    order.actualLevel = item.actualLevel;
-    order.actualCellId = item.actualCellId;
-    order.mixed = item.mixed;
-    return item;
+    return createOrderRecord(items, { scanned: false });
   }
 
   private orderCellList(order: Order): string {
@@ -1887,8 +1856,8 @@ export class Game {
     column: number;
     level: number;
   }): Order {
-    return {
-      items: [
+    return createOrderRecord(
+      [
         {
           shelf: cell.shelfIndex,
           column: cell.column,
@@ -1902,20 +1871,8 @@ export class Game {
           picked: false,
         },
       ],
-      shelf: cell.shelfIndex,
-      column: cell.column,
-      level: cell.level,
-      cellId: cell.id,
-      actualShelf: cell.shelfIndex,
-      actualColumn: cell.column,
-      actualLevel: cell.level,
-      actualCellId: cell.id,
-      mixed: false,
-      scanned: true,
-      searchMode: false,
-      mixedTriggered: false,
-      checkedCells: [],
-    };
+      { scanned: true },
+    );
   }
 
   private finishBossStep(): void {
@@ -2821,7 +2778,6 @@ export class Game {
     this.scannerPanel.clearPanel();
 
     if (!this.service.readyToDeliver) {
-      this.syncOrderTarget(order);
       if (this.highlightEnabled) {
         this.setHighlight(order.shelf, order.column);
       } else {
