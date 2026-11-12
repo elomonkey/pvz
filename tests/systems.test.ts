@@ -1225,8 +1225,8 @@ test('final boss scenario: entrance → три штрихкода → приме
   h.scenario.update(0);
   assert.equal(h.calls.dialogues.at(-1)?.phase, 'ФАЗА 3 / 3');
   assert.deepEqual(h.calls.fitting.at(-1), {
-    occupied: [true, false],
-    full: false,
+    occupied: [true],
+    full: true,
     resetTimers: false,
     active: true,
   });

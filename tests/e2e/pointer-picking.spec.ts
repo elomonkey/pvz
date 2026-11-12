@@ -44,9 +44,17 @@ test('hidden shelf C lets a real canvas click reach the floor and move the playe
   });
   expect(before.hidden).toBe(true);
   await expect(page.locator('#game-canvas')).toBeVisible();
-  // C occludes this walkable floor point. The original audit point below
-  // overlaps visible B, so it must retain shelf behavior rather than move.
-  await page.mouse.click(1235, 375);
+  // Project the hidden C's lowest middle parcel into the real canvas. This
+  // remains a regression for invisible picking when the room/camera is resized.
+  const hiddenPoint = await page.evaluate(() => {
+    const g = (window as any).game;
+    g.scene.updateMatrixWorld(true);
+    const cell = g.world.cells.find((c: any) => c.shelfIndex === 2 && c.column === 1 && c.level === 0);
+    const p = cell.parcel.getWorldPosition(cell.center.clone()).project(g.camera);
+    const r = g.renderer.domElement.getBoundingClientRect();
+    return { x: r.left + (p.x + 1) * r.width / 2, y: r.top + (1 - p.y) * r.height / 2 };
+  });
+  await page.mouse.click(hiddenPoint.x, hiddenPoint.y);
   expect(await lastPick(page)).toMatchObject({ type: 'floor' });
   await expect(page.getByText('Сначала отсканируйте заказ', { exact: true })).toHaveCount(0);
   await expect.poll(() => page.evaluate(({ x, z }) => {
@@ -54,7 +62,14 @@ test('hidden shelf C lets a real canvas click reach the floor and move the playe
     return Math.hypot(p.x - x, p.z - z);
   }, before)).toBeGreaterThan(0.05);
   await testInfo.attach('hidden-C-click', { body: await page.screenshot(), contentType: 'image/png' });
-  await page.mouse.click(1224.46, 345.75);
+  const visiblePoint = await page.evaluate(() => {
+    const g = (window as any).game;
+    const shelf = g.world.shelves[1].group;
+    const p = shelf.position.clone().set(-0.2, 2.1, 0.23).applyMatrix4(shelf.matrixWorld).project(g.camera);
+    const r = g.renderer.domElement.getBoundingClientRect();
+    return { x: r.left + (p.x + 1) * r.width / 2, y: r.top + (1 - p.y) * r.height / 2 };
+  });
+  await page.mouse.click(visiblePoint.x, visiblePoint.y);
   expect(await lastPick(page)).toMatchObject({ type: 'shelf', shelfIndex: 1 });
 });
 

@@ -27,7 +27,7 @@ export interface FinalBossScenarioHost {
   patienceMultiplier(): number;
   applyDebuffEffects(): void;
   setFittingState(
-    occupied: [boolean, boolean],
+    occupied: [boolean],
     full: boolean,
     resetTimers: boolean,
     active: boolean,
@@ -156,7 +156,7 @@ export class FinalBossScenario {
     }
 
     this.finalBoss.enterFitting();
-    this.host.setFittingState([true, false], false, false, true);
+    this.host.setFittingState([true], true, false, true);
     this.host.ui.setFinalBossStatus(true, 3, 'Валера в примерочной');
     this.openDialogue(3, 'Забрать возврат');
   }
@@ -225,7 +225,7 @@ export class FinalBossScenario {
     this.host.ui.setFinalBossDebuff(false);
     this.host.ui.setFinalBossStatus(false, 0, '');
     this.host.ui.setOrderChip(null);
-    this.host.setFittingState([false, false], false, true, false);
+    this.host.setFittingState([false], false, true, false);
 
     const galya = this.galyaValue;
     const valera = this.valeraValue;
@@ -336,7 +336,7 @@ export class FinalBossScenario {
   private startReturns(): void {
     const galya = this.galyaValue;
     this.finalBoss.startReturns();
-    this.host.setFittingState([true, false], false, false, true);
+    this.host.setFittingState([true], true, false, true);
     if (galya) {
       galya.state = 'waiting';
       galya.order = null;

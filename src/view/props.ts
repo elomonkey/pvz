@@ -20,7 +20,6 @@ import {
 } from '../data';
 import {
   KIT_COLORS,
-  kitCylinder,
   kitMaterial,
   kitPanel,
   mergeStaticMeshesToVertexColor,
@@ -144,7 +143,7 @@ export function createShelf(index: number, scene: THREE.Scene): ShelfVisual {
   top.position.set(0, SHELF_H - 0.03, 0);
   addStatic(top);
 
-  const topTrim = kitPanel(width + 0.02, 0.025, SHELF_D + 0.02, KIT_COLORS.cream, {
+  const topTrim = kitPanel(width + 0.02, 0.025, SHELF_D + 0.02, KIT_COLORS.woodLight, {
     radius: 0.01,
   });
   topTrim.position.set(0, SHELF_H + 0.018, 0);
@@ -278,265 +277,93 @@ export function createShelf(index: number, scene: THREE.Scene): ShelfVisual {
 
 export function createCounter(scene: THREE.Scene): THREE.Group {
   const group = new THREE.Group();
+  group.name = 'service-counter';
   group.position.set(COUNTER.x, 0, COUNTER.z);
   group.userData = { type: 'counter' };
-
-  const base = roundedBox(COUNTER.w, 0.94, COUNTER.d, KIT_COLORS.sage, { radius: 0.06 });
-  base.position.y = 0.47;
-  group.add(base);
-
-  const kick = roundedBox(COUNTER.w, 0.12, COUNTER.d + 0.04, KIT_COLORS.woodDeep, {
-    radius: 0.02,
-  });
-  kick.position.y = 0.06;
-  group.add(kick);
-
-  const top = roundedBox(COUNTER.w + 0.18, 0.1, COUNTER.d + 0.14, KIT_COLORS.woodLight, {
-    radius: 0.04,
-  });
-  top.position.y = 1.045;
-  top.material = new THREE.MeshLambertMaterial({ map: woodTexture(KIT_COLORS.woodLight, 2, 1) });
-  group.add(top);
-
-  const trim = roundedBox(COUNTER.w + 0.2, 0.04, COUNTER.d + 0.16, KIT_COLORS.cream, {
-    radius: 0.015,
-  });
-  trim.position.y = 0.995;
-  group.add(trim);
-
+  const add = (w: number, h: number, d: number, color: string, x: number, y: number, z: number): THREE.Mesh => {
+    const mesh = roundedBox(w, h, d, color, { radius: 0.025 });
+    mesh.position.set(x, y, z); group.add(mesh); return mesh;
+  };
+  add(COUNTER.w, 0.94, COUNTER.d, '#78835d', 0, 0.47, 0);
+  add(COUNTER.w - 0.06, 0.12, COUNTER.d + 0.02, '#3d493a', 0, 0.06, 0);
+  const top = add(COUNTER.w + 0.18, 0.1, COUNTER.d + 0.18, KIT_COLORS.woodLight, 0, 1.045, 0);
+  top.name = 'countertop';
+  top.material = new THREE.MeshLambertMaterial({ map: woodTexture('#dbb380', 2, 1) });
+  // Both sides share the olive inset and slender oak frame; the camera sees the staff side.
   for (const side of [-1, 1]) {
-    const cap = roundedBox(0.07, 0.86, COUNTER.d + 0.02, KIT_COLORS.wood, { radius: 0.02 });
-    cap.position.set(side * (COUNTER.w / 2 - 0.035), 0.47, 0);
-    group.add(cap);
+    const z = side * (COUNTER.d / 2 + 0.015);
+    add(COUNTER.w - 0.18, 0.72, 0.035, '#63734d', 0, 0.52, z);
+    for (const y of [0.14, 0.9]) add(COUNTER.w - 0.08, 0.045, 0.055, '#b88d5d', 0, y, z);
+    for (const x of [-COUNTER.w / 2 + 0.07, COUNTER.w / 2 - 0.07]) {
+      add(0.06, 0.8, 0.06, '#b88d5d', x, 0.53, z);
+    }
+    add(COUNTER.w - 0.2, 0.018, 0.06, '#efc76d', 0, 0.96, z);
   }
+  for (const side of [-1, 1]) add(0.065, 0.9, COUNTER.d, '#bf9665', side * (COUNTER.w / 2 - 0.035), 0.5, 0);
 
-  const panelW = COUNTER.w - 0.12;
-  const panelZ = COUNTER.d / 2 + 0.012;
-
-  const frontPanel = roundedBox(panelW, 0.68, 0.04, KIT_COLORS.cream, { radius: 0.028 });
-  frontPanel.position.set(0, 0.5, panelZ);
-  group.add(frontPanel);
-
-  const frameTop = box(panelW + 0.08, 0.05, 0.055, KIT_COLORS.wood);
-  frameTop.position.set(0, 0.865, panelZ);
-  group.add(frameTop);
-  const frameBottom = box(panelW + 0.08, 0.05, 0.055, KIT_COLORS.wood);
-  frameBottom.position.set(0, 0.135, panelZ);
-  group.add(frameBottom);
-  for (const side of [-1, 1]) {
-    const frameSide = box(0.05, 0.72, 0.055, KIT_COLORS.wood);
-    frameSide.position.set(side * (panelW / 2 + 0.04), 0.5, panelZ);
-    group.add(frameSide);
+  // The only built-in desktop equipment is a compact open laptop facing the player/camera.
+  const laptop = new THREE.Group();
+  laptop.name = 'counter-laptop';
+  laptop.position.set(-1.42, 1.1, 0);
+  const base = roundedBox(0.67, 0.035, 0.43, '#39464b', { radius: 0.018 });
+  base.position.y = 0.018; laptop.add(base);
+  const keyboard = box(0.53, 0.005, 0.21, '#7e8987');
+  keyboard.position.set(0, 0.038, 0.025); laptop.add(keyboard);
+  for (let row = 0; row < 3; row++) {
+    for (let key = 0; key < 8; key++) {
+      const cap = box(0.048, 0.006, 0.033, '#344044');
+      cap.position.set(-0.23 + key * 0.065, 0.043, 0.08 - row * 0.05); laptop.add(cap);
+    }
   }
-  const divider = box(0.035, 0.62, 0.06, KIT_COLORS.wood);
-  divider.position.set(0, 0.5, panelZ + 0.005);
-  group.add(divider);
-
-  for (const side of [-1, 1]) {
-    const handle = kitCylinder(0.02, 0.02, 0.055, KIT_COLORS.mustard, 8);
-    handle.rotation.x = Math.PI / 2;
-    handle.position.set(side * 1.35, 0.56, panelZ + 0.045);
-    group.add(handle);
-  }
-
-  const backPanel = roundedBox(panelW, 0.68, 0.04, KIT_COLORS.sageDark, { radius: 0.028 });
-  backPanel.position.set(0, 0.5, -panelZ);
-  group.add(backPanel);
-
-  const backTrim = box(panelW + 0.08, 0.05, 0.055, KIT_COLORS.wood);
-  backTrim.position.set(0, 0.865, -panelZ);
-  group.add(backTrim);
-
-  const monitorStand = kitCylinder(0.055, 0.085, 0.28, KIT_COLORS.metal, 10);
-  monitorStand.position.set(-1.45, 1.22, -0.08);
-  group.add(monitorStand);
-
-  const monitor = roundedBox(0.56, 0.38, 0.07, '#2d3a40', { radius: 0.035 });
-  monitor.position.set(-1.45, 1.47, -0.08);
-  group.add(monitor);
-
-  const screenTexture = makeTextTexture('ЗАКАЗЫ', {
-    width: 512,
-    height: 320,
-    bg: '#17212b',
-    color: '#9fe6a8',
-    fontSize: 92,
-    subtext: 'ПВЗ · 01',
-  });
-  const screen = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.47, 0.29),
-    new THREE.MeshBasicMaterial({ map: screenTexture }),
-  );
-  screen.position.set(-1.45, 1.47, -0.12);
-  screen.rotation.y = Math.PI;
-  group.add(screen);
-
-  const scannerBase = roundedBox(0.24, 0.14, 0.2, KIT_COLORS.metal, { radius: 0.035 });
-  scannerBase.position.set(0.55, 1.16, -0.08);
-  group.add(scannerBase);
-  const scannerHead = roundedBox(0.18, 0.09, 0.16, KIT_COLORS.woodDark, { radius: 0.025 });
-  scannerHead.position.set(0.55, 1.27, -0.08);
-  group.add(scannerHead);
-  const redLight = sphere(0.028, '#ff5b5b');
-  redLight.position.set(0.61, 1.31, -0.15);
-  group.add(redLight);
-
-  const printer = roundedBox(0.36, 0.22, 0.24, KIT_COLORS.cream, { radius: 0.03 });
-  printer.position.set(-1.8, 1.2, 0.0);
-  group.add(printer);
-  const paper = roundedBox(0.25, 0.02, 0.16, KIT_COLORS.white, { radius: 0.006 });
-  paper.position.set(-1.8, 1.32, 0.02);
-  group.add(paper);
-
-  const terminal = roundedBox(0.24, 0.12, 0.16, KIT_COLORS.metal, { radius: 0.03 });
-  terminal.position.set(1.9, 1.15, 0.0);
-  group.add(terminal);
-
-  const bellBase = kitCylinder(0.06, 0.07, 0.02, KIT_COLORS.woodDark, 10);
-  bellBase.position.set(1.55, 1.1, 0.14);
-  group.add(bellBase);
-  const bell = sphere(0.045, KIT_COLORS.mustard);
-  bell.position.set(1.55, 1.14, 0.14);
-  group.add(bell);
-
-  const counterParcel = roundedBox(0.24, 0.16, 0.2, '#d8b48a', { radius: 0.025 });
-  counterParcel.position.set(1.15, 1.13, 0.03);
-  group.add(counterParcel);
-  const counterParcelTape = box(0.24, 0.012, 0.06, KIT_COLORS.cream);
-  counterParcelTape.position.set(1.15, 1.215, 0.03);
-  group.add(counterParcelTape);
-
-  const plantX = 2.4;
-  const plantPot = kitCylinder(0.13, 0.1, 0.2, KIT_COLORS.coral, 10);
-  plantPot.position.set(plantX, 1.18, 0.06);
-  group.add(plantPot);
-  for (let i = 0; i < 5; i++) {
-    const leaf = cone(0.09, 0.32, KIT_COLORS.sage, 6);
-    leaf.position.set(plantX + Math.cos(i * 1.6) * 0.08, 1.4, 0.06 + Math.sin(i * 1.6) * 0.08);
-    leaf.rotation.z = Math.cos(i * 1.6) * 0.45;
-    leaf.rotation.x = Math.sin(i * 1.6) * 0.45;
-    group.add(leaf);
-  }
-
-  const penCup = kitCylinder(0.045, 0.05, 0.11, KIT_COLORS.mustard, 10);
-  penCup.position.set(-0.7, 1.155, 0.12);
-  group.add(penCup);
-  const penColors = [KIT_COLORS.coral, KIT_COLORS.blue, KIT_COLORS.sageDark];
-  for (let i = 0; i < penColors.length; i++) {
-    const pen = box(0.012, 0.18, 0.012, penColors[i]);
-    pen.position.set(-0.7 + (i - 1) * 0.022, 1.245, 0.12 + (i - 1) * 0.012);
-    pen.rotation.z = (i - 1) * 0.16;
-    group.add(pen);
-  }
-
-  const staffSign = signPlane('СТОЙКА', 1.2, 0.3, {
-    bg: KIT_COLORS.cream,
-    color: KIT_COLORS.ink,
-    fontSize: 54,
-    border: KIT_COLORS.woodDark,
-  });
-  staffSign.position.set(0, 0.78, -(COUNTER.d / 2 + 0.01));
-  staffSign.rotation.y = Math.PI;
-  group.add(staffSign);
-
+  const trackpad = box(0.16, 0.005, 0.07, '#83918e');
+  trackpad.position.set(0, 0.039, -0.13); laptop.add(trackpad);
+  const lid = new THREE.Group();
+  lid.position.set(0, 0.04, 0.16);
+  lid.rotation.x = 0.18;
+  const frame = roundedBox(0.66, 0.43, 0.04, '#2f3c42', { radius: 0.025 });
+  frame.position.y = 0.21; lid.add(frame);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.575, 0.34), new THREE.MeshBasicMaterial({
+    map: makeTextTexture('ЗАКАЗЫ', { width: 512, height: 320, bg: '#243a39', color: '#dde6cb', fontSize: 76, subtext: 'ПВЗ · 01' }),
+  }));
+  screen.name = 'laptop-screen';
+  screen.position.set(0, 0.21, -0.022); screen.rotation.y = Math.PI; lid.add(screen);
+  mergeStaticMeshesToVertexColor([frame], lid, VERTEX_COLOR_MATERIAL);
+  laptop.add(lid);
+  mergeStaticMeshesToVertexColor(laptop.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh), laptop, VERTEX_COLOR_MATERIAL);
+  group.add(laptop);
+  // No permanent printer, loose parcel, bell, payment terminal or plants on the desktop.
+  // The existing toy and optional shop decor keep their gameplay and ownership in scene.ts.
   const shadow = contactShadow(COUNTER.w / 2 + 0.06, COUNTER.d / 2 + 0.04, 0.14);
-  shadow.position.set(0, 0.032, 0.02);
-  group.add(shadow);
-
-  const counterParts = group.children.filter(
-    (child): child is THREE.Mesh =>
-      child instanceof THREE.Mesh &&
-      !(child.material as THREE.Material).transparent &&
-      !(child.material as THREE.MeshBasicMaterial).map,
-  );
-  mergeStaticMeshesToVertexColor(counterParts, group, VERTEX_COLOR_MATERIAL);
+  shadow.position.set(0, 0.032, 0.02); group.add(shadow);
+  mergeStaticMeshesToVertexColor(group.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh), group, VERTEX_COLOR_MATERIAL);
   scene.add(group);
   return group;
 }
 
-/** Шкафчик в расширенной зоне сотрудника — витрина под будущие предметы магазина. */
+/** Low return cabinet at the end of the counter, with an empty receiving cubby. */
 export function createStaffShelf(scene: THREE.Scene): THREE.Group {
   const group = new THREE.Group();
+  group.name = 'return-cabinet';
   group.position.set(STAFF_SHELF.x, 0, STAFF_SHELF.z);
   group.userData = { type: 'return-shelf' };
-
-  const body = roundedBox(STAFF_SHELF.w, 0.86, STAFF_SHELF.d, KIT_COLORS.sage, {
-    radius: 0.045,
-  });
-  body.position.y = 0.43;
-  group.add(body);
-
-  const top = roundedBox(STAFF_SHELF.w + 0.1, 0.07, STAFF_SHELF.d + 0.08, KIT_COLORS.woodLight, {
-    radius: 0.025,
-  });
-  top.position.y = 0.89;
-  group.add(top);
-
-  const topTrim = kitPanel(STAFF_SHELF.w + 0.02, 0.025, STAFF_SHELF.d + 0.02, KIT_COLORS.cream, {
-    radius: 0.01,
-  });
-  topTrim.position.y = 0.932;
-  topTrim.raycast = () => {};
-  group.add(topTrim);
-
+  const add = (w: number, h: number, d: number, color: string, x: number, y: number, z: number): void => {
+    const mesh = roundedBox(w, h, d, color, { radius: 0.022 });
+    mesh.position.set(x, y, z); group.add(mesh);
+  };
+  add(STAFF_SHELF.w, 0.65, STAFF_SHELF.d, '#78835d', 0, 0.35, 0);
+  add(STAFF_SHELF.w + 0.08, 0.065, STAFF_SHELF.d + 0.04, '#dcbb88', 0, 0.7, 0);
   for (const side of [-1, 1]) {
-    const door = roundedBox(0.52, 0.58, 0.035, KIT_COLORS.cream, { radius: 0.025 });
-    door.position.set(side * 0.33, 0.44, -STAFF_SHELF.d / 2 - 0.012);
-    group.add(door);
-
-    const handle = kitCylinder(0.018, 0.018, 0.05, KIT_COLORS.mustard, 8);
-    handle.rotation.x = Math.PI / 2;
-    handle.position.set(side * 0.08, 0.47, -STAFF_SHELF.d / 2 - 0.04);
-    group.add(handle);
+    add(STAFF_SHELF.w / 2 - 0.055, 0.5, 0.025, '#e0d4b9', side * STAFF_SHELF.w / 4, 0.36, -STAFF_SHELF.d / 2 - 0.015);
+    add(0.022, 0.1, 0.035, '#c59e55', side * 0.065, 0.34, -STAFF_SHELF.d / 2 - 0.045);
+    add(0.055, 0.36, STAFF_SHELF.d, '#c79e6b', side * (STAFF_SHELF.w / 2 - 0.03), 0.91, 0);
   }
-
-  // Верхняя открытая полка: смотрит в сторону камеры.
-  const back = roundedBox(STAFF_SHELF.w, 0.74, 0.05, KIT_COLORS.sageLight, { radius: 0.024 });
-  back.position.set(0, 1.28, STAFF_SHELF.d / 2 - 0.025);
-  group.add(back);
-  for (const side of [-1, 1]) {
-    const panel = roundedBox(0.055, 0.74, STAFF_SHELF.d, KIT_COLORS.wood, { radius: 0.018 });
-    panel.position.set(side * (STAFF_SHELF.w / 2 - 0.028), 1.28, 0);
-    group.add(panel);
-  }
-  const shelf = roundedBox(STAFF_SHELF.w - 0.1, 0.055, STAFF_SHELF.d - 0.06, KIT_COLORS.woodLight, {
-    radius: 0.02,
-  });
-  shelf.position.set(0, 1.28, 0);
-  group.add(shelf);
-
-  const itemColors = [KIT_COLORS.coral, KIT_COLORS.blue, KIT_COLORS.mustard, KIT_COLORS.sageDark];
-  for (let index = 0; index < 4; index++) {
-    const width = 0.15 + (index % 2) * 0.05;
-    const item = roundedBox(width, 0.16, 0.16, itemColors[index], { radius: 0.025 });
-    item.position.set(-0.45 + index * 0.3, 1.4, 0);
-    group.add(item);
-    const tape = box(width * 0.22, 0.018, 0.17, KIT_COLORS.tape);
-    tape.position.set(item.position.x, 1.49, 0);
-    tape.raycast = () => {};
-    group.add(tape);
-  }
-
-  const sign = signPlane('ВОЗВРАТ', 0.95, 0.22, {
-    bg: KIT_COLORS.cream,
-    color: KIT_COLORS.plum,
-    fontSize: 46,
-    border: KIT_COLORS.plum,
-  });
-  sign.position.set(0, 0.58, -STAFF_SHELF.d / 2 - 0.015);
-  sign.rotation.y = Math.PI;
+  add(STAFF_SHELF.w - 0.1, 0.32, 0.035, '#869274', 0, 0.9, STAFF_SHELF.d / 2 - 0.02);
+  add(STAFF_SHELF.w + 0.08, 0.06, STAFF_SHELF.d + 0.04, '#dcbb88', 0, 1.1, 0);
+  const sign = signPlane('ВОЗВРАТ', 0.92, 0.2, { bg: KIT_COLORS.cream, color: KIT_COLORS.ink, fontSize: 46, border: '#ad8b5e' });
+  sign.position.set(0, 0.59, -STAFF_SHELF.d / 2 - 0.035); sign.rotation.y = Math.PI;
   group.add(sign);
-
-  const shadow = contactShadow(STAFF_SHELF.w / 2 + 0.08, STAFF_SHELF.d / 2 + 0.06, 0.14);
-  group.add(shadow);
-
-  const staffParts = group.children.filter(
-    (child): child is THREE.Mesh =>
-      child instanceof THREE.Mesh &&
-      !(child.material as THREE.Material).transparent &&
-      !(child.material as THREE.MeshBasicMaterial).map,
-  );
-  mergeStaticMeshesToVertexColor(staffParts, group, VERTEX_COLOR_MATERIAL);
+  group.add(contactShadow(STAFF_SHELF.w / 2 + 0.08, STAFF_SHELF.d / 2 + 0.06, 0.14));
+  mergeStaticMeshesToVertexColor(group.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh), group, VERTEX_COLOR_MATERIAL);
   scene.add(group);
   return group;
 }

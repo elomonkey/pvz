@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PALETTE, ROOM } from '../data';
+import { PALETTE, ROOM, STORAGE, STORAGE_DOOR } from '../data';
 import { createPlant } from './props';
 import {
   box,
@@ -72,36 +72,19 @@ function makeTileTexture(
   return texture;
 }
 
-function makeRugTexture(): THREE.CanvasTexture {
+function makeRugTexture(color = '#82949b', edge = '#526d76'): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.fillStyle = ctx.createPattern(fabricTexture('#91a4b1').image, 'repeat')!;
-    ctx.fillRect(0, 0, 256, 256);
-    ctx.strokeStyle = '#657f90';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(10, 10, 236, 236);
-    ctx.lineWidth = 3;
-    ctx.strokeRect(28, 28, 200, 200);
-    ctx.beginPath();
-    ctx.moveTo(128, 38);
-    ctx.lineTo(218, 128);
-    ctx.lineTo(128, 218);
-    ctx.lineTo(38, 128);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.globalAlpha = 0.35;
-    for (let i = 0; i < 8; i++) {
-      const y = 44 + i * 24;
-      ctx.beginPath();
-      ctx.moveTo(40, y);
-      ctx.lineTo(216, y);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = ctx.createPattern(fabricTexture(color).image, 'repeat')!;
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = 8;
+  ctx.strokeRect(6, 6, 244, 244);
+  ctx.strokeStyle = '#cfc9aa';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(17, 17, 222, 222);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
@@ -114,8 +97,12 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   rightBase.raycast = () => {};
   scene.add(rightBase);
 
-  const storageBase = box(6.5, 0.22, 2.25, '#918c80');
-  storageBase.position.set(-4.85, -0.11, -0.475);
+  const sw = STORAGE.maxX - STORAGE.minX;
+  const sd = STORAGE.maxZ - STORAGE.minZ;
+  const sx = (STORAGE.minX + STORAGE.maxX) / 2;
+  const sz = (STORAGE.minZ + STORAGE.maxZ) / 2;
+  const storageBase = box(sw + 0.1, 0.22, sd + 0.05, '#9d8d72');
+  storageBase.position.set(sx, -0.11, sz);
   storageBase.raycast = () => {};
   scene.add(storageBase);
 
@@ -129,13 +116,14 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   rightFloor.userData = { type: 'floor' };
   scene.add(rightFloor);
 
-  const storageTexture = woodTexture(PALETTE.storageFloor, 2, 1.5);
+  const storageTexture = makeTileTexture('#d1c2aa', '#bcae97', sw / 0.9, sd / 0.9);
   const storageFloor = new THREE.Mesh(
-    new THREE.PlaneGeometry(6.4, 2.15),
+    new THREE.PlaneGeometry(sw, sd),
     new THREE.MeshLambertMaterial({ map: storageTexture }),
   );
   storageFloor.rotation.x = -Math.PI / 2;
-  storageFloor.position.set(-4.85, 0.002, -0.475);
+  storageFloor.position.set(sx, 0.002, sz);
+  storageFloor.name = 'storage-floor';
   storageFloor.userData = { type: 'floor' };
   scene.add(storageFloor);
 
@@ -143,16 +131,16 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
   border1.position.set(1.65, 0.035, -2.04);
   border1.raycast = () => {};
   scene.add(border1);
-  const border2 = box(6.55, 0.1, 0.12, '#706b62');
-  border2.position.set(-4.85, 0.035, -1.64);
+  const border2 = box(sw + 0.15, 0.1, 0.12, '#7d6d55');
+  border2.position.set(sx, 0.035, -2.04);
   border2.raycast = () => {};
   scene.add(border2);
   const border3 = box(0.12, 0.1, 5.7, '#7d6d55');
   border3.position.set(4.99, 0.035, 0.85);
   border3.raycast = () => {};
   scene.add(border3);
-  const border4 = box(0.12, 0.1, 2.25, '#706b62');
-  border4.position.set(-8.14, 0.035, -0.475);
+  const border4 = box(0.12, 0.1, sd + 0.05, '#7d6d55');
+  border4.position.set(STORAGE.minX - 0.04, 0.035, sz);
   border4.raycast = () => {};
   scene.add(border4);
 
@@ -160,43 +148,43 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
 }
 
 function createRug(scene: THREE.Scene): THREE.Mesh {
-  const rugBorder = box(2.86, 0.012, 2.5, '#d8cdbd');
-  rugBorder.position.set(0.4, 0.003, 2.15);
-  rugBorder.raycast = () => {};
-  scene.add(rugBorder);
-
   const rug = new THREE.Mesh(
-    new THREE.BoxGeometry(2.7, 0.018, 2.35),
+    new THREE.BoxGeometry(2.55, 0.018, 2.5),
     new THREE.MeshLambertMaterial({ map: makeRugTexture() }),
   );
-  rug.position.set(0.4, 0.008, 2.15);
+  rug.name = 'client-rug';
+  rug.position.set(0.35, 0.012, 2.12);
   rug.userData = { type: 'floor' };
   scene.add(rug);
 
-  const stripe1 = box(2.45, 0.02, 0.14, '#e8f0e8');
-  stripe1.position.set(0.4, 0.014, 1.25);
-  stripe1.raycast = () => {};
-  scene.add(stripe1);
-  const stripe2 = stripe1.clone();
-  stripe2.position.z = 3.05;
-  scene.add(stripe2);
-
-  const staffMat = box(4.8, 0.018, 1.75, '#7b8f7f');
-  staffMat.material = new THREE.MeshLambertMaterial({ map: fabricTexture('#82917c') });
-  staffMat.position.set(1.3, 0.01, -0.62);
+  const staffMat = new THREE.Mesh(
+    new THREE.BoxGeometry(3.95, 0.018, 1.35),
+    new THREE.MeshLambertMaterial({ map: makeRugTexture('#7f8b62', '#526343') }),
+  );
+  staffMat.name = 'staff-rug';
+  staffMat.position.set(0.75, 0.012, -0.93);
   staffMat.userData = { type: 'floor' };
   scene.add(staffMat);
-  const matBorder = box(4.9, 0.014, 1.85, '#5f7265');
-  matBorder.position.set(1.3, 0.006, -0.62);
-  matBorder.raycast = () => {};
-  scene.add(matBorder);
 
-  const storageMat = box(6.25, 0.012, 1.9, '#aeb4a8');
-  storageMat.material = new THREE.MeshLambertMaterial({ map: fabricTexture('#afb3a4') });
-  storageMat.position.set(-4.85, 0.007, -0.47);
-  storageMat.userData = { type: 'floor' };
-  scene.add(storageMat);
-
+  // A single flat painted border, with rounded corners, leaves the aisle empty.
+  const rounded = (path: THREE.Path, x: number, y: number, w: number, h: number, r: number): void => {
+    path.moveTo(x + r, y);
+    path.lineTo(x + w - r, y); path.quadraticCurveTo(x + w, y, x + w, y + r);
+    path.lineTo(x + w, y + h - r); path.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    path.lineTo(x + r, y + h); path.quadraticCurveTo(x, y + h, x, y + h - r);
+    path.lineTo(x, y + r); path.quadraticCurveTo(x, y, x + r, y);
+  };
+  const border = new THREE.Shape();
+  rounded(border, -3.3, -0.61, 6.6, 1.22, 0.14);
+  const inner = new THREE.Path();
+  rounded(inner, -3.25, -0.56, 6.5, 1.12, 0.1);
+  border.holes.push(inner);
+  const aisle = new THREE.Mesh(new THREE.ShapeGeometry(border), new THREE.MeshLambertMaterial({ color: '#d5ac52' }));
+  aisle.name = 'storage-clear-aisle';
+  aisle.rotation.x = -Math.PI / 2;
+  aisle.position.set(-5.35, 0.014, -1.02);
+  aisle.raycast = () => {};
+  scene.add(aisle);
   return rug;
 }
 
@@ -567,28 +555,6 @@ function createQueueLine(scene: THREE.Scene): void {
 }
 
 function createStorageProps(scene: THREE.Scene): void {
-  const addFloorBox = (
-    x: number,
-    z: number,
-    width: number,
-    height: number,
-    depth: number,
-    color: string,
-    rotation = 0,
-    baseY = 0,
-  ): void => {
-    const parcel = roundedBox(width, height, depth, color, { radius: 0.035 });
-    parcel.position.set(x, baseY + height / 2 + 0.01, z);
-    parcel.rotation.y = rotation;
-    scene.add(parcel);
-
-    const tape = box(width * 0.22, 0.012, depth * 0.82, CREAM);
-    tape.position.set(x, baseY + height + 0.02, z);
-    tape.rotation.y = rotation;
-    tape.raycast = () => {};
-    scene.add(tape);
-  };
-
   const addBasket = (x: number, z: number): void => {
     const basket = new THREE.Group();
     basket.position.set(x, 0, z);
@@ -702,10 +668,8 @@ function createStorageProps(scene: THREE.Scene): void {
     scene.add(basket);
   };
 
-  addBasket(-2.18, 0.05);
-  addFloorBox(-2.9, -0.5, 0.42, 0.3, 0.38, '#d98b72', 0.08);
-  addFloorBox(-2.9, -0.48, 0.34, 0.24, 0.32, '#8fae9b', -0.12, 0.3);
-  addFloorBox(-3.35, -0.55, 0.36, 0.26, 0.34, '#e0a36f', 0.18);
+  addBasket(-8.82, -1.52);
+
 }
 
 function createWalls(scene: THREE.Scene): {
@@ -763,16 +727,22 @@ function createWalls(scene: THREE.Scene): {
   addWall(0.2, 3.2, 5.7, 5.0, 1.6, 0.85);
 
   // Западная и северная стены склада.
-  addWall(0.2, 3.2, 2.05, -8.1, 1.6, -0.475);
-  addWall(6.4, 3.2, 0.2, -4.8, 1.6, 0.65);
+  const sw = STORAGE.maxX - STORAGE.minX;
+  const sd = STORAGE.maxZ - STORAGE.minZ;
+  const sx = (STORAGE.minX + STORAGE.maxX) / 2;
+  const sz = (STORAGE.minZ + STORAGE.maxZ) / 2;
+  addWall(0.2, 3.2, sd, STORAGE.minX, 1.6, sz);
+  addWall(sw, 3.2, 0.2, sx, 1.6, STORAGE.maxZ);
 
   // Западная стена клиентской зоны (внешний угол).
   addWall(0.2, 3.2, 3.05, -1.7, 1.6, 2.075);
 
-  // Перегородка между нашей зоной и складом с дверью 1,2 м.
-  addWall(0.2, 3.2, 0.3, -1.7, 1.6, -1.35);
-  addWall(0.2, 3.2, 0.55, -1.7, 1.6, 0.275);
-  addWall(0.2, 0.7, 1.2, -1.7, 2.85, -0.6);
+  // Wider open portal, derived from the same bounds as navigation.
+  const doorStart = STORAGE_DOOR.z - STORAGE_DOOR.width / 2;
+  const doorEnd = STORAGE_DOOR.z + STORAGE_DOOR.width / 2;
+  addWall(0.2, 3.2, doorStart - STORAGE.minZ, -1.7, 1.6, (doorStart + STORAGE.minZ) / 2);
+  addWall(0.2, 3.2, STORAGE.maxZ - doorEnd, -1.7, 1.6, (doorEnd + STORAGE.maxZ) / 2);
+  addWall(0.2, 0.7, STORAGE_DOOR.width, -1.7, 2.85, STORAGE_DOOR.z);
 
   // Плинтусы.
   const base1 = box(3.0, 0.16, 0.05, WALL_TRIM);
@@ -787,11 +757,11 @@ function createWalls(scene: THREE.Scene): {
   const base3 = box(0.05, 0.16, 3.05, WALL_TRIM);
   base3.position.set(-1.595, 0.08, 2.075);
   scene.add(base3);
-  const base4 = box(6.4, 0.16, 0.05, WALL_TRIM);
-  base4.position.set(-4.8, 0.08, 0.545);
+  const base4 = box(sw, 0.16, 0.05, WALL_TRIM);
+  base4.position.set(sx, 0.08, 0.545);
   scene.add(base4);
-  const base5 = box(0.05, 0.16, 2.05, WALL_TRIM);
-  base5.position.set(-7.995, 0.08, -0.475);
+  const base5 = box(0.05, 0.16, sd, WALL_TRIM);
+  base5.position.set(STORAGE.minX + 0.105, 0.08, sz);
   scene.add(base5);
 
   // Дверные рамы.
@@ -807,13 +777,13 @@ function createWalls(scene: THREE.Scene): {
   scene.add(frameFrontTop);
 
   const frameStoreS = box(0.1, 2.5, 0.08, dark);
-  frameStoreS.position.set(-1.59, 1.25, -1.2);
+  frameStoreS.position.set(-1.59, 1.25, doorStart);
   scene.add(frameStoreS);
   const frameStoreN = frameStoreS.clone();
-  frameStoreN.position.z = 0.0;
+  frameStoreN.position.z = doorEnd;
   scene.add(frameStoreN);
-  const frameStoreTop = box(0.1, 0.1, 1.2, dark);
-  frameStoreTop.position.set(-1.59, 2.5, -0.6);
+  const frameStoreTop = box(0.1, 0.1, STORAGE_DOOR.width, dark);
+  frameStoreTop.position.set(-1.59, 2.5, STORAGE_DOOR.z);
   scene.add(frameStoreTop);
 
   const posterA = signPlane('ПВЗ', 1.1, 0.42, {
@@ -834,7 +804,7 @@ function createWalls(scene: THREE.Scene): {
     border: '#596b80',
   });
   storageSign.rotation.y = Math.PI;
-  storageSign.position.set(-5.1, 2.72, 0.545);
+  storageSign.position.set(-5.1, 2.9, 0.545);
   scene.add(storageSign);
 
   const clockTexture = (() => {
@@ -943,148 +913,99 @@ function makeGlowTexture(): THREE.CanvasTexture {
 }
 
 function createLamps(scene: THREE.Scene): void {
-  const lampPositions: Array<[number, number, number]> = [
-    [0.4, 1.6, 1.0],
-    [-4.3, -0.35, 0.9],
-  ];
   const glowTexture = makeGlowTexture();
-
-  for (const [x, z, scale] of lampPositions) {
+  // Two small warm pendants in the customer zone; no extra runtime lights.
+  for (const x of [-0.45, 1.25]) {
     const group = new THREE.Group();
-    group.position.set(x, 0, z);
-    group.scale.setScalar(scale);
-    const cord = cylinder(0.02, 0.02, 0.7, '#2b3440', 6);
-    cord.position.set(0, 2.95, 0);
+    group.name = 'customer-pendant';
+    group.position.set(x, 0, 2.35);
+    const cord = cylinder(0.013, 0.013, 0.72, INK, 6);
+    cord.position.y = 2.96;
     group.add(cord);
-    const shade = cone(0.34, 0.32, '#3a4a5c', 10);
-    shade.position.set(0, 2.5, 0);
-    shade.rotation.x = Math.PI;
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.29, 0.26, 12), new THREE.MeshLambertMaterial({ color: '#344047' }));
+    shade.position.y = 2.47;
     group.add(shade);
-    const bulb = sphere(0.1, '#ffd98a');
-    bulb.position.set(0, 2.36, 0);
+    const bulb = new THREE.Mesh(new THREE.CircleGeometry(0.24, 12), new THREE.MeshBasicMaterial({ color: '#ffe2aa', side: THREE.DoubleSide }));
+    bulb.rotation.x = -Math.PI / 2;
+    bulb.position.y = 2.335;
     group.add(bulb);
-
-    const light = new THREE.PointLight(0xffd9a8, 0.22, 6, 2);
-    light.position.set(0, 2.3, 0);
-    group.add(light);
-
-    const glow = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: glowTexture,
-        color: '#ffe4b8',
-        transparent: true,
-        opacity: 0.32,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    );
-    glow.position.set(0, 2.38, 0);
-    glow.scale.set(0.9, 0.9, 1);
-    group.add(glow);
-
-    const pool = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.64, 1.64),
-      new THREE.MeshBasicMaterial({
-        map: glowTexture,
-        color: '#ffe4b8',
-        transparent: true,
-        opacity: 0.12,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    );
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), new THREE.MeshBasicMaterial({
+      map: glowTexture, color: '#ffe0ad', transparent: true, opacity: 0.1, depthWrite: false,
+    }));
     pool.rotation.x = -Math.PI / 2;
-    pool.position.y = 0.02;
+    pool.position.y = 0.04;
     pool.raycast = () => {};
     group.add(pool);
-
-    mergeStaticMeshesToVertexColor(
-      group.children.filter(
-        (child): child is THREE.Mesh =>
-          child instanceof THREE.Mesh && !(child.material as THREE.Material).transparent,
-      ),
-      group,
-      VERTEX_COLOR_MATERIAL,
-    );
+    mergeStaticMeshesToVertexColor([cord, shade], group, VERTEX_COLOR_MATERIAL);
+    scene.add(group);
+  }
+  // Shallow wall bars and a subtle baked wash above A/B, no shadow maps.
+  for (const x of [-3.8, -6.45]) {
+    const group = new THREE.Group();
+    group.name = 'storage-wall-light';
+    group.position.set(x, 2.57, 0.43);
+    const housing = roundedBox(1.18, 0.095, 0.14, INK, { radius: 0.02 });
+    group.add(housing);
+    const diffuser = new THREE.Mesh(new THREE.PlaneGeometry(1.08, 0.055), new THREE.MeshBasicMaterial({ color: '#ffe5b6' }));
+    diffuser.position.set(0, -0.055, -0.075);
+    diffuser.rotation.set(Math.PI * 0.18, Math.PI, 0);
+    group.add(diffuser);
+    const wash = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 0.8), new THREE.MeshBasicMaterial({
+      map: glowTexture, color: '#ffd6a0', transparent: true, opacity: 0.2, depthWrite: false,
+    }));
+    wash.rotation.y = Math.PI;
+    wash.position.set(0, -0.12, 0.1);
+    wash.raycast = () => {};
+    group.add(wash);
     scene.add(group);
   }
 }
 
 function createFittingRooms(scene: THREE.Scene): void {
-  const frame = '#7b8b9d';
-  const curtain = '#b9c6d4';
-  const curtainGeometry = new THREE.BoxGeometry(0.04, 1.9, 0.42, 1, 1, 18);
-  const curtainPositions = curtainGeometry.getAttribute('position');
-  for (let i = 0; i < curtainPositions.count; i++) {
-    const z = curtainPositions.getZ(i);
-    curtainPositions.setX(i, curtainPositions.getX(i) + Math.sin((z + 0.21) / 0.42 * Math.PI * 6) * 0.018);
+  const cabin = new THREE.Group();
+  cabin.name = 'fitting-room';
+  cabin.position.set(3.55, 0, 2.95);
+  cabin.rotation.y = -Math.PI / 2;
+  const add = (w: number, h: number, d: number, color: string, x: number, y: number, z: number): THREE.Mesh => {
+    const mesh = roundedBox(w, h, d, color, { radius: 0.018 });
+    mesh.position.set(x, y, z); cabin.add(mesh); return mesh;
+  };
+  add(0.08, 2.25, 1.95, '#c5baa7', 0.62, 1.125, 0);
+  for (const side of [-1, 1]) {
+    add(1.3, 2.25, 0.07, '#c5baa7', 0, 1.125, side * 0.95);
+    add(0.07, 2.25, 0.09, INK, -0.64, 1.125, side * 0.95);
   }
-  curtainGeometry.computeVertexNormals();
-
-  for (const x of [3.15, 4.35]) {
-    const cabin = new THREE.Group();
-    cabin.position.set(x, 0, 2.95);
-    cabin.rotation.y = -Math.PI / 2;
-
-    const back = box(0.08, 2.3, 1.2, frame);
-    back.position.set(0.62, 1.15, 0);
-    cabin.add(back);
-
-    for (const side of [-1, 1]) {
-      const panel = box(1.3, 2.3, 0.08, frame);
-      panel.position.set(0, 1.15, side * 0.6);
-      cabin.add(panel);
-    }
-
-    const top = box(1.38, 0.1, 1.32, '#4a5b6d');
-    top.position.set(0, 2.3, 0);
-    cabin.add(top);
-
-    const rod = box(0.05, 0.05, 1.18, '#2f3d4c');
-    rod.position.set(-0.66, 2.12, 0);
-    cabin.add(rod);
-
-    for (const side of [-1, 1]) {
-      const panel = box(0.04, 1.9, 0.42, curtain);
-      panel.geometry = curtainGeometry;
-      panel.scale.set(1, 1, 1);
-      panel.position.set(-0.65, 1.07, side * 0.41);
-      cabin.add(panel);
-    }
-
-    const bench = box(0.68, 0.1, 0.82, '#8b6f52');
-    bench.position.set(0.2, 0.48, 0);
-    cabin.add(bench);
-
-    const mirrorFrame = box(0.035, 1.15, 0.76, WOOD_DARK);
-    mirrorFrame.position.set(0.58, 1.25, 0);
-    cabin.add(mirrorFrame);
-
-    const mirror = box(0.02, 1.0, 0.62, '#cfe8f5');
-    mirror.position.set(0.55, 1.25, 0);
-    cabin.add(mirror);
-
-    const hook = box(0.06, 0.06, 0.14, WOOD);
-    hook.position.set(0.56, 1.8, 0.42);
-    cabin.add(hook);
-
-    mergeStaticMeshesToVertexColor(
-      cabin.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
-      cabin,
-      VERTEX_COLOR_MATERIAL,
-    );
-    scene.add(cabin);
+  add(1.42, 0.12, 2.06, '#344651', 0, 2.3, 0);
+  add(0.05, 0.05, 1.94, '#d5cfc1', -0.65, 2.13, 0);
+  // Shared folded curtain geometry: broad, soft folds rather than flat panels.
+  const geometry = new THREE.BoxGeometry(0.035, 1.88, 0.69, 1, 1, 24);
+  const positions = geometry.getAttribute('position');
+  for (let i = 0; i < positions.count; i++) {
+    const z = positions.getZ(i);
+    positions.setX(i, positions.getX(i) + Math.cos((z + 0.345) / 0.69 * Math.PI * 8) * 0.045);
   }
-
-  const fittingSign = signPlane('ПРИМЕРОЧНЫЕ', 2.2, 0.5, {
-    bg: CREAM,
-    color: INK,
-    fontSize: 54,
-    border: '#596b80',
-  });
-  fittingSign.rotation.y = Math.PI;
-  fittingSign.position.set(3.75, 2.72, 3.585);
-  scene.add(fittingSign);
+  geometry.computeVertexNormals();
+  for (const side of [-1, 1]) {
+    const curtain = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: '#a9adb2' }));
+    curtain.position.set(-0.65, 1.13, side * 0.59);
+    cabin.add(curtain);
+    for (let i = 0; i < 5; i++) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.034, 0.009, 4, 8), new THREE.MeshLambertMaterial({ color: '#ded7c6' }));
+      ring.rotation.y = Math.PI / 2;
+      ring.position.set(-0.65, 2.13, side * 0.59 - 0.29 + i * 0.145);
+      cabin.add(ring);
+    }
+  }
+  // Warm framed mirror inside the opening; no stool in front of the cabin.
+  add(0.04, 1.44, 0.5, '#9f764b', 0.56, 1.35, 0);
+  add(0.025, 1.34, 0.42, '#f5db9a', 0.53, 1.35, 0);
+  add(0.025, 1.22, 0.31, '#b5cbca', 0.51, 1.35, 0);
+  mergeStaticMeshesToVertexColor(cabin.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh), cabin, VERTEX_COLOR_MATERIAL);
+  scene.add(cabin);
+  const sign = signPlane('ПРИМЕРОЧНАЯ', 2.15, 0.43, { bg: CREAM, color: INK, fontSize: 50, border: '#8b735a' });
+  sign.rotation.y = Math.PI;
+  sign.position.set(3.55, 2.73, 3.585);
+  scene.add(sign);
   createPlant(scene, 4.65, 0.95, 0.55);
 }
 
@@ -1101,7 +1022,7 @@ export function createEnvironment(scene: THREE.Scene): EnvironmentVisuals {
   createLamps(scene);
   createFittingRooms(scene);
   createPlant(scene, 2.15, 3.25, 0.85);
-  createPlant(scene, -7.05, -1.3, 0.8);
+
 
   const protectedObjects = new Set<THREE.Object3D>([
     ...walls.walls,
