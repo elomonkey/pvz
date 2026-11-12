@@ -807,6 +807,12 @@ export class Game {
   update(dt: number): void {
     this.time += dt;
     this.updateWorldAnimations(dt);
+    // Results block gameplay, but leaving clients still need to finish their exit
+    // and call onGone/destroy instead of staying in 'leaving' forever.
+    if (this.phase === 'results') {
+      for (const client of [...this.clients]) client.update(dt, this.time);
+      return;
+    }
     if (this.isGameOver()) return;
 
     if (this.questLog.active && (this.phase === 'playing' || this.phase === 'boss' || this.phase === 'break')) {
@@ -851,7 +857,7 @@ export class Game {
       return;
     }
 
-    if (this.phase === 'results' || this.phase === 'gameover') return;
+    if (this.phase === 'gameover') return;
 
     if (this.phase === 'playing' || this.phase === 'boss') {
       this.updatePlayer(dt);
@@ -2271,6 +2277,8 @@ export class Game {
     this.finalBossGalya = null;
     this.finalBossValera = null;
     this.finalBossOrder = null;
+    // Results must not retain leaving/final clients until the next reset.
+    this.clearClients();
     this.service.carryingReturn = false;
     this.player.setCarry(false);
     this.ui.setFittingRooms(0, 2, false);
