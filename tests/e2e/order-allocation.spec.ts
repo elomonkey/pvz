@@ -22,17 +22,17 @@ async function setup(page: Page) {
     g.renderer.setAnimationLoop(null);
     g.queue[0].preplaceAtFront();
     g.releaseOrder(g.queue[0].order);
-    g.reservedCells.clear();
+    g.warehouse.reserved.clear();
     // Observe validity against reservations BEFORE allocation: afterwards the
     // new order correctly owns reservations for all its requested/actual IDs.
     (window as any).allocationSnapshot = (order: any, reserved: Set<string>) => order.items.map((item: any) => {
       const valid = (id: string) => {
         const c = g.world.cells.find((cell: any) => cell.id === id);
-        return !!c && c.shelfIndex < g.progression.activeShelfCount && c.parcel.visible && !reserved.has(id);
+        return !!c && c.shelfIndex < g.progression.activeShelfCount && g.warehouse.hasStock(id) && !reserved.has(id);
       };
       return { id: item.cellId, actual: item.actualCellId, shelf: item.shelf,
         valid: valid(item.cellId) && valid(item.actualCellId),
-        reserved: g.reservedCells.has(item.cellId) && g.reservedCells.has(item.actualCellId) };
+        reserved: g.warehouse.reserved.has(item.cellId) && g.warehouse.reserved.has(item.actualCellId) };
     });
   });
 }
@@ -41,8 +41,8 @@ test('almost empty stock allocates its only parcel and the order can be collecte
   await setup(page);
   const result = await page.evaluate(() => {
     const g = (window as any).game;
-    for (const c of g.world.cells) c.parcel.visible = c.id === 'B-4-1';
-    const reserved = new Set<string>(g.reservedCells);
+    for (const c of g.world.cells) g.warehouse.setStock(c.id, c.id === 'B-4-1');
+    const reserved = new Set<string>(g.warehouse.reserved);
     const original = Math.random;
     let order: any;
     try { Math.random = () => 0; order = g.createOrder(false, 1); }
@@ -74,16 +74,16 @@ test('stock shortage triggers one restock, preserves reservations and shrinks to
     const g = (window as any).game;
     const keep = ['A-1-1', 'B-4-1'];
     for (const cell of g.world.cells) {
-      cell.parcel.visible = cell.id === keep[0];
-      if (!keep.includes(cell.id)) g.reservedCells.add(cell.id);
+      g.warehouse.setStock(cell.id, cell.id === keep[0]);
+      if (!keep.includes(cell.id)) g.warehouse.reserved.add(cell.id);
     }
-    const reserved = new Set<string>(g.reservedCells);
+    const reserved = new Set<string>(g.warehouse.reserved);
     let restocks = 0;
     const restock = g.restockCells.bind(g);
     g.restockCells = () => { restocks++; restock(); };
     const order = g.createOrder(false, 3);
     return { restocks, snapshot: (window as any).allocationSnapshot(order, reserved),
-      keptReservations: [...reserved].every(id => g.reservedCells.has(id)) };
+      keptReservations: [...reserved].every(id => g.warehouse.reserved.has(id)) };
   });
   expect(result.restocks).toBe(1);
   expect(result.keptReservations).toBe(true);
@@ -96,9 +96,9 @@ test('mixed actual cell is available, unreserved and on the requested shelf', as
   const result = await page.evaluate(() => {
     const g = (window as any).game;
     const keep = ['A-1-1', 'A-2-1', 'B-1-1'];
-    for (const c of g.world.cells) c.parcel.visible = keep.includes(c.id) || c.shelfIndex === 2;
-    g.reservedCells.add('A-1-2');
-    const reserved = new Set<string>(g.reservedCells);
+    for (const c of g.world.cells) g.warehouse.setStock(c.id, keep.includes(c.id) || c.shelfIndex === 2);
+    g.warehouse.reserved.add('A-1-2');
+    const reserved = new Set<string>(g.warehouse.reserved);
     const original = Math.random;
     try {
       Math.random = () => 0;
@@ -118,23 +118,23 @@ test('final barcodes keep 2/3/4 items on normal stock and fall back or shrink on
     g.clearClients();
     const normal = [2, 3, 4].map(count => {
       g.restockCells();
-      const reserved = new Set<string>(g.reservedCells);
+      const reserved = new Set<string>(g.warehouse.reserved);
       const order = g.createFinalBossBarcodeOrder(count);
       const snapshot = (window as any).allocationSnapshot(order, reserved);
       g.releaseOrder(order);
       return { count, snapshot };
     });
-    for (const c of g.world.cells) if (c.shelfIndex === 0) g.reservedCells.add(c.id);
-    const beforeFallback = new Set<string>(g.reservedCells);
+    for (const c of g.world.cells) if (c.shelfIndex === 0) g.warehouse.reserved.add(c.id);
+    const beforeFallback = new Set<string>(g.warehouse.reserved);
     const fallback = g.createFinalBossBarcodeOrder(4);
     const fallbackSnapshot = (window as any).allocationSnapshot(fallback, beforeFallback);
     g.releaseOrder(fallback);
     const keep = ['B-1-1', 'C-1-1'];
     for (const c of g.world.cells) {
-      c.parcel.visible = false;
-      if (!keep.includes(c.id)) g.reservedCells.add(c.id);
+      g.warehouse.setStock(c.id, false);
+      if (!keep.includes(c.id)) g.warehouse.reserved.add(c.id);
     }
-    const beforeDeficit = new Set<string>(g.reservedCells);
+    const beforeDeficit = new Set<string>(g.warehouse.reserved);
     const deficit = g.createFinalBossBarcodeOrder(4);
     return { normal, fallback: fallbackSnapshot, deficit: (window as any).allocationSnapshot(deficit, beforeDeficit) };
   });
@@ -154,18 +154,18 @@ test('fully reserved stock returns null without a client; the queued arrival res
   await setup(page);
   const result = await page.evaluate(() => {
     const g = (window as any).game;
-    for (const c of g.world.cells) g.reservedCells.add(c.id);
-    const reserved = new Set<string>(g.reservedCells);
+    for (const c of g.world.cells) g.warehouse.reserved.add(c.id);
+    const reserved = new Set<string>(g.warehouse.reserved);
     const normal = g.createOrder(false, 3);
     const final = g.createFinalBossBarcodeOrder(4);
-    const unchanged = [...reserved].every(id => g.reservedCells.has(id)) && reserved.size === g.reservedCells.size;
+    const unchanged = [...reserved].every(id => g.warehouse.reserved.has(id)) && reserved.size === g.warehouse.reserved.size;
     const config = { archetype: g.queue[0].archetype, mixed: false, patience: 35 };
     g.spawnQueue = [config];
     const before = g.queue.length;
     g.spawnNext();
     const waiting = g.spawnQueue.length === 1 && g.spawnQueue[0] === config && g.queue.length === before;
-    g.reservedCells.delete('B-4-1');
-    const beforeResume = new Set<string>(g.reservedCells);
+    g.warehouse.reserved.delete('B-4-1');
+    const beforeResume = new Set<string>(g.warehouse.reserved);
     g.updateSpawning(5);
     return { normal, final, unchanged, waiting, before, after: g.queue.length, pending: g.spawnQueue.length,
       snapshot: (window as any).allocationSnapshot(g.queue.at(-1).order, beforeResume) };
@@ -182,10 +182,10 @@ test('Queen entrance and fitting return wait for a real order before changing st
     g.debugSetShift(4);
     g.clearClients();
     g.director.enterStep(1); // Wave 2, when the Queen normally enters.
-    for (const c of g.world.cells) g.reservedCells.add(c.id);
+    for (const c of g.world.cells) g.warehouse.reserved.add(c.id);
     g.spawnQueen();
     const entranceWaiting = !g.queen.spawned && g.queenClient === null;
-    g.reservedCells.delete('A-1-1');
+    g.warehouse.reserved.delete('A-1-1');
     g.updateQueen(.01);
     const q = g.queenClient;
     const entrance = q?.order?.items.map((i: any) => i.cellId);
@@ -197,11 +197,11 @@ test('Queen entrance and fitting return wait for a real order before changing st
     q.state = 'gone';
     g.queen.startFitting(0, () => 1);
     g.queen.startFitting(0, () => 1); // Choose the new-order return, not a parcel return.
-    for (const c of g.world.cells) g.reservedCells.add(c.id);
+    for (const c of g.world.cells) g.warehouse.reserved.add(c.id);
     g.returnQueen();
     const returnWaiting = q.state === 'gone' && q.order === null && g.queen.inFitting;
-    g.reservedCells.delete('B-4-1');
-    const reserved = new Set<string>(g.reservedCells);
+    g.warehouse.reserved.delete('B-4-1');
+    const reserved = new Set<string>(g.warehouse.reserved);
     g.updateQueen(.01);
     return { entranceWaiting, entrance, onlyOneQueen, returnWaiting, state: q.state,
       snapshot: (window as any).allocationSnapshot(q.order, reserved) };
@@ -216,13 +216,13 @@ test('final barcode waits at the same index until an active cell is released', a
     const g = (window as any).game;
     g.debugSetShift(5);
     g.debugBoss();
-    for (const c of g.world.cells) g.reservedCells.add(c.id);
+    for (const c of g.world.cells) g.warehouse.reserved.add(c.id);
     g.onFinalBossDialogueDone();
     g.updateFinalBoss(.01);
     const waiting = g.finalBoss.stage === 'collect' && g.finalBoss.barcode === 0 &&
       g.finalBossOrder === null && g.finalBossGalya.order === null;
-    g.reservedCells.delete('C-1-1');
-    const reserved = new Set<string>(g.reservedCells);
+    g.warehouse.reserved.delete('C-1-1');
+    const reserved = new Set<string>(g.warehouse.reserved);
     g.updateFinalBoss(.01);
     const order = g.finalBossOrder;
     const snapshot = (window as any).allocationSnapshot(order, reserved);

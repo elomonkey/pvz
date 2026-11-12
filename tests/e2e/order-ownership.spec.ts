@@ -76,8 +76,8 @@ for (const picked of [false, true]) {
     const errors = await setup(page);
     const fixture = await page.evaluate(() => {
       const g = (window as any).game;
-      const unrelated = g.world.cells.find((cell: any) => !g.reservedCells.has(cell.id) && cell.parcel.visible);
-      unrelated.parcel.visible = false; // An empty cell left by an earlier delivery.
+      const unrelated = g.world.cells.find((cell: any) => g.warehouse.isAvailable(cell.id, g.progression.activeShelfCount));
+      g.setCellStock(unrelated.id, false); // An empty cell left by an earlier delivery.
       return { empty: unrelated.id, first: g.service.active.order.cellId, queue: g.queue.map((c: any) => c.id), served: g.run.served, reputation: g.run.reputation, stress: g.run.stress };
     });
     if (picked) await takeCurrentItem(page);
@@ -93,7 +93,7 @@ for (const picked of [false, true]) {
         colors: [...g.service.carryColors], returnInHand: g.service.carryingReturn, visibleCarried,
         firstVisible: g.world.cells.find((c: any) => c.id === first).parcel.visible,
         unrelatedVisible: g.world.cells.find((c: any) => c.id === empty).parcel.visible,
-        released: order.released, reserved: order.items.some((item: any) => g.reservedCells.has(item.cellId) || g.reservedCells.has(item.actualCellId)),
+        released: order.released, reserved: order.items.some((item: any) => g.warehouse.isReserved(item.cellId) || g.warehouse.isReserved(item.actualCellId)),
         picked: order.items.filter((item: any) => item.picked).length,
         queue: g.queue.map((c: any) => c.id), served: g.run.served, reputation: g.run.reputation, stress: g.run.stress,
       };

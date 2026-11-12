@@ -6,17 +6,20 @@ export interface AllocationCell {
   shelfIndex: number;
   column: number;
   level: number;
-  parcel: { visible: boolean };
 }
 
-export function availableOrderCells<T extends AllocationCell>(
+export interface AvailableAllocationCell extends AllocationCell {
+  available: boolean;
+}
+
+export function availableOrderCells<T extends AvailableAllocationCell>(
   cells: readonly T[],
   activeShelfCount: number,
   reserved: ReadonlySet<string>,
   selected: ReadonlySet<string> = new Set(),
 ): T[] {
   return cells.filter(cell =>
-    cell.shelfIndex < activeShelfCount && cell.parcel.visible === true &&
+    cell.shelfIndex < activeShelfCount && cell.available === true &&
     !reserved.has(cell.id) && !selected.has(cell.id),
   );
 }

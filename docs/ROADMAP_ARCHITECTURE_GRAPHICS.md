@@ -653,6 +653,13 @@ src/
 - ServiceSystem/ownership, правила пополнения/возвратов, графика, UI и баланс не менялись; WarehouseState остаётся отдельной задачей AUD-05.
 - Проверки: `npm run build`, 65 unit-тестов и полный набор 61 e2e проходят; новый браузерный смоук 7/7 без console.error/pageerror. Старый game.ts воспроизводит пустую A-1-3 вместо единственной B-4-1 при постоянном RNG; текущий allocator проходит этот сценарий со сбором и выдачей. Результат передаётся Lead на ревью без merge.
 
+### 6.47. WarehouseState: склад и резервы вне графики — issue #44
+
+- Новый чистый `systems/warehouseSystem.ts` владеет stock ячеек и reservations заказов. `available(activeShelfCount)` отдаёт только видимые/незарезервированные ячейки активных полок; `reserve`/`release`, `consume`/`restock` и `reset` меняют состояние без Three.js.
+- `Game` больше не хранит `reservedCells` как источник истины: резервы, пополнение, снятие посылок, Zina и финальные штрихкоды используют `WarehouseState`. `parcel.visible` обновляется только одним view-sync и не участвует в игровых проверках.
+- `orderAllocation` принимает доступных кандидатов, а не `parcel.visible`. Поведение заказов, mixed, дефицита и отложенного спавна сохранено.
+- Unit-проверки покрывают stock/reserve/release/consume/restock/reset и active shelves. Build, 67 unit и 61 e2e проходят; UI, сцена, баланс, тексты и управление не менялись.
+
 ### Исторические метрики до визуальных проходов
 
 Актуальные фиксированные сцены и методика — в 6.23 и [perf-отчёте](perf/PR5_REPORT.md).
