@@ -660,6 +660,13 @@ src/
 - `orderAllocation` принимает доступных кандидатов, а не `parcel.visible`. Поведение заказов, mixed, дефицита и отложенного спавна сохранено.
 - Unit-проверки покрывают stock/reserve/release/consume/restock/reset и active shelves. Build, 67 unit и 61 e2e проходят; UI, сцена, баланс, тексты и управление не менялись.
 
+### 6.48. Вычисляемая позиция заказа — issue #47
+
+- `Order` больше не хранит вторую mutable-копию текущей позиции: `currentItem`, `shelf`, `column`, `level`, `cellId`, `actual*` и `mixed` — getters над `items`.
+- `createOrderRecord()` создаёт заказ с вычисляемыми полями; `createAllocatedOrder()` и `createZinaOrder()` используют его. `Game.syncOrderTarget()` и вызов из `takeParcel()` удалены.
+- UI, сканер, подсказки и финальные сценарии продолжают читать прежние поля без изменений. После `picked = true` они автоматически указывают на следующий item, после полного сбора — на последний.
+- Unit-тесты покрывают частичный/полный сбор, mixed и empty order. Build, 69 unit и 65 e2e проходят; правила, баланс, UI и сцена не менялись.
+
 ### Исторические метрики до визуальных проходов
 
 Актуальные фиксированные сцены и методика — в 6.23 и [perf-отчёте](perf/PR5_REPORT.md).

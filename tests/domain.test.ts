@@ -33,6 +33,12 @@ import {
   buildQuestPool,
   selectQuests,
 } from '../src/domain/quests.ts';
+import {
+  createOrderRecord,
+  currentOrderItem,
+  targetOrderItem,
+  type OrderItem,
+} from '../src/domain/orders.ts';
 
 test('экономика: идеальная смена', () => {
   const result = evaluateShift({
@@ -321,4 +327,67 @@ test('забег: beginShift сбрасывает смену и сохраняе
   assert.equal(run.totalEarned, 2500);
   assert.equal(run.reputation, 4);
   assert.equal(run.upgrades.speed, 2);
+});
+
+function orderItem(id: string, shelf: number, column: number, level = 0): OrderItem {
+  return {
+    shelf,
+    column,
+    level,
+    cellId: id,
+    actualShelf: shelf,
+    actualColumn: column,
+    actualLevel: level,
+    actualCellId: id,
+    mixed: false,
+    picked: false,
+  };
+}
+
+test('order target: derives current item and keeps the last target after full pickup', () => {
+  const first = orderItem('A-1-1', 0, 0);
+  const second = orderItem('B-2-1', 1, 1);
+  const order = createOrderRecord([first, second], { scanned: true });
+
+  assert.equal(order.currentItem, first);
+  assert.equal(currentOrderItem(order), first);
+  assert.equal(targetOrderItem(order), first);
+  assert.equal(order.shelf, 0);
+  assert.equal(order.cellId, 'A-1-1');
+
+  first.picked = true;
+  assert.equal(order.currentItem, second);
+  assert.equal(currentOrderItem(order), second);
+  assert.equal(order.shelf, 1);
+  assert.equal(order.column, 1);
+  assert.equal(order.cellId, 'B-2-1');
+
+  second.picked = true;
+  assert.equal(order.currentItem, undefined);
+  assert.equal(currentOrderItem(order), undefined);
+  assert.equal(targetOrderItem(order), second);
+  assert.equal(order.shelf, 1);
+  assert.equal(order.cellId, 'B-2-1');
+});
+
+test('order target: derives mixed actual fields and handles an empty order', () => {
+  const item = orderItem('A-1-1', 0, 0);
+  item.actualShelf = 0;
+  item.actualColumn = 1;
+  item.actualLevel = 0;
+  item.actualCellId = 'A-2-1';
+  item.mixed = true;
+  const order = createOrderRecord([item], { scanned: false, searchMode: true });
+
+  assert.equal(order.mixed, true);
+  assert.equal(order.actualCellId, 'A-2-1');
+  assert.equal(order.actualColumn, 1);
+  assert.equal(order.searchMode, true);
+
+  const empty = createOrderRecord([], { scanned: false });
+  assert.equal(empty.currentItem, undefined);
+  assert.equal(targetOrderItem(empty), undefined);
+  assert.equal(empty.cellId, '');
+  assert.equal(empty.shelf, 0);
+  assert.equal(empty.mixed, false);
 });
