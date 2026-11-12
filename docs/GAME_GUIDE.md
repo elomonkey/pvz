@@ -673,7 +673,7 @@
 
 Позиция заказа (`currentItem`, `cellId`, `shelf`, `actual*`, `mixed`) вычисляется из `items`. `createOrderRecord()` создаёт getter-поля, поэтому после взятия посылки UI и сканер автоматически переходят к следующему item; ручной `syncOrderTarget()` не нужен.
 
-`EncounterCoordinator` хранит phase и общие pause-состояния (`modalOpen`, `helpOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарии боссов и обучение пока остаются в Game — это следующий срез AUD-07.
+`EncounterCoordinator` хранит phase, общие pause-состояния (`modalOpen`, `helpOpen`) и overlay-флаги (`tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарии боссов пока остаются в Game — это следующий срез AUD-04/AUD-07.
 
 ### Запуск
 

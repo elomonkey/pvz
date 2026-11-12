@@ -672,7 +672,14 @@ src/
 - Новый `systems/encounterCoordinator.ts` владеет phase `menu/playing/break/boss/results/gameover`, `modalOpen`, `helpOpen` и единой pause-политикой. `inputBlocked` блокирует ввод в menu/results/gameover и при открытой модалке/help.
 - `Game` заменил прямые поля на read-only getters и методы `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, `openModal/closeModal`, `openHelp/closeHelp`. Прямых записей phase/modal/help не осталось.
 - Unit-тесты покрывают переходы, modal/help и reset. Build, 71 unit и 66 e2e проходят; UI, сцена, баланс, тексты, боссы и обучение не менялись.
-- Это первый срез AUD-07: `tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen` и сценарные состояния боссов остаются в Game и должны быть вынесены следующим этапом.
+- Это первый срез AUD-07: phase/modal/help. Overlay-флаги вынесены в 6.50; сценарные состояния боссов остаются в Game.
+
+### 6.50. EncounterCoordinator: tutorial/mechanic/scanner overlays — issue #54
+
+- `EncounterCoordinator` дополнительно владеет `tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen` и `overlayOpen`; добавлены `open*/close*` методы.
+- `Game` заменил три прямых поля на read-only getters и вызовы координатора; reset очищает все overlay-флаги.
+- Поведение карточек, тексты, DOM, таймеры и `inputBlocked` не менялись. Сценарные состояния боссов остаются следующим срезом AUD-04/AUD-07.
+- Unit-тесты покрывают открытие/закрытие каждого overlay и reset. Build, 72 unit и 66 e2e проходят.
 
 ### Исторические метрики до визуальных проходов
 

@@ -182,11 +182,18 @@ export class Game {
   private get helpOpen(): boolean {
     return this.encounter.helpOpen;
   }
+  private get tutorialOpen(): boolean {
+    return this.encounter.tutorialOpen;
+  }
+  private get mechanicCardOpen(): boolean {
+    return this.encounter.mechanicCardOpen;
+  }
+  private get scannerBreakCardOpen(): boolean {
+    return this.encounter.scannerBreakCardOpen;
+  }
   private tutorialActive = false;
-  private tutorialOpen = false;
   private tutorialPending = false;
   private tutorialStep: TutorialStep = 'welcome';
-  private mechanicCardOpen = false;
   private mechanicCardPending: MechanicCard | null = null;
   private mechanicCardTimer = 0;
   private tutorialMarker!: THREE.Group;
@@ -219,7 +226,6 @@ export class Game {
   private zinaPendingCellId: string | null = null;
   private scannerBroken = false;
   private scannerBreakPending = false;
-  private scannerBreakCardOpen = false;
   private highlightEnabled = true;
   private pendingGameOver = false;
 
@@ -388,7 +394,7 @@ export class Game {
   private startTutorial(): void {
     this.tutorialActive = true;
     this.tutorialPending = false;
-    this.tutorialOpen = true;
+    this.encounter.openTutorial();
     this.encounter.openModal();
     this.tutorialStep = 'welcome';
     this.movement.clearPath();
@@ -411,14 +417,14 @@ export class Game {
 
   onTutorialNext(): void {
     if (this.mechanicCardOpen) {
-      this.mechanicCardOpen = false;
+      this.encounter.closeMechanicCard();
       this.encounter.closeModal();
       this.ui.hideTutorial();
       this.updatePrompt();
       return;
     }
     if (this.scannerBreakCardOpen) {
-      this.scannerBreakCardOpen = false;
+      this.encounter.closeScannerBreakCard();
       this.encounter.closeModal();
       this.ui.hideTutorial();
       this.updatePrompt();
@@ -427,7 +433,7 @@ export class Game {
     if (!this.tutorialActive) return;
     if (this.tutorialStep === 'welcome') {
       this.encounter.closeModal();
-      this.tutorialOpen = true;
+      this.encounter.openTutorial();
       this.setTutorialStep('click_client');
       return;
     }
@@ -439,7 +445,7 @@ export class Game {
   skipTutorial(): void {
     if (!this.tutorialActive) return;
     this.tutorialActive = false;
-    this.tutorialOpen = false;
+    this.encounter.closeTutorial();
     this.encounter.closeModal();
     this.tutorialStep = 'welcome';
     this.clearTutorialMarker();
@@ -453,7 +459,7 @@ export class Game {
 
   private finishTutorial(): void {
     this.tutorialActive = false;
-    this.tutorialOpen = false;
+    this.encounter.closeTutorial();
     this.encounter.closeModal();
     this.tutorialStep = 'welcome';
     this.clearTutorialMarker();
@@ -466,7 +472,7 @@ export class Game {
   }
 
   private showScannerBreakCard(): void {
-    this.scannerBreakCardOpen = true;
+    this.encounter.openScannerBreakCard();
     this.encounter.openModal();
     this.movement.clearPath();
     this.pendingAction = null;
@@ -489,7 +495,7 @@ export class Game {
 
     if (step === 'click_client') {
       this.encounter.closeModal();
-      this.tutorialOpen = true;
+      this.encounter.openTutorial();
       this.ui.setTutorialTarget(null);
       this.ui.showTutorial({
         mode: 'coach',
@@ -510,7 +516,7 @@ export class Game {
       }
     } else if (step === 'scan') {
       this.encounter.closeModal();
-      this.tutorialOpen = true;
+      this.encounter.openTutorial();
       this.ui.setTutorialTarget(null);
       this.ui.showTutorial({
         mode: 'coach',
@@ -523,7 +529,7 @@ export class Game {
       this.setTutorialMarker(SERVICE_POINT, 1.7);
     } else if (step === 'shelf') {
       this.encounter.closeModal();
-      this.tutorialOpen = true;
+      this.encounter.openTutorial();
       this.ui.setTutorialTarget(null);
       const letter = order ? SHELF_LETTERS[order.shelf] : 'A';
       const cellId = order?.cellId ?? '';
@@ -542,7 +548,7 @@ export class Game {
       }
     } else if (step === 'cell') {
       this.encounter.closeModal();
-      this.tutorialOpen = true;
+      this.encounter.openTutorial();
       this.clearTutorialMarker();
       this.ui.showTutorial({
         mode: 'coach',
@@ -555,7 +561,7 @@ export class Game {
       this.ui.setTutorialTarget('cell', order?.cellId);
     } else if (step === 'deliver') {
       this.encounter.closeModal();
-      this.tutorialOpen = true;
+      this.encounter.openTutorial();
       this.ui.setTutorialTarget(null);
       this.ui.showTutorial({
         mode: 'coach',
@@ -568,7 +574,7 @@ export class Game {
       this.setTutorialMarker(SERVICE_POINT, 1.7);
     } else if (step === 'done') {
       this.encounter.openModal();
-      this.tutorialOpen = true;
+      this.encounter.openTutorial();
       this.clearTutorialMarker();
       this.ui.setTutorialTarget(null);
       this.ui.showTutorial({
@@ -659,7 +665,7 @@ export class Game {
     if (!card) return;
     this.mechanicCardPending = null;
     this.mechanicCardTimer = 0;
-    this.mechanicCardOpen = true;
+    this.encounter.openMechanicCard();
     this.encounter.openModal();
     this.movement.clearPath();
     this.pendingAction = null;
@@ -709,7 +715,7 @@ export class Game {
     if (!Number.isInteger(shift) || shift < 1 || shift > 5) return;
     this.ui.hideStart();
     this.tutorialActive = false;
-    this.tutorialOpen = false;
+    this.encounter.closeTutorial();
     this.tutorialPending = false;
     this.encounter.closeModal();
     this.encounter.closeHelp();
@@ -777,14 +783,14 @@ export class Game {
     this.mechanicCardPending = null;
     this.mechanicCardTimer = 0;
     if (this.mechanicCardOpen) {
-      this.mechanicCardOpen = false;
+      this.encounter.closeMechanicCard();
       this.encounter.closeModal();
       this.ui.hideTutorial();
       this.updatePrompt();
     }
     if (!this.tutorialActive) return;
     this.tutorialActive = false;
-    this.tutorialOpen = false;
+    this.encounter.closeTutorial();
     this.tutorialStep = 'welcome';
     this.encounter.closeModal();
     this.clearTutorialMarker();
@@ -943,10 +949,10 @@ export class Game {
     this.best = loadBest();
     this.scannerBroken = false;
     this.scannerBreakPending = false;
-    this.scannerBreakCardOpen = false;
+    this.encounter.closeScannerBreakCard();
     this.zinaPendingCellId = null;
     this.tutorialActive = false;
-    this.tutorialOpen = false;
+    this.encounter.closeTutorial();
     this.tutorialPending = !loadTutorialDone();
     this.tutorialStep = 'welcome';
     this.clearTutorialMarker();
@@ -985,8 +991,8 @@ export class Game {
     this.zinaOrderPending = false;
     this.zinaPendingCellId = null;
     this.scannerBreakPending = false;
-    this.scannerBreakCardOpen = false;
-    this.mechanicCardOpen = false;
+    this.encounter.closeScannerBreakCard();
+    this.encounter.closeMechanicCard();
     this.mechanicCardPending = mechanicCard;
     this.mechanicCardTimer = mechanicCard ? 3.2 : 0;
     this.pendingGameOver = false;
@@ -1771,7 +1777,7 @@ export class Game {
     }
     if (this.scannerBreakPending) {
       this.scannerBreakPending = false;
-      this.scannerBreakCardOpen = false;
+      this.encounter.closeScannerBreakCard();
       if (!loadScannerBreakSeen()) {
         this.finishBossStep();
         this.showScannerBreakCard();
@@ -2398,8 +2404,8 @@ export class Game {
     this.encounter.openModal();
     this.run.stress = 100;
     this.tutorialActive = false;
-    this.tutorialOpen = false;
-    this.scannerBreakCardOpen = false;
+    this.encounter.closeTutorial();
+    this.encounter.closeScannerBreakCard();
     this.clearTutorialMarker();
     this.ui.setTutorialTarget(null);
     this.ui.hideTutorial();
@@ -2452,7 +2458,7 @@ export class Game {
     this.world.applyDecor(this.ownedDecor);
     this.scannerBroken = false;
     this.scannerBreakPending = false;
-    this.scannerBreakCardOpen = false;
+    this.encounter.closeScannerBreakCard();
     this.zinaPendingCellId = null;
     this.ui.setReputation(this.run.reputation);
     this.service.reset();
@@ -2466,7 +2472,7 @@ export class Game {
     this.pendingGameOver = false;
     this.encounter.closeModal();
     this.tutorialActive = false;
-    this.tutorialOpen = false;
+    this.encounter.closeTutorial();
     this.tutorialPending = !loadTutorialDone();
     this.tutorialStep = 'welcome';
     this.clearTutorialMarker();

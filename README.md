@@ -158,7 +158,7 @@ src/sound.ts            синтезированные звуки
 src/yandex.ts           безопасная обёртка Yandex Games SDK
 src/data.ts             архетипы, реплики, босс, улучшения, константы
 src/style.css           стили и адаптивность
-tests/                  unit-тесты домена, систем, событий, ввода и владения ресурсами (71 тест)
+tests/                  unit-тесты домена, систем, событий, ввода и владения ресурсами (72 теста)
 docs/GAME_GUIDE.md      полный справочник по механикам, сменам и боссам
 docs/GDD.md             дизайн-документ и планы развития
 ```
@@ -169,7 +169,7 @@ docs/GDD.md             дизайн-документ и планы развит
 
 Текущая позиция заказа (`currentItem`, `cellId`, `shelf`, `actual*`, `mixed`) вычисляется из `items` через getters. `syncOrderTarget()` и вторая mutable-копия позиции удалены; после `picked = true` UI и сканер автоматически видят следующий item, а после полного сбора — последнюю позицию.
 
-Верхнеуровневым `phase`, `modalOpen` и `helpOpen` владеет `EncounterCoordinator`. Game использует его read-only getters и методы переходов; единая pause-политика блокирует ввод в menu/results/gameover и при открытой модалке/help.
+Верхнеуровневым `phase`, `modalOpen` и `helpOpen` владеет `EncounterCoordinator`. Game использует его read-only getters и методы переходов; единая pause-политика блокирует ввод в menu/results/gameover и при открытой модалке/help. Там же живут overlay-флаги обучения, mechanic-card и scanner-break card.
 
 ## Экономика смены
 
