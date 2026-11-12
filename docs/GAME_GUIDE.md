@@ -649,6 +649,7 @@
 | `src/systems/encounterCoordinator.ts` | Верхнеуровневый phase, modal/help и единая pause-политика |
 | `src/systems/queenScenario.ts` | Сценарий Королевы: появление, примерка, возврат, новый заказ и уход |
 | `src/systems/bossScenario.ts` | Lifecycle обычных боссов: Галя, Саня, Зина, Zina-загадка и заказ |
+| `src/systems/argumentScenario.ts` | Клиентские споры и спор с Галей: mash, награды и scanner break |
 | `src/systems/finalBossScenario.ts` | Сценарий финального босса: Галя, Валера, штрихкоды, примерка и возвраты |
 | `src/systems/playerMovement.ts` | Позиция, путь, направление и прибытие игрока |
 | `src/view/scene.ts` | Сборка сцены и применение оформления |
@@ -676,7 +677,7 @@
 
 Позиция заказа (`currentItem`, `cellId`, `shelf`, `actual*`, `mixed`) вычисляется из `items`. `createOrderRecord()` создаёт getter-поля, поэтому после взятия посылки UI и сканер автоматически переходят к следующему item; ручной `syncOrderTarget()` не нужен.
 
-`EncounterCoordinator` хранит phase, общие pause-состояния (`modalOpen`, `helpOpen`) и overlay-флаги (`tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарий Королевы вынесен в `QueenScenario` (6.52), финального босса — в `FinalBossScenario` (6.53), lifecycle обычных боссов — в `BossScenario` (6.54); argue/mash-поток пока остаётся в Game — это следующий срез AUD-04/AUD-07.
+`EncounterCoordinator` хранит phase, общие pause-состояния (`modalOpen`, `helpOpen`) и overlay-флаги (`tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарий Королевы вынесен в `QueenScenario` (6.52), финального босса — в `FinalBossScenario` (6.53), lifecycle обычных боссов — в `BossScenario` (6.54), argue/mash — в `ArgumentScenario` (6.55). AUD-04 закрыт.
 
 ### Запуск
 
