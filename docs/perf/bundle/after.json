@@ -1,0 +1,373 @@
+{
+  "label": "after",
+  "method": "Chromium 1400x900, production preview :4178; cold browser context, then same-context reload; gzipSync level 6, decimal bytes; transferred is CDP encodedDataLength including HTTP headers; wireStatus shows actual 304 revalidation behind a cached 200 response",
+  "assets": [
+    {
+      "file": "assets/bossView-CD6L938m.js",
+      "raw": 15688,
+      "gzip": 4441
+    },
+    {
+      "file": "assets/bossView-CGY9OVq7.css",
+      "raw": 22511,
+      "gzip": 4572
+    },
+    {
+      "file": "assets/devConsole-DrCOhXxA.js",
+      "raw": 1373,
+      "gzip": 580
+    },
+    {
+      "file": "assets/galya-expressions-DKeOCBNL.webp",
+      "raw": 175702,
+      "gzip": 175158
+    },
+    {
+      "file": "assets/index-Bq7402q5.css",
+      "raw": 45568,
+      "gzip": 10017
+    },
+    {
+      "file": "assets/index-Rc4DkMXF.js",
+      "raw": 247034,
+      "gzip": 70713
+    },
+    {
+      "file": "assets/queen-expressions-v2-C-_wsNof.webp",
+      "raw": 215370,
+      "gzip": 214961
+    },
+    {
+      "file": "assets/sanya-portrait-DFj7hjHx.webp",
+      "raw": 141554,
+      "gzip": 140871
+    },
+    {
+      "file": "assets/three-vendor-DIPWXlEc.js",
+      "raw": 595424,
+      "gzip": 148517
+    },
+    {
+      "file": "assets/ui-shared-DBu8_U5T.js",
+      "raw": 15772,
+      "gzip": 6019
+    },
+    {
+      "file": "assets/valera-expressions-Bf2ZCEGz.webp",
+      "raw": 225162,
+      "gzip": 225062
+    },
+    {
+      "file": "assets/zina-expressions-C5VAbQL9.webp",
+      "raw": 228628,
+      "gzip": 228345
+    }
+  ],
+  "chunks": {
+    "_three-vendor-DIPWXlEc.js": {
+      "file": "assets/three-vendor-DIPWXlEc.js",
+      "imports": [],
+      "dynamicImports": []
+    },
+    "_ui-shared-DBu8_U5T.js": {
+      "file": "assets/ui-shared-DBu8_U5T.js",
+      "imports": [],
+      "dynamicImports": []
+    },
+    "index.html": {
+      "file": "assets/index-Rc4DkMXF.js",
+      "imports": [
+        "_three-vendor-DIPWXlEc.js",
+        "_ui-shared-DBu8_U5T.js"
+      ],
+      "dynamicImports": [
+        "src/ui/devConsole.ts",
+        "src/ui/bossView.ts"
+      ]
+    },
+    "src/ui/bossView.ts": {
+      "file": "assets/bossView-CD6L938m.js",
+      "imports": [
+        "_ui-shared-DBu8_U5T.js"
+      ],
+      "dynamicImports": []
+    },
+    "src/ui/devConsole.ts": {
+      "file": "assets/devConsole-DrCOhXxA.js",
+      "imports": [
+        "_ui-shared-DBu8_U5T.js"
+      ],
+      "dynamicImports": []
+    }
+  },
+  "initial": {
+    "jsRequests": 3,
+    "raw": 858230,
+    "gzip": 225249,
+    "assetRequests": 6,
+    "assetRaw": 1260722
+  },
+  "phases": {
+    "coldMenu": [
+      {
+        "file": "assets/index-Rc4DkMXF.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 71133,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/three-vendor-DIPWXlEc.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 149006,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/ui-shared-DBu8_U5T.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 6391,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      }
+    ],
+    "startShift": [
+      {
+        "file": "assets/bossView-CD6L938m.js",
+        "status": 200,
+        "wireStatus": null,
+        "cached": false,
+        "transferred": 4813,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      }
+    ],
+    "shop": [],
+    "boss": [],
+    "bossReopen": [],
+    "devConsole": [
+      {
+        "file": "assets/devConsole-DrCOhXxA.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 950,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      }
+    ],
+    "devReopen": [],
+    "warmMenu": [
+      {
+        "file": "assets/index-Rc4DkMXF.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/three-vendor-DIPWXlEc.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/ui-shared-DBu8_U5T.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      }
+    ]
+  },
+  "assetPhases": {
+    "coldMenu": [
+      {
+        "file": "assets/index-Rc4DkMXF.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 71133,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/three-vendor-DIPWXlEc.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 149006,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/ui-shared-DBu8_U5T.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 6391,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/index-Bq7402q5.css",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 10382,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/sanya-portrait-DFj7hjHx.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 141824,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/queen-expressions-v2-C-_wsNof.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 215640,
+        "cacheControl": "no-cache",
+        "encoding": null
+      }
+    ],
+    "startShift": [
+      {
+        "file": "assets/bossView-CD6L938m.js",
+        "status": 200,
+        "wireStatus": null,
+        "cached": false,
+        "transferred": 4813,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/bossView-CGY9OVq7.css",
+        "status": 200,
+        "wireStatus": null,
+        "cached": false,
+        "transferred": 4937,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/galya-expressions-DKeOCBNL.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 175972,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/zina-expressions-C5VAbQL9.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 228898,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/valera-expressions-Bf2ZCEGz.webp",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 225432,
+        "cacheControl": "no-cache",
+        "encoding": null
+      }
+    ],
+    "shop": [],
+    "boss": [],
+    "bossReopen": [],
+    "devConsole": [
+      {
+        "file": "assets/devConsole-DrCOhXxA.js",
+        "status": 200,
+        "wireStatus": 200,
+        "cached": false,
+        "transferred": 950,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      }
+    ],
+    "devReopen": [],
+    "warmMenu": [
+      {
+        "file": "assets/index-Rc4DkMXF.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/three-vendor-DIPWXlEc.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/ui-shared-DBu8_U5T.js",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/index-Bq7402q5.css",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 179,
+        "cacheControl": "no-cache",
+        "encoding": "gzip"
+      },
+      {
+        "file": "assets/sanya-portrait-DFj7hjHx.webp",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": "no-cache",
+        "encoding": null
+      },
+      {
+        "file": "assets/queen-expressions-v2-C-_wsNof.webp",
+        "status": 200,
+        "wireStatus": 304,
+        "cached": false,
+        "transferred": 127,
+        "cacheControl": "no-cache",
+        "encoding": null
+      }
+    ]
+  },
+  "errors": []
+}

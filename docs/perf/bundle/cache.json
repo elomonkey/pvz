@@ -1,0 +1,49 @@
+{
+  "method": "Temporary UI-only console message edit, rebuild, restore original source and rebuild; no probe edit committed.",
+  "before": {
+    "three-vendor": {
+      "file": "assets/three-vendor-DIPWXlEc.js",
+      "sha256": "f0e3a093ff97e32c63b9388ad3c01b05fdd86c2ebdfee47cd5b70316d9b452b4"
+    },
+    "ui-shared": {
+      "file": "assets/ui-shared-DBu8_U5T.js",
+      "sha256": "bdcbdefa4471e3e4d0630433bd950e792dac751b64d64179c8799fb9cd9b6cac"
+    },
+    "index": {
+      "file": "assets/index-Rc4DkMXF.js",
+      "sha256": "518911fc8a1f3d3f64bb90bc38506c23515cb583cf12477ab8e97d3e85e0914c"
+    },
+    "bossView": {
+      "file": "assets/bossView-CD6L938m.js",
+      "sha256": "8e4edd1f91308396db81d9a94fa1fe0e6ae8d42c0cf5caef662cbe85d7f5534f"
+    },
+    "devConsole": {
+      "file": "assets/devConsole-DrCOhXxA.js",
+      "sha256": "7c880ccd44a2f32a8605ce21e9c521f61092433cd528706db8ea472b35f33d3b"
+    }
+  },
+  "probe": {
+    "three-vendor": {
+      "file": "assets/three-vendor-DIPWXlEc.js",
+      "sha256": "f0e3a093ff97e32c63b9388ad3c01b05fdd86c2ebdfee47cd5b70316d9b452b4"
+    },
+    "ui-shared": {
+      "file": "assets/ui-shared-DBu8_U5T.js",
+      "sha256": "bdcbdefa4471e3e4d0630433bd950e792dac751b64d64179c8799fb9cd9b6cac"
+    },
+    "index": {
+      "file": "assets/index-CNKIMZbD.js",
+      "sha256": "dbc197c48f052c1e70d042e5e83e0b13e6c5995fa1345643bc3b782bc20a754a"
+    },
+    "bossView": {
+      "file": "assets/bossView-CD6L938m.js",
+      "sha256": "8e4edd1f91308396db81d9a94fa1fe0e6ae8d42c0cf5caef662cbe85d7f5534f"
+    },
+    "devConsole": {
+      "file": "assets/devConsole-DrCOhXxA.js",
+      "sha256": "7c880ccd44a2f32a8605ce21e9c521f61092433cd528706db8ea472b35f33d3b"
+    }
+  },
+  "vendorStable": true,
+  "appChanged": true
+}

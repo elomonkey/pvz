@@ -2,8 +2,8 @@ import type { BossDialogueLine, DecorOwnership } from './data';
 import type { Game } from './game';
 import type { Sound } from './sound';
 import type { CellPanelModel } from './systems/scannerPanelSystem';
-import { BossView } from './ui/bossView';
-import { DevConsole } from './ui/devConsole';
+import type { BossActions, BossView } from './ui/bossView';
+import type { DevConsole } from './ui/devConsole';
 import { HudView, type HudData, type QuestDisplay } from './ui/hudView';
 import {
   ModalView,
@@ -20,9 +20,14 @@ export class UI {
   private readonly hud = new HudView();
   private readonly scanner = new ScannerView();
   private readonly shop: ShopView;
-  private readonly dev = new DevConsole();
+  private dev: DevConsole | null = null;
+  private devLoading: Promise<void> | null = null;
+  private devOpenRequested = false;
   private readonly modals = new ModalView();
-  private readonly boss = new BossView();
+  private boss: BossView | null = null;
+  private bossActions!: BossActions;
+  private bossLoading: Promise<void> | null = null;
+  private pendingBossCalls: Array<(view: BossView) => void> = [];
 
   constructor(sound: Sound) {
     this.sound = sound;
@@ -44,11 +49,30 @@ export class UI {
     });
 
     this.shop.bind(this.game);
-    this.dev.bind(this.game);
+    window.addEventListener('keydown', event => {
+      if (event.code !== 'F2' && event.code !== 'Backquote') return;
+      event.preventDefault();
+      if (this.dev) {
+        this.dev.toggle();
+        return;
+      }
+      this.devOpenRequested = !this.devOpenRequested;
+      this.devLoading ??= import('./ui/devConsole').then(({ DevConsole }) => {
+        this.dev = new DevConsole();
+        this.dev.bind(this.game);
+        this.dev.toggle(this.devOpenRequested);
+      }).catch(error => {
+        // A failed optional chunk can be retried with the same shortcut.
+        this.devLoading = null;
+        this.devOpenRequested = false;
+        console.error('Не удалось загрузить dev-консоль', error);
+      });
+    });
     this.modals.bind({
       onStart: () => {
         this.sound.init();
         this.sound.click();
+        this.preloadBoss();
         this.game.startNewGame();
       },
       onOpenHelp: () => this.game.openHelp(),
@@ -68,7 +92,7 @@ export class UI {
         this.scanner.setTutorialTarget(target, cellId),
     });
 
-    this.boss.bind({
+    this.bossActions = {
       onServe: () => this.game.onBossServe(),
       onArgue: () => this.game.onBossArgue(),
       onMash: () => this.game.mashBoss(),
@@ -77,7 +101,29 @@ export class UI {
       onZinaMove: (index) => this.game.zinaPuzzleMove(index),
       onSoundInit: () => this.sound.init(),
       onClosePanels: () => this.closePanels(),
+    };
+  }
+
+  private preloadBoss(): void {
+    this.bossLoading ??= import('./ui/bossView').then(({ BossView }) => {
+      this.boss = new BossView();
+      this.boss.bind(this.bossActions);
+      const calls = this.pendingBossCalls;
+      this.pendingBossCalls = [];
+      for (const call of calls) call(this.boss);
+    }).catch(error => {
+      this.bossLoading = null;
+      this.pendingBossCalls = [];
+      console.error('Не удалось загрузить диалоги', error);
     });
+  }
+
+  private withBoss(call: (view: BossView) => void): void {
+    if (this.boss) call(this.boss);
+    else {
+      this.pendingBossCalls.push(call);
+      this.preloadBoss();
+    }
   }
 
   update(dt: number): void {
@@ -121,7 +167,7 @@ export class UI {
     lines: BossDialogueLine[],
     button: string,
   ): void {
-    this.boss.showFinalBossDialogue(phase, lines, button);
+    this.withBoss(view => view.showFinalBossDialogue(phase, lines, button));
   }
 
   setToyRelief(used: number, cap = 30): void {
@@ -221,19 +267,19 @@ export class UI {
   }
 
   showBoss(serveStress: number, line: string, name = 'Галя'): void {
-    this.boss.showBoss(serveStress, line, name);
+    this.withBoss(view => view.showBoss(serveStress, line, name));
   }
 
   showClientArgue(name: string, line: string, concedeStress: number): void {
-    this.boss.showClientArgue(name, line, concedeStress);
+    this.withBoss(view => view.showClientArgue(name, line, concedeStress));
   }
 
   showBossArgue(): void {
-    this.boss.showBossArgue();
+    this.withBoss(view => view.showBossArgue());
   }
 
   pushBossTaunt(text: string): void {
-    this.boss.pushBossTaunt(text);
+    this.withBoss(view => view.pushBossTaunt(text));
   }
 
   showZinaGame(
@@ -244,31 +290,31 @@ export class UI {
     time: number,
     total: number,
   ): void {
-    this.boss.showZinaGame(name, line, target, board, time, total);
+    this.withBoss(view => view.showZinaGame(name, line, target, board, time, total));
   }
 
   renderZinaPuzzle(board: (number | null)[], target: number[]): void {
-    this.boss.renderZinaPuzzle(board, target);
+    this.withBoss(view => view.renderZinaPuzzle(board, target));
   }
 
   updateZinaTimer(ratio: number): void {
-    this.boss.updateZinaTimer(ratio);
+    this.withBoss(view => view.updateZinaTimer(ratio));
   }
 
   setZinaFeedback(text: string, good: boolean): void {
-    this.boss.setZinaFeedback(text, good);
+    this.withBoss(view => view.setZinaFeedback(text, good));
   }
 
   startBossMash(): void {
-    this.boss.startBossMash();
+    this.withBoss(view => view.startBossMash());
   }
 
   setBossMarker(value: number): void {
-    this.boss.setBossMarker(value);
+    this.withBoss(view => view.setBossMarker(value));
   }
 
   updateBossTimer(ratio: number): void {
-    this.boss.updateBossTimer(ratio);
+    this.withBoss(view => view.updateBossTimer(ratio));
   }
 
   showBossResult(
@@ -277,11 +323,12 @@ export class UI {
     success: boolean,
     finalQuote = '',
   ): void {
-    this.boss.showBossResult(title, detail, success, finalQuote);
+    this.withBoss(view => view.showBossResult(title, detail, success, finalQuote));
   }
 
   hideBoss(): void {
-    this.boss.hideBoss();
+    this.pendingBossCalls = [];
+    this.boss?.hideBoss();
   }
 
   showResults(
