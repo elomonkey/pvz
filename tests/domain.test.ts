@@ -15,6 +15,12 @@ import {
 } from '../src/domain/progression.ts';
 import { RunState } from '../src/domain/run.ts';
 import {
+  PROGRESS_VERSION,
+  createProgressSnapshot,
+  parseProgressSnapshot,
+  progressResumeShift,
+} from '../src/domain/save.ts';
+import {
   CLIENT_ARGUE_CHANCE,
   calculateArgueStartValue,
   calculateConcedeStress,
@@ -327,6 +333,78 @@ test('забег: beginShift сбрасывает смену и сохраняе
   assert.equal(run.totalEarned, 2500);
   assert.equal(run.reputation, 4);
   assert.equal(run.upgrades.speed, 2);
+});
+
+test('progress save: shift и results корректно продолжают смену', () => {
+  const input = {
+    money: 1234,
+    totalServed: 10,
+    totalEarned: 5600,
+    reputation: 4.2,
+    upgrades: { speed: 2, charm: 1, tolerance: 3, toy: 1, scanner: 1 },
+    scannerBroken: true,
+    decor: ['cat-clock', 'cat-clock', 'rug'],
+  };
+  const shift = createProgressSnapshot(
+    { ...input, stage: 'shift', shift: 2 },
+    111,
+  );
+  assert.equal(shift.version, PROGRESS_VERSION);
+  assert.equal(shift.stage, 'shift');
+  assert.deepEqual(shift.decor, ['cat-clock', 'rug']);
+  assert.equal(progressResumeShift(shift), 2);
+
+  const parsed = parseProgressSnapshot(JSON.parse(JSON.stringify(shift)));
+  assert.deepEqual(parsed, shift);
+
+  const results = createProgressSnapshot(
+    { ...input, stage: 'results', shift: 4 },
+    222,
+  );
+  assert.equal(progressResumeShift(results), 5);
+
+  const final = createProgressSnapshot(
+    { ...input, stage: 'results', shift: 5 },
+    333,
+  );
+  assert.equal(progressResumeShift(final), null);
+});
+
+test('progress save: невалидные данные отклоняются, поля нормализуются', () => {
+  assert.equal(parseProgressSnapshot(null), null);
+  assert.equal(parseProgressSnapshot({ version: 2, stage: 'shift', shift: 1 }), null);
+  assert.equal(parseProgressSnapshot({ version: 1, stage: 'other', shift: 1 }), null);
+  assert.equal(parseProgressSnapshot({ version: 1, stage: 'shift', shift: 0 }), null);
+  assert.equal(parseProgressSnapshot({ version: 1, stage: 'shift', shift: 6 }), null);
+
+  const sanitized = parseProgressSnapshot({
+    version: 1,
+    stage: 'shift',
+    shift: 3,
+    money: -50,
+    totalServed: Number.NaN,
+    totalEarned: '120',
+    reputation: 99,
+    upgrades: { speed: -1, charm: '3' },
+    scannerBroken: 1,
+    decor: ['x', 2, 'x'],
+    savedAt: -1,
+  });
+  assert.ok(sanitized);
+  assert.equal(sanitized.money, 0);
+  assert.equal(sanitized.totalServed, 0);
+  assert.equal(sanitized.totalEarned, 120);
+  assert.equal(sanitized.reputation, 5);
+  assert.deepEqual(sanitized.upgrades, {
+    speed: 0,
+    charm: 3,
+    tolerance: 0,
+    toy: 0,
+    scanner: 0,
+  });
+  assert.equal(sanitized.scannerBroken, false);
+  assert.deepEqual(sanitized.decor, ['x']);
+  assert.equal(sanitized.savedAt, 0);
 });
 
 function orderItem(id: string, shelf: number, column: number, level = 0): OrderItem {

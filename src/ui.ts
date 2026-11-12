@@ -75,6 +75,12 @@ export class UI {
         this.preloadBoss();
         this.game.startNewGame();
       },
+      onContinue: () => {
+        this.sound.init();
+        this.sound.click();
+        this.preloadBoss();
+        this.game.continueGame();
+      },
       onOpenHelp: () => this.game.openHelp(),
       onCloseHelp: () => this.game.closeHelp(),
       onTutorialNext: () => {
@@ -250,8 +256,8 @@ export class UI {
     this.hud.banner(title, sub, duration);
   }
 
-  showStart(best: number): void {
-    this.modals.showStart(best);
+  showStart(best: number, continueLabel: string | null = null): void {
+    this.modals.showStart(best, continueLabel);
   }
 
   hideStart(): void {

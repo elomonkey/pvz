@@ -23,6 +23,7 @@ export interface GameOverData {
 
 export interface ModalActions {
   onStart: () => void;
+  onContinue: () => void;
   onOpenHelp: () => void;
   onCloseHelp: () => void;
   onTutorialNext: () => void;
@@ -38,6 +39,7 @@ export class ModalView {
 
   private readonly startScreen = byId('start-screen');
   private readonly startBtn = byId('start-btn') as HTMLButtonElement;
+  private readonly continueBtn = byId('continue-btn') as HTMLButtonElement;
   private readonly startBest = byId('start-best');
   private readonly helpBtn = byId('btn-help') as HTMLButtonElement;
   private readonly helpModal = byId('help-modal');
@@ -79,6 +81,10 @@ export class ModalView {
       this.hideStart();
       actions.onStart();
     });
+    this.continueBtn.addEventListener('click', () => {
+      this.hideStart();
+      actions.onContinue();
+    });
     this.helpBtn.addEventListener('click', () => actions.onOpenHelp());
     this.helpClose.addEventListener('click', () => actions.onCloseHelp());
     this.tutorialNext.addEventListener('click', () => actions.onTutorialNext());
@@ -92,8 +98,13 @@ export class ModalView {
     this.startBest.textContent = String(Math.max(0, Math.round(best)));
   }
 
-  showStart(best: number): void {
+  showStart(best: number, continueLabel: string | null = null): void {
     this.setBest(best);
+    const canContinue = Boolean(continueLabel);
+    this.continueBtn.textContent = continueLabel ?? '';
+    this.continueBtn.classList.toggle('hidden', !canContinue);
+    this.startBtn.classList.toggle('primary', !canContinue);
+    this.startBtn.classList.toggle('ghost', canContinue);
     document.body.classList.add('in-menu');
     this.startScreen.classList.remove('hidden');
     this.actions?.onClosePanels();

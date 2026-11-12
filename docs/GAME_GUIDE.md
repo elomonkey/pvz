@@ -643,6 +643,7 @@
 | `src/core/eventBus.ts` | Типизированная шина уведомлений |
 | `src/domain/events.ts` | Типы игровых событий |
 | `src/domain/run.ts` | Стартовые значения, сброс забега и начало смены |
+| `src/domain/save.ts` | Версионированный снимок прогресса, нормализация и resume-смена |
 | `src/domain/orders.ts` | Данные заказа и его позиций, без отдельного флага переноски |
 | `src/systems/serviceSystem.ts` | Единственный владелец активного обслуживания: picked, стопка/цвета, carrying, readyToDeliver и снимок clear() |
 | `src/systems/warehouseSystem.ts` | Складское состояние: stock ячеек, резервы заказов, доступность активных полок и restock |
@@ -678,6 +679,8 @@
 Позиция заказа (`currentItem`, `cellId`, `shelf`, `actual*`, `mixed`) вычисляется из `items`. `createOrderRecord()` создаёт getter-поля, поэтому после взятия посылки UI и сканер автоматически переходят к следующему item; ручной `syncOrderTarget()` не нужен.
 
 `EncounterCoordinator` хранит phase, общие pause-состояния (`modalOpen`, `helpOpen`) и overlay-флаги (`tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарий Королевы вынесен в `QueenScenario` (6.52), финального босса — в `FinalBossScenario` (6.53), lifecycle обычных боссов — в `BossScenario` (6.54), argue/mash — в `ArgumentScenario` (6.55). AUD-04 закрыт.
+
+Прогресс забега сохраняется на старте смены и на итогах в `localStorage`. `domain/save.ts` описывает версионированный снимок, безопасно нормализует данные и определяет смену для продолжения. Чекпоинт хранит деньги, суммарные показатели, репутацию, улучшения, scannerBroken и декор. «Продолжить» перезапускает сохранённую смену или начинает следующую после итогов; game over, финал и новая игра очищают сейв. Середина смены не сохраняется.
 
 ### Запуск
 

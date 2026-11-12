@@ -1,3 +1,8 @@
+import {
+  parseProgressSnapshot,
+  type ProgressSnapshot,
+} from './domain/save';
+
 interface YandexPlayer {
   getData(keys?: string[]): Promise<Record<string, unknown>>;
   setData(data: Record<string, unknown>): Promise<void>;
@@ -27,6 +32,7 @@ declare global {
 
 const BEST_KEY = 'pvz_tycoon_best';
 const DECOR_KEY = 'pvz_tycoon_decor';
+const PROGRESS_KEY = 'pvz_tycoon_progress';
 const TUTORIAL_KEY = 'pvz_tycoon_tutorial_done';
 const SCANNER_BREAK_KEY = 'pvz_tycoon_scanner_break_seen';
 const RESULTS_INTRO_KEY = 'pvz_tycoon_results_intro_seen';
@@ -56,6 +62,32 @@ export function loadDecorIds(): string[] {
 export function saveDecorIds(ids: string[]): void {
   try {
     localStorage.setItem(DECOR_KEY, JSON.stringify(Array.from(new Set(ids))));
+  } catch {
+    /* noop */
+  }
+}
+
+export function loadProgress(): ProgressSnapshot | null {
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    if (!raw) return null;
+    return parseProgressSnapshot(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+export function saveProgress(snapshot: ProgressSnapshot): void {
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(snapshot));
+  } catch {
+    /* noop */
+  }
+}
+
+export function clearProgress(): void {
+  try {
+    localStorage.removeItem(PROGRESS_KEY);
   } catch {
     /* noop */
   }
