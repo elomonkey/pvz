@@ -10,6 +10,11 @@ import {
   cellPanelKeyFor,
 } from '../src/systems/scannerPanelSystem.ts';
 import { BossEncounter } from '../src/systems/bossEncounter.ts';
+import {
+  BossScenario,
+  type BossScenarioHost,
+  type OrdinaryBossKind,
+} from '../src/systems/bossScenario.ts';
 import { FinalBossSystem } from '../src/systems/finalBossSystem.ts';
 import { FinalBossScenario, type FinalBossScenarioHost } from '../src/systems/finalBossScenario.ts';
 import { QueenSystem } from '../src/systems/queenSystem.ts';
@@ -1265,6 +1270,339 @@ test('final boss scenario: failure и game over очищают клиентов 
   assert.equal(gameOver.scenario.valera, null);
   assert.equal(gameOver.galya.root.visible, false);
   assert.equal(gameOver.valera.label.visible, false);
+});
+
+function bossClientStub(kind: OrdinaryBossKind, order: any = null) {
+  return {
+    kind,
+    order,
+    state: 'waiting',
+    isBoss: kind !== 'sanya',
+    maxPatience: kind === 'sanya' ? 34 : 999,
+    patience: kind === 'sanya' ? 34 : 999,
+    patienceDrainMultiplier: 1,
+    hasShouted: false,
+    arrived: false,
+    queueIndex: 0,
+    bubbles: [] as string[],
+    root: {
+      visible: true,
+      position: {
+        x: 0, y: 0, z: 0,
+        set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; },
+      },
+      rotation: { y: 0 },
+    },
+    label: {
+      visible: true,
+      element: {
+        classList: {
+          removed: [] as string[],
+          remove(name: string) { this.removed.push(name); },
+        },
+      },
+    },
+    rig: {
+      carries: [] as unknown[],
+      setCarry(value: boolean, color?: string) { this.carries.push([value, color]); },
+    },
+    preplaceAtFront() { this.state = 'waiting'; },
+    showBubble(text: string) { this.bubbles.push(text); },
+    hideBubble() {},
+    setTarget() {},
+    isAt() { return this.arrived; },
+    setPatience(value: number) { this.patience = value; },
+    setQueueIndex(index: number) { this.queueIndex = index; },
+    leave() { this.state = 'leaving'; },
+  } as any;
+}
+
+function bossHarness(options: { shift?: number; nextStep?: number | null } = {}) {
+  const calls = {
+    prepared: [] as string[],
+    added: 0,
+    dequeued: 0,
+    queueUpdates: 0,
+    banners: [] as unknown[][],
+    showBoss: [] as unknown[][],
+    showZinaGame: [] as unknown[][],
+    results: [] as unknown[][],
+    bossSounds: 0,
+    errorSounds: 0,
+    clickSounds: 0,
+    winSounds: 0,
+    loseSounds: 0,
+    modalOpen: 0,
+    closeDialogue: 0,
+    gameOver: 0,
+    scannerCleared: 0,
+    scannerCard: 0,
+    scannerToast: 0,
+    resumed: [] as unknown[],
+    restock: 0,
+    reserved: [] as string[],
+    services: [] as { client: any; order: any }[],
+    highlighted: [] as any[],
+    breaks: [] as { seconds: number; next: number }[],
+    endShift: 0,
+    stress: [] as number[],
+    reputation: [] as number[],
+    bossDefeated: 0,
+    huds: 0,
+    stresses: 0,
+    prompts: 0,
+  };
+  let shift = options.shift ?? 1;
+  let nextStep = options.nextStep ?? null;
+  let dialogueContext: 'client' | 'boss' | null = 'boss';
+  let dialogueClient: any = null;
+  let modalOpen = true;
+  let pendingGameOver = false;
+  let scannerPending = false;
+  let scannerSeen = true;
+  let orderId = 0;
+
+  const boss = new BossEncounter();
+  const zina = new ZinaPuzzleSystem();
+  const created: any[] = [];
+  const clients: any[] = [];
+  const queue: any[] = [];
+  const cell = { id: 'A-1', shelfIndex: 0, column: 0, level: 0 };
+  const makeOrder = (count: number) => ({
+    id: `order-${++orderId}`,
+    cellId: `A-${count}`,
+    items: Array.from({ length: count }, () => ({ picked: false })),
+  } as any);
+
+  const ui: any = {
+    closePanels: () => {},
+    banner: (...args: unknown[]) => calls.banners.push(args),
+    showBoss: (...args: unknown[]) => calls.showBoss.push(args),
+    showZinaGame: (...args: unknown[]) => calls.showZinaGame.push(args),
+    renderZinaPuzzle: () => {},
+    setZinaFeedback: () => {},
+    updateZinaTimer: () => {},
+    showBossResult: (...args: unknown[]) => calls.results.push(args),
+    setOrderChip: () => {},
+  };
+  const sound: any = {
+    boss: () => calls.bossSounds++,
+    error: () => calls.errorSounds++,
+    click: () => calls.clickSounds++,
+    win: () => calls.winSounds++,
+    lose: () => calls.loseSounds++,
+  };
+
+  const host: BossScenarioHost = {
+    ui,
+    sound,
+    points: { queueFront: { x: 0.4, z: 1.15 } },
+    phase: () => 'boss',
+    shift: () => shift,
+    isGameOver: () => false,
+    isModalOpen: () => modalOpen,
+    prepareEncounter: (kind) => {
+      calls.prepared.push(kind);
+      boss.begin(kind);
+      if (kind === 'sanya') {
+        boss.trigger();
+        return makeOrder(4);
+      }
+      return null;
+    },
+    createClient: (kind, order) => {
+      const client = bossClientStub(kind, order);
+      created.push(client);
+      return client;
+    },
+    addClient: (client: any) => {
+      clients.push(client);
+      queue.push(client);
+      calls.added++;
+    },
+    dequeue: (client: any) => {
+      calls.dequeued++;
+      const index = queue.indexOf(client);
+      if (index >= 0) queue.splice(index, 1);
+    },
+    updateQueue: () => calls.queueUpdates++,
+    patienceMultiplier: () => 1,
+    bossLine: () => 'Галя: ну и очередь!',
+    zinaIntroLine: () => 'Помоги, милок',
+    zinaSegments: () => [0, 1, 2, 3],
+    zinaFiller: () => 4,
+    zinaPuzzleTime: () => 75,
+    zinaWinLine: () => 'win-line',
+    zinaLoseLine: () => 'lose-line',
+    expectedServeStress: () => 25,
+    openBossModal: () => calls.modalOpen++,
+    closeBossDialogue: () => {
+      modalOpen = false;
+      calls.closeDialogue++;
+      return { context: dialogueContext, client: dialogueClient };
+    },
+    consumePendingGameOver: () => {
+      const value = pendingGameOver;
+      pendingGameOver = false;
+      return value;
+    },
+    gameOver: () => calls.gameOver++,
+    scannerBreakPending: () => scannerPending,
+    clearScannerBreak: () => {
+      scannerPending = false;
+      calls.scannerCleared++;
+    },
+    scannerBreakSeen: () => scannerSeen,
+    showScannerBreakCard: () => calls.scannerCard++,
+    toastScannerBreak: () => calls.scannerToast++,
+    resumeClientService: (client: any) => calls.resumed.push(client),
+    restockCells: () => calls.restock++,
+    findAvailableCell: (id) => (id === cell.id ? (cell as any) : null),
+    pickZinaCell: () => cell as any,
+    createZinaOrder: (value) => ({
+      id: 'zina-order',
+      cellId: value.id,
+      items: [],
+    } as any),
+    reserveCell: (id) => calls.reserved.push(id),
+    beginService: (client, order) => calls.services.push({ client, order }),
+    scannerWorks: () => true,
+    highlightOrder: (order) => calls.highlighted.push(order),
+    nextStepIndex: () => nextStep,
+    startBreak: (seconds, next) => calls.breaks.push({ seconds, next }),
+    endShift: () => calls.endShift++,
+    addStress: (amount) => calls.stress.push(amount),
+    addReputation: (amount) => calls.reputation.push(amount),
+    emitBossDefeated: () => calls.bossDefeated++,
+    updateHud: () => calls.huds++,
+    updateStressUi: () => calls.stresses++,
+    updatePrompt: () => calls.prompts++,
+  };
+
+  return {
+    scenario: new BossScenario(boss, zina, host),
+    boss,
+    zina,
+    calls,
+    created,
+    clients,
+    queue,
+    cell,
+    setShift: (value: number) => { shift = value; },
+    setNextStep: (value: number | null) => { nextStep = value; },
+    setDialogue: (context: 'client' | 'boss' | null, client: any = null) => {
+      dialogueContext = context;
+      dialogueClient = client;
+    },
+    setModal: (value: boolean) => { modalOpen = value; },
+    setPendingGameOver: (value: boolean) => { pendingGameOver = value; },
+    setScanner: (pending: boolean, seen: boolean) => {
+      scannerPending = pending;
+      scannerSeen = seen;
+    },
+  };
+}
+
+test('boss scenario: Галя появляется и открывает модалку у стойки', () => {
+  const h = bossHarness({ shift: 1 });
+  h.scenario.spawn('galya');
+
+  assert.deepEqual(h.calls.prepared, ['galya']);
+  assert.equal(h.calls.added, 1);
+  const galya = h.scenario.bossClient!;
+  assert.equal(galya.isBoss, true);
+  galya.arrived = true;
+  h.scenario.updateApproach();
+
+  assert.equal(h.boss.triggered, true);
+  assert.equal(h.calls.modalOpen, 1);
+  assert.equal(h.calls.showBoss.length, 1);
+  assert.equal(h.calls.showBoss[0]?.[2], 'Галя');
+  assert.equal(h.calls.showBoss[0]?.[0], 25);
+});
+
+test('boss scenario: Зина запускает загадку, создаёт заказ и начинает service', () => {
+  const h = bossHarness({ shift: 2 });
+  h.scenario.spawn('zina');
+  const zina = h.scenario.bossClient!;
+  zina.arrived = true;
+  h.scenario.updateApproach();
+
+  assert.equal(h.zina.active, true);
+  assert.equal(h.calls.showZinaGame.length, 1);
+  h.scenario.finishZinaGame(true);
+  assert.equal(h.scenario.zinaOrderPending, true);
+  assert.equal(h.scenario.zinaPendingCellId, 'A-1');
+  assert.deepEqual(h.calls.stress, [-8]);
+  assert.deepEqual(h.calls.reputation, [0.2]);
+
+  h.setDialogue('boss', null);
+  h.scenario.onBossDone();
+  assert.equal(h.calls.services.length, 1);
+  assert.equal(h.scenario.zinaOrderPending, false);
+  assert.equal(zina.isBoss, false);
+  assert.equal(zina.order.cellId, 'A-1');
+  assert.equal(h.calls.reserved[0], 'A-1');
+  assert.equal(h.boss.triggered, true);
+  assert.equal(h.calls.queueUpdates, 1);
+});
+
+test('boss scenario: провал Zina-загадки даёт стресс и не создаёт заказ', () => {
+  const h = bossHarness({ shift: 2 });
+  h.scenario.spawn('zina');
+  h.scenario.bossClient!.arrived = true;
+  h.scenario.updateApproach();
+  h.scenario.finishZinaGame(false);
+
+  assert.equal(h.scenario.zinaOrderPending, false);
+  assert.deepEqual(h.calls.stress, [15]);
+  assert.deepEqual(h.calls.reputation, [-0.5]);
+  assert.equal(h.calls.results.at(-1)?.[2], false);
+  assert.equal(h.calls.results.at(-1)?.[3], 'lose-line');
+});
+
+test('boss scenario: Саня создаёт заказ на 4 позиции и завершает шаг', () => {
+  const h = bossHarness({ shift: 3 });
+  h.scenario.spawn('sanya');
+  const sanya = h.scenario.bossClient!;
+
+  assert.equal(sanya.order.items.length, 4);
+  assert.equal(sanya.patience, 34);
+  assert.equal(sanya.isBoss, false);
+  assert.equal(h.calls.added, 1);
+  sanya.state = 'leaving';
+  h.scenario.handleBossDelivery(sanya);
+  assert.equal(h.calls.bossDefeated, 1);
+  assert.equal(h.calls.endShift, 1);
+  assert.equal(h.scenario.bossClient, null);
+  assert.equal(sanya.state, 'leaving');
+});
+
+test('boss scenario: потеря Сани завершает шаг без bossDefeated', () => {
+  const h = bossHarness({ shift: 3 });
+  h.scenario.spawn('sanya');
+  const sanya = h.scenario.bossClient!;
+  assert.equal(h.scenario.handlePatienceZero(sanya), true);
+  assert.equal(h.calls.bossDefeated, 0);
+  assert.equal(h.calls.endShift, 1);
+});
+
+test('boss scenario: onBossDone обрабатывает game over и scanner break', () => {
+  const gameOver = bossHarness({ shift: 1 });
+  gameOver.scenario.spawn('galya');
+  gameOver.setDialogue('boss', null);
+  gameOver.setPendingGameOver(true);
+  gameOver.scenario.onBossDone();
+  assert.equal(gameOver.calls.gameOver, 1);
+  assert.equal(gameOver.calls.endShift, 0);
+
+  const scanner = bossHarness({ shift: 1 });
+  scanner.scenario.spawn('galya');
+  scanner.setDialogue('boss', null);
+  scanner.setScanner(true, false);
+  scanner.scenario.onBossDone();
+  assert.equal(scanner.calls.scannerCard, 1);
+  assert.equal(scanner.calls.endShift, 1);
 });
 
 test('движение: путь, прибытие и сохранение направления', () => {

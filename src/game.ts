@@ -80,6 +80,7 @@ import { PlayerMovement } from './systems/playerMovement';
 import { NavGrid } from './nav';
 import { ArgumentSystem, type MashState } from './systems/argumentSystem';
 import { BossEncounter } from './systems/bossEncounter';
+import { BossScenario, type OrdinaryBossKind } from './systems/bossScenario';
 import {
   ScannerPanelSystem,
   buildCellPanelModel,
@@ -218,13 +219,20 @@ export class Game {
   private readonly progression = new ShiftProgression();
 
   private nextClientId = 1;
-  private bossClient: Client | null = null;
   private readonly boss = new BossEncounter();
+  private readonly bossScenario: BossScenario;
+  private get bossClient(): Client | null {
+    return this.bossScenario.bossClient;
+  }
+  private get zinaOrderPending(): boolean {
+    return this.bossScenario.zinaOrderPending;
+  }
+  private get zinaPendingCellId(): string | null {
+    return this.bossScenario.zinaPendingCellId;
+  }
   private readonly argumentSystem = new ArgumentSystem();
   private argueClient: Client | null = null;
   private readonly zina = new ZinaPuzzleSystem();
-  private zinaOrderPending = false;
-  private zinaPendingCellId: string | null = null;
   private scannerBroken = false;
   private scannerBreakPending = false;
   private highlightEnabled = true;
@@ -366,6 +374,89 @@ export class Game {
         this.updatePrompt();
       },
       finishShift: () => this.endShift(),
+    });
+    this.bossScenario = new BossScenario(this.boss, this.zina, {
+      ui: this.ui,
+      sound: this.sound,
+      points: { queueFront: QUEUE_SPOTS[0] },
+      phase: () => this.phase,
+      shift: () => this.run.shift,
+      isGameOver: () => this.isGameOver(),
+      isModalOpen: () => this.modalOpen,
+      prepareEncounter: (kind) => this.prepareOrdinaryBossEncounter(kind),
+      createClient: (kind, order) => this.createBossClient(kind, order),
+      addClient: (client) => {
+        this.clients.push(client);
+        this.queue.push(client);
+        this.updateQueue();
+      },
+      dequeue: (client) => this.removeFromQueue(client),
+      updateQueue: () => this.updateQueue(),
+      patienceMultiplier: () => this.patienceMultiplier(),
+      bossLine: () => pick(BOSS_LINES),
+      zinaIntroLine: () => pick(ZINA_INTRO_LINES),
+      zinaSegments: () => ZINA_BARCODE_SEGMENTS.map((segment) => segment.id),
+      zinaFiller: () => ZINA_FILLER_TILE,
+      zinaPuzzleTime: () => ZINA_PUZZLE_TIME,
+      zinaWinLine: () => ZINA_WIN_LINE,
+      zinaLoseLine: () => ZINA_LOSE_LINE,
+      expectedServeStress: () =>
+        calculateExpectedServeStress(
+          this.run.upgrades.charm,
+          this.run.upgrades.tolerance,
+        ),
+      openBossModal: () => {
+        this.encounter.openModal();
+        this.movement.clearPath();
+        this.pendingAction = null;
+        this.marker.visible = false;
+      },
+      closeBossDialogue: () => this.closeBossDialogue(),
+      consumePendingGameOver: () => {
+        const value = this.pendingGameOver;
+        this.pendingGameOver = false;
+        return value;
+      },
+      gameOver: () => this.gameOver(),
+      scannerBreakPending: () => this.scannerBreakPending,
+      clearScannerBreak: () => {
+        this.scannerBreakPending = false;
+        this.encounter.closeScannerBreakCard();
+      },
+      scannerBreakSeen: () => loadScannerBreakSeen(),
+      showScannerBreakCard: () => this.showScannerBreakCard(),
+      toastScannerBreak: () =>
+        this.ui.toast(
+          'Сканер разбит: подсветка ячеек отключена. Новый сканер — в магазине за 5000 ₽.',
+          'boss',
+        ),
+      resumeClientService: (client) =>
+        this.handleArrival({ type: 'service', client }),
+      restockCells: () => this.restockCells(),
+      findAvailableCell: (id) =>
+        this.warehouse
+          .available(this.progression.activeShelfCount)
+          .find((value) => value.id === id) ?? null,
+      pickZinaCell: () => this.pickZinaCell(),
+      createZinaOrder: (cell) => this.createZinaOrder(cell),
+      reserveCell: (id) => this.warehouse.reserve([id]),
+      beginService: (client, order) => {
+        this.service.begin(client, order);
+      },
+      scannerWorks: () => this.scannerWorks(),
+      highlightOrder: (order) => {
+        if (this.scannerWorks()) this.setHighlight(order.shelf, order.column);
+        else this.setHighlight(-1, -1);
+      },
+      nextStepIndex: () => this.director.nextStepIndex,
+      startBreak: (seconds, next) => this.startBreak(seconds, next),
+      endShift: () => this.endShift(),
+      addStress: (amount, deferGameOver) => this.addStress(amount, deferGameOver),
+      addReputation: (amount) => this.addReputation(amount),
+      emitBossDefeated: () => this.events.emit('bossDefeated', { kind: 'boss' }),
+      updateHud: () => this.updateHud(),
+      updateStressUi: () => this.updateStressUi(),
+      updatePrompt: () => this.updatePrompt(),
     });
 
     this.player = createPerson({
@@ -1059,7 +1150,7 @@ export class Game {
     this.scannerBroken = false;
     this.scannerBreakPending = false;
     this.encounter.closeScannerBreakCard();
-    this.zinaPendingCellId = null;
+    this.bossScenario.reset();
     this.tutorialActive = false;
     this.encounter.closeTutorial();
     this.tutorialPending = !loadTutorialDone();
@@ -1090,13 +1181,11 @@ export class Game {
     this.encounter.enterBreak();
     this.encounter.closeModal();
     this.encounter.closeHelp();
-    this.bossClient = null;
+    this.bossScenario.reset();
     this.boss.reset();
     this.argumentSystem.clear();
     this.argueClient = null;
     this.zina.reset();
-    this.zinaOrderPending = false;
-    this.zinaPendingCellId = null;
     this.scannerBreakPending = false;
     this.encounter.closeScannerBreakCard();
     this.encounter.closeMechanicCard();
@@ -1319,16 +1408,7 @@ export class Game {
     // Keep the loss/cleanup above, but do not advance the boss after fatal stress.
     if (this.isGameOver()) return;
 
-    if (client === this.bossClient && this.run.shift === 3) {
-      this.bossClient = null;
-      this.finishBossStep();
-      return;
-    }
-    if (client === this.bossClient && this.run.shift === 2) {
-      this.bossClient = null;
-      this.finishBossStep();
-      return;
-    }
+    if (this.bossScenario.handlePatienceZero(client)) return;
     if (client === this.finalBossGalya) {
       if (this.phase !== 'gameover') this.finishFinalBoss(false);
       return;
@@ -1350,7 +1430,7 @@ export class Game {
       this.scannerPanel.closeScanner();
       this.ui.closeScanner();
     }
-    if (this.bossClient === client) this.bossClient = null;
+    this.bossScenario.clearClient(client);
 
     client.destroy();
     this.updateQueue();
@@ -1412,198 +1492,27 @@ export class Game {
       this.spawnFinalBoss();
       return;
     }
-    if (kind === 'sanya') {
-      this.spawnSanya();
-      return;
-    }
-    this.clearClients();
-    this.encounter.enterBoss();
-    this.boss.begin(kind);
-    this.argumentSystem.clear();
-    this.zina.reset();
-    this.zinaOrderPending = false;
-    this.zinaPendingCellId = null;
-    this.pendingGameOver = false;
-    const isZina = kind === 'zina';
-    this.bossClient = new Client({
-      scene: this.scene,
-      id: this.nextClientId++,
-      archetype: isZina ? BABA_ARCHETYPE : BOSS_ARCHETYPE,
-      order: null,
-      patience: 999,
-      queueIndex: 0,
-      isBoss: true,
-    });
-    this.bossClient.onGone = (value) => this.onClientGone(value);
-    this.clients.push(this.bossClient);
-    this.queue.push(this.bossClient);
-    this.bossClient.showBubble('!', 999);
-    this.updateQueue();
-
-    this.ui.closePanels();
-    this.ui.banner(
-      'Босс',
-      isZina
-        ? 'Баба Зина идёт к стойке: помогите ей собрать штрихкод в пятнашках.'
-        : 'Галя идёт к стойке. Приготовьтесь к скандалу.',
-      2.4,
-    );
-    this.sound.boss();
-    this.updateHud();
-    this.updatePrompt();
+    this.bossScenario.spawn(kind);
   }
 
   private spawnSanya(): void {
-    if (this.isGameOver()) return;
-    // Саня вводит механики: 4 заказа сразу, а после него — многоячейковые заказы.
-    this.progression.setMultiOrders(true);
-    this.clearClients();
-    // clearClients releases all reservations/carry, then allocation restocks.
-    const order = this.createOrder(false, 4);
-    if (!order) return;
-    this.encounter.enterBoss();
-    this.boss.begin('sanya');
-    this.boss.trigger();
-    this.argumentSystem.clear();
-    this.zina.reset();
-    this.zinaPendingCellId = null;
-    this.pendingGameOver = false;
-
-    this.bossClient = new Client({
-      scene: this.scene,
-      id: this.nextClientId++,
-      archetype: SANYA_ARCHETYPE,
-      order,
-      patience: 34,
-      queueIndex: 0,
-    });
-    this.bossClient.onGone = (value) => this.onClientGone(value);
-    this.bossClient.onPatienceZero = (value) => this.onClientPatienceZero(value);
-    this.bossClient.onLabelClick = (value) => this.onClientLabelClick(value);
-    this.bossClient.patienceDrainMultiplier = this.patienceMultiplier();
-    this.clients.push(this.bossClient);
-    this.queue.push(this.bossClient);
-    this.updateQueue();
-
-    this.ui.closePanels();
-    this.ui.banner(
-      'Курьер Саня',
-      'Четыре заказа сразу. Он очень спешит — не заставляйте ждать.',
-      3,
-    );
-    this.sound.boss();
-    this.updateHud();
-    this.updatePrompt();
+    this.bossScenario.spawn('sanya');
   }
 
   private updateBossApproach(): void {
-    if (this.phase !== 'boss' || !this.bossClient || this.boss.triggered) return;
-    if (this.bossClient.state !== 'waiting') return;
-    if (!this.bossClient.isAt(QUEUE_SPOTS[0], 0.24)) return;
-    this.triggerBossModal();
-  }
-
-  private triggerBossModal(): void {
-    if (!this.bossClient) return;
-    this.boss.trigger();
-    this.encounter.openModal();
-    this.movement.clearPath();
-    this.pendingAction = null;
-    this.marker.visible = false;
-
-    if (this.boss.kind === 'zina') {
-      this.startZinaMiniGame();
-      this.updatePrompt();
-      return;
-    }
-
-    const line = pick(BOSS_LINES);
-    this.bossClient.showBubble(line, 999);
-    this.ui.showBoss(
-      calculateExpectedServeStress(this.run.upgrades.charm, this.run.upgrades.tolerance),
-      line,
-      'Галя',
-    );
-    this.sound.boss();
-    this.updatePrompt();
-  }
-
-  private startZinaMiniGame(): void {
-    this.zina.start(
-      ZINA_BARCODE_SEGMENTS.map((segment) => segment.id),
-      ZINA_FILLER_TILE,
-    );
-    this.zinaPendingCellId = null;
-    const line = pick(ZINA_INTRO_LINES);
-    this.bossClient?.showBubble(line, 999);
-    this.ui.showZinaGame(
-      'Баба Зина',
-      line,
-      this.zina.target,
-      this.zina.board,
-      ZINA_PUZZLE_TIME,
-      ZINA_PUZZLE_TIME,
-    );
-    this.sound.boss();
+    this.bossScenario.updateApproach();
   }
 
   zinaPuzzleMove(index: number): void {
-    if (!this.zina.active || !this.modalOpen) return;
-    const result = this.zina.move(index);
-    if (result === 'invalid') {
-      this.ui.setZinaFeedback('Плитку можно двигать только рядом с пустой клеткой.', false);
-      this.sound.error();
-      return;
-    }
-    if (result === 'inactive') return;
-
-    this.ui.renderZinaPuzzle(this.zina.board, this.zina.target);
-    this.ui.setZinaFeedback('', true);
-    this.sound.click();
-    if (result === 'solved') this.finishZinaGame(true);
+    this.bossScenario.zinaPuzzleMove(index);
   }
 
   private updateZinaGame(dt: number): void {
-    if (!this.zina.active || !this.modalOpen) return;
-    const result = this.zina.tick(dt);
-    this.ui.updateZinaTimer(this.zina.timeRatio);
-    if (result === 'timeout') this.finishZinaGame(false);
+    this.bossScenario.updateZinaGame(dt);
   }
 
   private finishZinaGame(success: boolean): void {
-    if (this.isGameOver()) return;
-    if (!this.zina.active) return;
-    this.zina.resolve();
-    this.boss.resolve();
-
-    if (success) {
-      const cell = this.pickZinaCell();
-      this.zinaPendingCellId = cell?.id ?? null;
-      this.addStress(-8);
-      this.addReputation(0.2);
-      this.zinaOrderPending = true;
-      this.ui.showBossResult(
-        'Штрихкод собран!',
-        cell
-          ? `Баба Зина прикладывает штрихкод к телефону. Заберите посылку из ячейки ${cell.id} и отдайте ей.`
-          : 'Баба Зина прикладывает штрихкод к телефону и ждёт заказ у стойки.',
-        true,
-        ZINA_WIN_LINE,
-      );
-      this.sound.win();
-    } else {
-      this.addStress(15, true);
-      this.addReputation(-0.5);
-      this.ui.showBossResult(
-        'Штрихкод не собран',
-        'Баба Зина так и не смогла разобраться с телефоном. Она уходит жаловаться.',
-        false,
-        ZINA_LOSE_LINE,
-      );
-      this.sound.lose();
-    }
-    this.updateHud();
-    this.updateStressUi();
+    this.bossScenario.finishZinaGame(success);
   }
 
   private pickZinaCell(): WarehouseCell | null {
@@ -1864,104 +1773,11 @@ export class Game {
   }
 
   onBossDone(): void {
-    if (this.isGameOver()) return;
-    if (!this.modalOpen) return;
-    const context = this.argumentSystem.context;
-    const client = this.argueClient;
-    this.ui.hideBoss();
-    this.encounter.closeModal();
-    this.bossClient?.hideBubble();
-    client?.hideBubble();
-    this.argumentSystem.clear();
-    this.argueClient = null;
-
-    if (this.pendingGameOver) {
-      this.pendingGameOver = false;
-      this.gameOver();
-      return;
-    }
-    if (this.scannerBreakPending) {
-      this.scannerBreakPending = false;
-      this.encounter.closeScannerBreakCard();
-      if (!loadScannerBreakSeen()) {
-        this.finishBossStep();
-        this.showScannerBreakCard();
-        return;
-      }
-      this.ui.toast(
-        'Сканер разбит: подсветка ячеек отключена. Новый сканер — в магазине за 5000 ₽.',
-        'boss',
-      );
-    }
-    if (context === 'client') {
-      if (client) this.handleArrival({ type: 'service', client });
-      return;
-    }
-    if (this.zinaOrderPending) {
-      this.startZinaOrder();
-      return;
-    }
-    this.finishBossStep();
+    this.bossScenario.onBossDone();
   }
 
   private startZinaOrder(): void {
-    if (this.isGameOver()) return;
-    const zina = this.bossClient;
-    if (!zina) {
-      this.zinaOrderPending = false;
-      this.finishBossStep();
-      return;
-    }
-
-    this.restockCells();
-    const pendingCell = this.zinaPendingCellId;
-    const cell =
-      (pendingCell
-        ? this.warehouse
-            .available(this.progression.activeShelfCount)
-            .find((value) => value.id === pendingCell)
-        : null) ?? this.pickZinaCell();
-    if (!cell) {
-      this.zinaOrderPending = false;
-      this.zinaPendingCellId = null;
-      this.finishBossStep();
-      return;
-    }
-
-    const order = this.createZinaOrder(cell);
-    this.warehouse.reserve([cell.id]);
-    this.zinaPendingCellId = null;
-    this.zinaOrderPending = false;
-    zina.isBoss = false;
-    zina.label.element.classList.remove('boss');
-    zina.order = order;
-    zina.maxPatience = 30;
-    zina.setPatience(30);
-    zina.hasShouted = false;
-    zina.state = 'waiting';
-    zina.root.position.set(QUEUE_SPOTS[0].x, 0, QUEUE_SPOTS[0].z);
-    zina.setQueueIndex(0);
-    zina.setTarget(true);
-    zina.rig.setCarry(false);
-    zina.patienceDrainMultiplier = this.patienceMultiplier();
-    zina.showBubble('Забери мою посылку, милок!', 3);
-    this.service.begin(zina, order);
-    this.boss.trigger();
-    this.updateQueue();
-    this.ui.closePanels();
-    this.ui.setOrderChip('Ячейка', order.cellId, 'cell');
-    if (this.scannerWorks()) {
-      this.setHighlight(order.shelf, order.column);
-    } else {
-      this.setHighlight(-1, -1);
-    }
-    this.ui.banner(
-      'Заказ Бабы Зины',
-      `Ячейка ${order.cellId}. Заберите посылку и отдайте Зине.`,
-      3,
-    );
-    this.updateHud();
-    this.updatePrompt();
+    this.bossScenario.startZinaOrder();
   }
 
   private createZinaOrder(cell: {
@@ -1990,20 +1806,75 @@ export class Game {
   }
 
   private finishBossStep(): void {
-    if (this.isGameOver()) return;
-    if (this.bossClient) {
-      this.bossClient.leave(0);
-      this.removeFromQueue(this.bossClient);
-      this.bossClient = null;
+    this.bossScenario.finishStep();
+  }
+
+  private prepareOrdinaryBossEncounter(kind: OrdinaryBossKind): Order | null {
+    if (kind === 'sanya') {
+      this.progression.setMultiOrders(true);
+      this.clearClients();
+      const order = this.createOrder(false, 4);
+      if (!order) return null;
+      this.encounter.enterBoss();
+      this.boss.begin('sanya');
+      this.boss.trigger();
+      this.argumentSystem.clear();
+      this.zina.reset();
+      this.pendingGameOver = false;
+      return order;
     }
 
-    const next = this.director.nextStepIndex;
-    if (next === null) {
-      this.endShift();
-      return;
+    this.clearClients();
+    this.encounter.enterBoss();
+    this.boss.begin(kind);
+    this.argumentSystem.clear();
+    this.zina.reset();
+    this.pendingGameOver = false;
+    return null;
+  }
+
+  private createBossClient(kind: OrdinaryBossKind, order: Order | null): Client {
+    if (kind === 'sanya') {
+      const sanya = new Client({
+        scene: this.scene,
+        id: this.nextClientId++,
+        archetype: SANYA_ARCHETYPE,
+        order,
+        patience: 34,
+        queueIndex: 0,
+      });
+      sanya.onGone = (value) => this.onClientGone(value);
+      sanya.onPatienceZero = (value) => this.onClientPatienceZero(value);
+      sanya.onLabelClick = (value) => this.onClientLabelClick(value);
+      return sanya;
     }
-    this.startBreak(5.2, next);
-    this.updatePrompt();
+
+    const boss = new Client({
+      scene: this.scene,
+      id: this.nextClientId++,
+      archetype: kind === 'zina' ? BABA_ARCHETYPE : BOSS_ARCHETYPE,
+      order: null,
+      patience: 999,
+      queueIndex: 0,
+      isBoss: true,
+    });
+    boss.onGone = (value) => this.onClientGone(value);
+    return boss;
+  }
+
+  private closeBossDialogue(): {
+    context: 'client' | 'boss' | null;
+    client: Client | null;
+  } {
+    const context = this.argumentSystem.context;
+    const client = this.argueClient;
+    this.ui.hideBoss();
+    this.encounter.closeModal();
+    this.bossClient?.hideBubble();
+    client?.hideBubble();
+    this.argumentSystem.clear();
+    this.argueClient = null;
+    return { context, client };
   }
 
   private spawnFinalBoss(): void {
@@ -2051,14 +1922,12 @@ export class Game {
     this.fittingTimers = [5, 9];
     this.encounter.enterBoss();
     this.encounter.closeModal();
-    this.bossClient = null;
+    this.bossScenario.reset();
     this.boss.begin('final');
     this.boss.trigger();
     this.argumentSystem.clear();
     this.argueClient = null;
     this.zina.reset();
-    this.zinaOrderPending = false;
-    this.zinaPendingCellId = null;
     this.pendingGameOver = false;
     this.service.carryingReturn = false;
     this.player.setCarry(false);
@@ -2338,6 +2207,7 @@ export class Game {
     this.ui.updateStress(100);
     this.argumentSystem.clear();
     this.argueClient = null;
+    this.bossScenario.reset();
     this.ui.closePanels();
 
     this.best = Math.max(this.best, this.run.money);
@@ -2359,7 +2229,7 @@ export class Game {
     this.scannerBroken = false;
     this.scannerBreakPending = false;
     this.encounter.closeScannerBreakCard();
-    this.zinaPendingCellId = null;
+    this.bossScenario.reset();
     this.ui.setReputation(this.run.reputation);
     this.service.reset();
     this.scannerPanel.closeScanner();
@@ -2368,7 +2238,6 @@ export class Game {
     this.argueClient = null;
     this.boss.reset();
     this.zina.reset();
-    this.bossClient = null;
     this.pendingGameOver = false;
     this.encounter.closeModal();
     this.tutorialActive = false;
@@ -2784,15 +2653,7 @@ export class Game {
     this.updatePrompt();
     this.onTutorialAction('delivered');
 
-    if (client === this.bossClient && this.run.shift === 3) {
-      this.events.emit('bossDefeated', { kind: 'boss' });
-      this.bossClient = null;
-      this.finishBossStep();
-    } else if (client === this.bossClient && this.run.shift === 2) {
-      this.events.emit('bossDefeated', { kind: 'boss' });
-      this.bossClient = null;
-      this.finishBossStep();
-    }
+    this.bossScenario.handleBossDelivery(client);
   }
 
   private cancelActiveOrder(): void {
@@ -2856,9 +2717,7 @@ export class Game {
     this.argueClient = null;
     this.boss.reset();
     this.zina.reset();
-    this.zinaOrderPending = false;
-    this.zinaPendingCellId = null;
-    this.bossClient = null;
+    this.bossScenario.reset();
     this.service.reset();
     this.scannerPanel.closeScanner();
     this.player.setCarry(false);

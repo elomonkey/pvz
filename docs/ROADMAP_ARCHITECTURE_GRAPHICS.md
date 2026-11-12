@@ -702,6 +702,13 @@ src/
 - Реализация `spawnFinalBoss/showFinalBossDialogue/onFinalBossDialogueDone/applyFinalBossDebuff/startFinalBossCollect/startFinalBossBarcode/showFinalBossMidDialogue/handleFinalBossDelivery/updateFinalBoss/startFinalBossReturns/takeFinalBossReturn/finishFinalBoss` удалена из `Game`; остались lifecycle-обёртки и getters для e2e/dev-консоли.
 - Unit-тесты на фейковом host покрывают появление, три штрихкода, mid-диалог, fittingWalk/fittingTalk, три возврата, успех, поражение и game over. Build, 79 unit и 67 e2e проходят; тексты, тайминги, дебафф, награды, UI и сцена не менялись.
 
+### 6.54. BossScenario: lifecycle обычных боссов вне Game — issue #63
+
+- Новый `systems/bossScenario.ts` владеет клиентом босса и отложенным Zina-заказом: появление Гали/Сани/Зины, подход к стойке, модалка, Zina-мини-игра, выдача Зине, потеря по терпению и переход к break/итогам. `BossEncounter` и `ZinaPuzzleSystem` остались системами.
+- `Game` передаёт сценарию заказы, склад, service, очередь, UI/sound, награды и границы смены через host-интерфейс. `ArgumentSystem` и argue/mash-поток пока остаются в `Game` — это следующий срез AUD-04.
+- Реализация `spawnBoss/spawnSanya/updateBossApproach/triggerBossModal/startZinaMiniGame/zinaPuzzleMove/updateZinaGame/finishZinaGame/onBossDone/startZinaOrder/finishBossStep` удалена из `Game`; остались тонкие обёртки и getters для e2e/dev-консоли.
+- Unit-тесты на фейковом host покрывают появление Гали, Zina-загадку/провал, Zina-заказ, Саню, потерю по терпению, game over и scanner break. Build, 85 unit и 67 e2e проходят; тексты, тайминги, награды и UI не менялись.
+
 ### Исторические метрики до визуальных проходов
 
 Актуальные фиксированные сцены и методика — в 6.23 и [perf-отчёте](perf/PR5_REPORT.md).
