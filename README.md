@@ -136,7 +136,7 @@ src/main.ts             рендер, камера, цикл, Yandex SDK
 src/game.ts             координатор: смена, заказы, боссы, ввод и UI-события
 src/core/eventBus.ts    типизированная шина уведомлений
 src/domain/             чистые правила: экономика, смены, споры, квесты, прогрессия, забег, события
-src/systems/            состояние систем: спор, боссы, финал, королева и её сценарий, обслуживание, сканер/панель, движение и режиссёр смены
+src/systems/            состояние систем: спор, боссы, финал и его сценарий, королева и её сценарий, обслуживание, сканер/панель, движение и режиссёр смены
 src/input/              тапы, raycast и клики по DOM-меткам
 src/view/kit.ts         геометрия, материалы, палитра и merge-хелперы
 src/view/primitives.ts  общие примитивы, тени, текстуры и кэш
@@ -158,7 +158,7 @@ src/sound.ts            синтезированные звуки
 src/yandex.ts           безопасная обёртка Yandex Games SDK
 src/data.ts             архетипы, реплики, босс, улучшения, константы
 src/style.css           стили и адаптивность
-tests/                  unit-тесты домена, систем, событий, ввода и владения ресурсами (76 тестов)
+tests/                  unit-тесты домена, систем, событий, ввода и владения ресурсами (79 тестов)
 docs/GAME_GUIDE.md      полный справочник по механикам, сменам и боссам
 docs/GDD.md             дизайн-документ и планы развития
 ```
@@ -172,6 +172,8 @@ docs/GDD.md             дизайн-документ и планы развит
 Верхнеуровневым `phase`, `modalOpen` и `helpOpen` владеет `EncounterCoordinator`. Game использует его read-only getters и методы переходов; единая pause-политика блокирует ввод в menu/results/gameover и при открытой модалке/help. Там же живут overlay-флаги обучения, mechanic-card и scanner-break card.
 
 Появлением, примеркой, возвратами и уходом Королевы координирует `QueenScenario`. Он владеет клиентом Королевы и флагом похода в примерочную, а `QueenSystem` по-прежнему хранит бюджет, кулдаун примерки и состояние возврата. `Game` передаёт сценарию заказы, очередь, service, UI/sound и общее состояние примерочных через узкий host-интерфейс; runtime-методы `spawnQueen/updateQueen/returnQueen/takeQueenReturn` сохранены для e2e и dev-консоли.
+
+Финальным боссом координирует `FinalBossScenario`: он владеет Галей, Валерой и заказом, ведёт entrance/mid/fitting-диалоги, три штрихкода, примерку и возвраты. `FinalBossSystem` остаётся state-машиной stage/phase/barcode/debuff/returns, а `Game` — границей боя, service, очередью, складом, UI/sound и примерочными. Wrappers `spawnFinalBoss/updateFinalBoss/onFinalBossDialogueDone/takeFinalBossReturn/finishFinalBoss` сохранены для e2e и dev-консоли.
 
 ## Экономика смены
 

@@ -678,7 +678,7 @@ src/
 
 - `EncounterCoordinator` дополнительно владеет `tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen` и `overlayOpen`; добавлены `open*/close*` методы.
 - `Game` заменил три прямых поля на read-only getters и вызовы координатора; reset очищает все overlay-флаги.
-- Поведение карточек, тексты, DOM, таймеры и `inputBlocked` не менялись. Сценарные состояния боссов остаются следующим срезом AUD-04/AUD-07; Queen вынесен в 6.52.
+- Поведение карточек, тексты, DOM, таймеры и `inputBlocked` не менялись. Сценарные состояния боссов остаются следующим срезом AUD-04/AUD-07; Queen вынесен в 6.52, финальный босс — в 6.53.
 - Unit-тесты покрывают открытие/закрытие каждого overlay и reset. Build, 72 unit и 66 e2e проходят.
 
 ### 6.51. Финальные клиенты не застревают в leaving — issue #57
@@ -694,6 +694,13 @@ src/
 - `Game` передаёт сценарию заказы, клиента, очередь, service, UI/sound, репутацию и общее состояние примерочных через host-интерфейс. Разделяемые примерочные пока остаются в `Game`, потому что их использует и финальный босс.
 - Реализация `spawnQueen/updateQueen/sendQueenToFitting/enterQueenFitting/returnQueen/returnQueenWithReturn/finishQueen/takeQueenReturn` удалена из `Game`; остались тонкие обёртки `spawnQueen/updateQueen/returnQueen/takeQueenReturn` и getters для e2e/dev-консоли.
 - Unit-тесты на фейковом host покрывают ожидание заказа, отсутствие дублей, примерку и возврат с возвратом, выбор нового заказа, `takeReturn`, `finish` и `clearForResults`. Build, 76 unit и 67 e2e проходят; тексты, тайминги, баланс, UI и сцена не менялись.
+
+### 6.53. FinalBossScenario: финальный босс вне Game — issue #61
+
+- Новый `systems/finalBossScenario.ts` владеет Галей, Валерой и текущим заказом, ведёт entrance/mid/fitting-диалоги, три штрихкода, примерку Валеры, три возврата и поражение. `FinalBossSystem` остался владельцем stage/phase/barcode/debuff/returns.
+- `Game` передаёт сценарию общий вход в бой, заказы, очередь, service, UI/sound, репутацию, примерочные и `endShift` через host-интерфейс. Примерочные остаются общим состоянием `Game`, потому что их использует и Королева.
+- Реализация `spawnFinalBoss/showFinalBossDialogue/onFinalBossDialogueDone/applyFinalBossDebuff/startFinalBossCollect/startFinalBossBarcode/showFinalBossMidDialogue/handleFinalBossDelivery/updateFinalBoss/startFinalBossReturns/takeFinalBossReturn/finishFinalBoss` удалена из `Game`; остались lifecycle-обёртки и getters для e2e/dev-консоли.
+- Unit-тесты на фейковом host покрывают появление, три штрихкода, mid-диалог, fittingWalk/fittingTalk, три возврата, успех, поражение и game over. Build, 79 unit и 67 e2e проходят; тексты, тайминги, дебафф, награды, UI и сцена не менялись.
 
 ### Исторические метрики до визуальных проходов
 

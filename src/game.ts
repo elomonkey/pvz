@@ -88,6 +88,7 @@ import {
 import { ServiceSystem, type ServiceSession } from './systems/serviceSystem';
 import { EncounterCoordinator, type EncounterPhase } from './systems/encounterCoordinator';
 import { FinalBossSystem } from './systems/finalBossSystem';
+import { FinalBossScenario, type FinalBossClientKind } from './systems/finalBossScenario';
 import { QueenScenario } from './systems/queenScenario';
 import { QueenSystem } from './systems/queenSystem';
 import { ShiftDirector } from './systems/shiftDirector';
@@ -245,9 +246,16 @@ export class Game {
   private fittingFull = false;
 
   private readonly finalBoss = new FinalBossSystem();
-  private finalBossGalya: Client | null = null;
-  private finalBossValera: Client | null = null;
-  private finalBossOrder: Order | null = null;
+  private readonly finalBossScenario: FinalBossScenario;
+  private get finalBossGalya(): Client | null {
+    return this.finalBossScenario.galya;
+  }
+  private get finalBossValera(): Client | null {
+    return this.finalBossScenario.valera;
+  }
+  private get finalBossOrder(): Order | null {
+    return this.finalBossScenario.order;
+  }
 
   constructor(
     scene: THREE.Scene,
@@ -299,6 +307,66 @@ export class Game {
       updateHud: () => this.updateHud(),
       updatePrompt: () => this.updatePrompt(),
     }, new QueenSystem());
+    this.finalBossScenario = new FinalBossScenario(this.finalBoss, {
+      ui: this.ui,
+      sound: this.sound,
+      points: {
+        queueFront: QUEUE_SPOTS[0],
+        fitting: { x: 3.15, z: 2.8 },
+      },
+      shift: () => this.run.shift,
+      isGameOver: () => this.isGameOver(),
+      prepareEncounter: () => this.prepareFinalBossEncounter(),
+      createClient: (kind) => this.createFinalBossClient(kind),
+      addClient: (client, queue) => {
+        this.clients.push(client);
+        if (queue === 'back') {
+          this.queue.push(client);
+          this.updateQueue();
+        }
+      },
+      dequeue: (client) => this.removeFromQueue(client),
+      createBarcodeOrder: (count) => this.createFinalBossBarcodeOrder(count),
+      releaseOrder: (order) => this.releaseOrder(order),
+      patienceMultiplier: () => this.patienceMultiplier(),
+      applyDebuffEffects: () => this.applyFinalBossDebuffEffects(),
+      setFittingState: (occupied, full, resetTimers, active) =>
+        this.setFinalBossFittingState(occupied, full, resetTimers, active),
+      dialogueLines: (phase) =>
+        phase === 1
+          ? FINAL_BOSS_ENTRANCE_LINES
+          : phase === 2
+            ? FINAL_BOSS_MID_LINES
+            : FINAL_BOSS_FITTING_LINES,
+      openDialogue: (phase, lines, button) =>
+        this.showFinalBossDialogue(phase, lines, button),
+      closeDialogue: () => {
+        this.ui.hideBoss();
+        this.encounter.closeModal();
+      },
+      isDialogueOpen: () => this.modalOpen,
+      addStress: (amount) => this.addStress(amount),
+      addReputation: (amount) => this.addReputation(amount),
+      markOutcome: (success) => {
+        if (success) this.events.emit('bossDefeated', { kind: 'final' });
+        else this.shiftFailed = true;
+      },
+      completeDelivery: (client, order) =>
+        this.completeFinalBossDelivery(client, order),
+      canTakeReturn: (client) => this.canTakeFinalBossReturn(client),
+      beginReturnCarry: (client) => this.beginFinalBossReturnCarry(client),
+      clearReturnCarry: () => {
+        this.service.carryingReturn = false;
+        this.player.setCarry(false);
+      },
+      nextTauntDelay: () => randInt(3, 5),
+      shoutLine: () => pick(GALYA_SHOUT_LINES),
+      refreshUi: () => {
+        this.updateHud();
+        this.updatePrompt();
+      },
+      finishShift: () => this.endShift(),
+    });
 
     this.player = createPerson({
       coat: '#2d5f9a',
@@ -1036,9 +1104,7 @@ export class Game {
     this.mechanicCardTimer = mechanicCard ? 3.2 : 0;
     this.pendingGameOver = false;
     this.finalBoss.reset();
-    this.finalBossGalya = null;
-    this.finalBossValera = null;
-    this.finalBossOrder = null;
+    this.finalBossScenario.reset();
     this.shiftFailed = false;
     this.service.reset();
     this.scannerPanel.reset();
@@ -1941,14 +2007,45 @@ export class Game {
   }
 
   private spawnFinalBoss(): void {
-    if (this.isGameOver()) return;
-    if (this.run.shift !== 5) return;
+    this.finalBossScenario.spawn();
+  }
+
+  private showFinalBossDialogue(
+    phase: string,
+    lines: BossDialogueLine[],
+    button: string,
+  ): void {
+    this.encounter.openModal();
+    this.movement.clearPath();
+    this.pendingAction = null;
+    this.marker.visible = false;
+    this.ui.closePanels();
+    this.ui.showFinalBossDialogue(phase, lines, button);
+  }
+
+  onFinalBossDialogueDone(): void {
+    this.finalBossScenario.onDialogueDone();
+  }
+
+  private handleFinalBossDelivery(active: ServiceSession<Client>): void {
+    this.finalBossScenario.handleDelivery(active);
+  }
+
+  private updateFinalBoss(dt: number): void {
+    this.finalBossScenario.update(dt);
+  }
+
+  private takeFinalBossReturn(): void {
+    this.finalBossScenario.takeReturn();
+  }
+
+  private finishFinalBoss(success: boolean): void {
+    this.finalBossScenario.finish(success);
+  }
+
+  private prepareFinalBossEncounter(): void {
     this.clearClients();
     this.world.setDayPhase(3);
-    this.finalBoss.begin();
-    this.finalBossGalya = null;
-    this.finalBossValera = null;
-    this.finalBossOrder = null;
     this.fittingOccupied = [false, false];
     this.fittingFull = false;
     this.fittingTimers = [5, 9];
@@ -1966,26 +2063,24 @@ export class Game {
     this.service.carryingReturn = false;
     this.player.setCarry(false);
     this.ui.setFittingRooms(0, 2, true);
-    this.ui.setFinalBossDebuff(false);
-    this.ui.setFinalBossStatus(true, 1, 'скандал на входе');
+  }
 
-    const galya = new Client({
-      scene: this.scene,
-      id: this.nextClientId++,
-      archetype: BOSS_ARCHETYPE,
-      order: null,
-      patience: 999,
-      queueIndex: 0,
-      isBoss: true,
-    });
-    galya.onGone = (value) => this.onClientGone(value);
-    galya.onPatienceZero = (value) => this.onClientPatienceZero(value);
-    galya.onLabelClick = (value) => this.onClientLabelClick(value);
-    galya.preplaceAtFront();
-    this.finalBossGalya = galya;
-    this.clients.push(galya);
-    this.queue.push(galya);
-    this.updateQueue();
+  private createFinalBossClient(kind: FinalBossClientKind): Client {
+    if (kind === 'galya') {
+      const galya = new Client({
+        scene: this.scene,
+        id: this.nextClientId++,
+        archetype: BOSS_ARCHETYPE,
+        order: null,
+        patience: 999,
+        queueIndex: 0,
+        isBoss: true,
+      });
+      galya.onGone = (value) => this.onClientGone(value);
+      galya.onPatienceZero = (value) => this.onClientPatienceZero(value);
+      galya.onLabelClick = (value) => this.onClientLabelClick(value);
+      return galya;
+    }
 
     const valera = new Client({
       scene: this.scene,
@@ -1998,53 +2093,10 @@ export class Game {
     });
     valera.onGone = (value) => this.onClientGone(value);
     valera.onLabelClick = (value) => this.onClientLabelClick(value);
-    valera.label.element.classList.remove('boss');
-    valera.placeAt({ x: 1.15, z: 1.85 });
-    this.finalBossValera = valera;
-    this.clients.push(valera);
-
-    this.ui.closePanels();
-    this.ui.setOrderChip(null);
-    this.ui.banner('Финальный босс', 'Галя привела Валеру. Семейный спор начинается.', 3);
-    this.sound.boss();
-    this.updateHud();
-    this.updatePrompt();
-    this.showFinalBossDialogue('ФАЗА 1 / 3', FINAL_BOSS_ENTRANCE_LINES, 'Дальше');
+    return valera;
   }
 
-  private showFinalBossDialogue(
-    phase: string,
-    lines: BossDialogueLine[],
-    button: string,
-  ): void {
-    this.encounter.openModal();
-    this.movement.clearPath();
-    this.pendingAction = null;
-    this.marker.visible = false;
-    this.ui.closePanels();
-    this.ui.showFinalBossDialogue(phase, lines, button);
-  }
-
-  onFinalBossDialogueDone(): void {
-    if (!this.finalBoss.active || !this.modalOpen) return;
-    this.ui.hideBoss();
-    this.encounter.closeModal();
-
-    if (this.finalBoss.stage === 'entrance') {
-      this.startFinalBossCollect();
-      return;
-    }
-    if (this.finalBoss.stage === 'mid') {
-      this.startFinalBossBarcode(this.finalBoss.barcode);
-      return;
-    }
-    if (this.finalBoss.stage === 'fittingTalk') {
-      this.startFinalBossReturns();
-    }
-  }
-
-  private applyFinalBossDebuff(): void {
-    this.finalBoss.applyDebuff();
+  private applyFinalBossDebuffEffects(): void {
     this.ui.setFinalBossDebuff(true);
     this.ui.setScanSpeed(this.baseScanSpeed());
     this.updatePatienceMultipliers();
@@ -2054,68 +2106,19 @@ export class Game {
     );
   }
 
-  private startFinalBossCollect(): void {
-    const galya = this.finalBossGalya;
-    if (!galya) {
-      this.finishFinalBoss(false);
-      return;
-    }
-    this.applyFinalBossDebuff();
-    galya.isBoss = false;
-    galya.label.element.classList.remove('boss');
-    galya.maxPatience = 120;
-    galya.setPatience(120);
-    galya.hasShouted = false;
-    galya.state = 'waiting';
-    galya.root.position.set(QUEUE_SPOTS[0].x, 0, QUEUE_SPOTS[0].z);
-    galya.setQueueIndex(0);
-    galya.patienceDrainMultiplier = this.patienceMultiplier();
-    this.finalBoss.startCollect();
-    this.ui.banner(
-      'Фаза 2',
-      'Галя бросает на стойку три штрихкода: 2, 3 и 4 ячейки. Успейте всё.',
-      3,
-    );
-    this.startFinalBossBarcode(0);
+  private setFinalBossFittingState(
+    occupied: [boolean, boolean],
+    full: boolean,
+    resetTimers: boolean,
+    active: boolean,
+  ): void {
+    this.fittingOccupied = [...occupied];
+    this.fittingFull = full;
+    if (resetTimers) this.fittingTimers = [5, 9];
+    this.ui.setFittingRooms(occupied.filter(Boolean).length, 2, active);
   }
 
-  private startFinalBossBarcode(index: number): void {
-    const galya = this.finalBossGalya;
-    if (!galya) {
-      this.finishFinalBoss(false);
-      return;
-    }
-    const count = this.finalBoss.startBarcode(index);
-    const order = this.createFinalBossBarcodeOrder(count);
-    if (!order) return; // collect + no order is retried by updateFinalBoss.
-    this.finalBossOrder = order;
-    galya.order = this.finalBossOrder;
-    galya.state = 'waiting';
-    galya.root.position.set(QUEUE_SPOTS[0].x, 0, QUEUE_SPOTS[0].z);
-    galya.setQueueIndex(0);
-    galya.maxPatience = Math.max(galya.maxPatience, 120);
-    galya.patienceDrainMultiplier = this.patienceMultiplier();
-    galya.showBubble(`Штрихкод ${index + 1}/3: ${count} ячеек. Быстрее!`, 3);
-    this.finalBoss.setTauntSeconds(randInt(3, 5));
-    this.ui.setFinalBossStatus(
-      true,
-      2,
-      `штрихкод ${index + 1}/3 · ${count} ячейки`,
-    );
-    this.ui.toast(`Галя: штрихкод ${index + 1}/3, ${count} ячеек!`, 'boss');
-    this.sound.boss();
-    this.updateHud();
-    this.updatePrompt();
-  }
-
-  private showFinalBossMidDialogue(): void {
-    this.finalBoss.showMidDialogue();
-    this.ui.setFinalBossStatus(true, 2, 'штрихкод 2/3 · третий — Валерин');
-    this.showFinalBossDialogue('ФАЗА 2 / 3', FINAL_BOSS_MID_LINES, 'Дальше');
-  }
-
-  private handleFinalBossDelivery(active: ServiceSession<Client>): void {
-    const client = active.client;
+  private completeFinalBossDelivery(client: Client, order: Order): void {
     this.run.served++;
     this.run.combo++;
     this.events.emit('clientServed', { clientId: client.id, kind: 'finalBoss' });
@@ -2126,115 +2129,32 @@ export class Game {
     this.player.setCarry(false);
     this.service.clear();
     this.scannerPanel.reset();
-    this.releaseOrder(active.order);
+    this.releaseOrder(order);
     client.order = null;
     client.state = 'waiting';
-    this.finalBossOrder = null;
-    const outcome = this.finalBoss.completeBarcodeDelivery();
     this.ui.closePanels();
     this.ui.setOrderChip(null);
     this.setHighlight(-1, -1);
     this.sound.deliver();
-
-    if (outcome === 'fitting') {
-      client.maxPatience = 999;
-      client.setPatience(999);
-      client.patienceDrainMultiplier = 1;
-      this.ui.setFinalBossStatus(true, 3, 'Валера идёт в примерочную');
-      this.ui.banner('Галя', 'ВАЛЕРА! ПОМЕРЬ! Я СКАЗАЛА, ПОМЕРЬ!', 3);
-      client.showBubble('ВАЛЕРА! ПОМЕРЬ!', 3);
-      const valera = this.finalBossValera;
-      if (valera) {
-        valera.walkTo({ x: 3.15, z: 2.8 });
-        valera.showBubble('ДА НОРМАЛЬНАЯ ОНА!', 2);
-      }
-    } else if (outcome === 'mid') {
-      this.showFinalBossMidDialogue();
-    } else {
-      this.startFinalBossBarcode(this.finalBoss.barcode);
-    }
-
-    this.updateHud();
-    this.updatePrompt();
   }
 
-  private updateFinalBoss(dt: number): void {
-    if (!this.finalBoss.active) return;
-
-    if (this.finalBoss.stage === 'collect' && this.finalBossGalya) {
-      if (!this.finalBossOrder) {
-        this.startFinalBossBarcode(this.finalBoss.barcode);
-        if (!this.finalBossOrder) return;
-      }
-      if (this.finalBoss.tickTaunt(dt)) {
-        const line = pick(GALYA_SHOUT_LINES);
-        this.finalBossGalya.showBubble(line, 2.2);
-        this.ui.toast(`Галя: ${line}`, 'boss');
-        this.addStress(2);
-        this.sound.shout();
-        if (this.phase === 'gameover') return;
-      }
-    }
-
-    if (this.finalBoss.stage !== 'fittingWalk' || !this.finalBossValera) return;
-    const valera = this.finalBossValera;
-    if (!valera.isAt({ x: 3.15, z: 2.8 }, 0.4) || valera.state !== 'waiting') return;
-
-    this.finalBoss.enterFitting();
-    this.fittingOccupied = [true, false];
-    this.fittingFull = false;
-    this.ui.setFittingRooms(1, 2, true);
-    this.ui.setFinalBossStatus(true, 3, 'Валера в примерочной');
-    this.showFinalBossDialogue('ФАЗА 3 / 3', FINAL_BOSS_FITTING_LINES, 'Забрать возврат');
-  }
-
-  private startFinalBossReturns(): void {
-    const galya = this.finalBossGalya;
-    this.finalBoss.startReturns();
-    this.fittingOccupied = [true, false];
-    this.fittingFull = false;
-    this.ui.setFittingRooms(1, 2, true);
-    if (galya) {
-      galya.state = 'waiting';
-      galya.order = null;
-      galya.maxPatience = 999;
-      galya.setPatience(999);
-      galya.patienceDrainMultiplier = 1;
-      galya.root.position.set(QUEUE_SPOTS[0].x, 0, QUEUE_SPOTS[0].z);
-      galya.setQueueIndex(0);
-      galya.root.visible = true;
-      galya.label.visible = true;
-      galya.rig.setCarry(true, '#d95d5d');
-      galya.showBubble('ВОЗВРАТ ВСЕГО! Возврат 1/3', 999);
-    }
-    this.ui.setFinalBossStatus(true, 3, 'возврат 1/3');
-    this.ui.banner(
-      'Возврат всего',
-      'Галя отдаёт первый возврат. Отнесите его в шкафчик «Возврат».',
-      3,
-    );
-    this.ui.toast('Галя: ВОЗВРАТ ВСЕГО!', 'boss');
-    this.updateHud();
-    this.updatePrompt();
-  }
-
-  private takeFinalBossReturn(): void {
-    const galya = this.finalBossGalya;
-    if (!galya || !this.finalBoss.returnPending) return;
+  private canTakeFinalBossReturn(galya: Client): boolean {
     if (this.service.carryingReturn) {
       this.ui.toast('Сначала сдайте текущий возврат в шкафчик «Возврат».', 'error');
-      return;
+      return false;
     }
     if (this.service.active) {
       this.ui.toast('Сначала завершите текущий заказ', 'error');
-      return;
+      return false;
     }
     if (!this.isServableFront(galya)) {
       this.ui.toast('Галя уже не ждёт у стойки', 'error');
-      return;
+      return false;
     }
+    return true;
+  }
 
-    this.finalBoss.takeReturn();
+  private beginFinalBossReturnCarry(galya: Client): void {
     this.service.carryingReturn = true;
     this.player.setCarry(true, '#d95d5d');
     galya.rig.setCarry(false);
@@ -2246,43 +2166,6 @@ export class Game {
     this.sound.pickup();
     this.updateHud();
     this.updatePrompt();
-  }
-
-  private finishFinalBoss(success: boolean): void {
-    if (this.isGameOver()) return;
-    if (!this.finalBoss.active) return;
-    if (success) this.events.emit('bossDefeated', { kind: 'final' });
-    else this.shiftFailed = true;
-    this.finalBoss.finish();
-    this.service.carryingReturn = false;
-    this.player.setCarry(false);
-    this.ui.setFinalBossDebuff(false);
-    this.ui.setFinalBossStatus(false, 0, '');
-    this.ui.setOrderChip(null);
-    this.fittingOccupied = [false, false];
-    this.fittingFull = false;
-    this.fittingTimers = [5, 9];
-    this.ui.setFittingRooms(0, 2, false);
-
-    const galya = this.finalBossGalya;
-    const valera = this.finalBossValera;
-    if (galya) {
-      this.removeFromQueue(galya);
-      galya.leave(0);
-    }
-    if (valera) valera.leave(0);
-    this.finalBossGalya = null;
-    this.finalBossValera = null;
-    this.finalBossOrder = null;
-
-    if (success) {
-      this.addReputation(0.5);
-      this.sound.win();
-      this.ui.banner('Финал', 'Галя и Валера уходят. ПВЗ выстоял!', 3);
-    }
-    this.updateHud();
-    this.updatePrompt();
-    this.endShift();
   }
 
   private endShift(): void {
@@ -2297,9 +2180,7 @@ export class Game {
     this.fittingFull = false;
     this.fittingTimers = [5, 9];
     this.finalBoss.reset();
-    this.finalBossGalya = null;
-    this.finalBossValera = null;
-    this.finalBossOrder = null;
+    this.finalBossScenario.reset();
     // Results must not retain leaving/final clients until the next reset.
     this.clearClients();
     this.service.carryingReturn = false;
@@ -2445,18 +2326,7 @@ export class Game {
     this.service.reset();
     this.player.setCarry(false);
     this.queenScenario.stop();
-    this.finalBoss.reset();
-    if (this.finalBossGalya) {
-      this.finalBossGalya.root.visible = false;
-      this.finalBossGalya.label.visible = false;
-    }
-    if (this.finalBossValera) {
-      this.finalBossValera.root.visible = false;
-      this.finalBossValera.label.visible = false;
-    }
-    this.finalBossGalya = null;
-    this.finalBossValera = null;
-    this.finalBossOrder = null;
+    this.finalBossScenario.clearForGameOver();
     this.fittingOccupied = [false, false];
     this.fittingFull = false;
     this.ui.setFittingRooms(0, 2, false);
@@ -2970,9 +2840,7 @@ export class Game {
     this.fittingTimers = [0, 0];
     this.fittingFull = false;
     this.finalBoss.reset();
-    this.finalBossGalya = null;
-    this.finalBossValera = null;
-    this.finalBossOrder = null;
+    this.finalBossScenario.reset();
     this.questLog.clear();
     this.announcedQuests.clear();
     this.shiftFailed = false;
@@ -3326,22 +3194,7 @@ export class Game {
       this.addReputation(0.1);
       this.events.emit('returnDeposited', { kind: 'finalBoss' });
       this.sound.deliver();
-      if (left > 0) {
-        const galya = this.finalBossGalya;
-        if (galya) {
-          galya.rig.setCarry(true, '#d95d5d');
-          galya.showBubble(`Возврат ${4 - left}/3`, 3);
-        }
-        this.ui.setFinalBossStatus(true, 3, `возвраты: ${left}`);
-        this.ui.toast(
-          `Возврат сдан. Осталось ${left}. Заберите следующий у Гали.`,
-          'success',
-        );
-        this.updateHud();
-        this.updatePrompt();
-        return;
-      }
-      this.finishFinalBoss(true);
+      this.finalBossScenario.handleReturnDeposited(left);
       return;
     }
 
