@@ -667,6 +667,13 @@ src/
 - UI, сканер, подсказки и финальные сценарии продолжают читать прежние поля без изменений. После `picked = true` они автоматически указывают на следующий item, после полного сбора — на последний.
 - Unit-тесты покрывают частичный/полный сбор, mixed и empty order. Build, 69 unit и 65 e2e проходят; правила, баланс, UI и сцена не менялись.
 
+### 6.49. EncounterCoordinator: phase и пауза — issue #52
+
+- Новый `systems/encounterCoordinator.ts` владеет phase `menu/playing/break/boss/results/gameover`, `modalOpen`, `helpOpen` и единой pause-политикой. `inputBlocked` блокирует ввод в menu/results/gameover и при открытой модалке/help.
+- `Game` заменил прямые поля на read-only getters и методы `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, `openModal/closeModal`, `openHelp/closeHelp`. Прямых записей phase/modal/help не осталось.
+- Unit-тесты покрывают переходы, modal/help и reset. Build, 71 unit и 66 e2e проходят; UI, сцена, баланс, тексты, боссы и обучение не менялись.
+- Это первый срез AUD-07: `tutorialOpen`, `mechanicCardOpen`, `scannerBreakCardOpen` и сценарные состояния боссов остаются в Game и должны быть вынесены следующим этапом.
+
 ### Исторические метрики до визуальных проходов
 
 Актуальные фиксированные сцены и методика — в 6.23 и [perf-отчёте](perf/PR5_REPORT.md).

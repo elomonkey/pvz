@@ -86,6 +86,7 @@ import {
   cellPanelKeyFor,
 } from './systems/scannerPanelSystem';
 import { ServiceSystem, type ServiceSession } from './systems/serviceSystem';
+import { EncounterCoordinator, type EncounterPhase } from './systems/encounterCoordinator';
 import { FinalBossSystem } from './systems/finalBossSystem';
 import { QueenSystem } from './systems/queenSystem';
 import { ShiftDirector } from './systems/shiftDirector';
@@ -111,8 +112,6 @@ import {
 } from './yandex';
 import type { Sound } from './sound';
 import type { UI } from './ui';
-
-type Phase = 'menu' | 'playing' | 'break' | 'boss' | 'results' | 'gameover';
 
 type TutorialStep =
   | 'welcome'
@@ -173,9 +172,16 @@ export class Game {
   private readonly service = new ServiceSystem<Client>();
   private readonly scannerPanel = new ScannerPanelSystem<Client>();
 
-  private phase: Phase = 'menu';
-  private modalOpen = false;
-  private helpOpen = false;
+  private readonly encounter = new EncounterCoordinator();
+  private get phase(): EncounterPhase {
+    return this.encounter.phase;
+  }
+  private get modalOpen(): boolean {
+    return this.encounter.modalOpen;
+  }
+  private get helpOpen(): boolean {
+    return this.encounter.helpOpen;
+  }
   private tutorialActive = false;
   private tutorialOpen = false;
   private tutorialPending = false;
@@ -322,12 +328,7 @@ export class Game {
       labelsLayer: document.getElementById('labels-layer'),
       camera: this.camera,
       scene: this.scene,
-      isBlocked: () =>
-        this.modalOpen ||
-        this.helpOpen ||
-        this.phase === 'menu' ||
-        this.phase === 'results' ||
-        this.phase === 'gameover',
+      isBlocked: () => this.encounter.inputBlocked,
       onPick: (data, point) => this.handleClickData(data, point),
       onToyLabel: () => this.moveTo(SERVICE_POINT, { type: 'toy' }),
     });
@@ -388,7 +389,7 @@ export class Game {
     this.tutorialActive = true;
     this.tutorialPending = false;
     this.tutorialOpen = true;
-    this.modalOpen = true;
+    this.encounter.openModal();
     this.tutorialStep = 'welcome';
     this.movement.clearPath();
     this.pendingAction = null;
@@ -411,21 +412,21 @@ export class Game {
   onTutorialNext(): void {
     if (this.mechanicCardOpen) {
       this.mechanicCardOpen = false;
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.ui.hideTutorial();
       this.updatePrompt();
       return;
     }
     if (this.scannerBreakCardOpen) {
       this.scannerBreakCardOpen = false;
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.ui.hideTutorial();
       this.updatePrompt();
       return;
     }
     if (!this.tutorialActive) return;
     if (this.tutorialStep === 'welcome') {
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.tutorialOpen = true;
       this.setTutorialStep('click_client');
       return;
@@ -439,7 +440,7 @@ export class Game {
     if (!this.tutorialActive) return;
     this.tutorialActive = false;
     this.tutorialOpen = false;
-    this.modalOpen = false;
+    this.encounter.closeModal();
     this.tutorialStep = 'welcome';
     this.clearTutorialMarker();
     this.ui.setTutorialTarget(null);
@@ -453,7 +454,7 @@ export class Game {
   private finishTutorial(): void {
     this.tutorialActive = false;
     this.tutorialOpen = false;
-    this.modalOpen = false;
+    this.encounter.closeModal();
     this.tutorialStep = 'welcome';
     this.clearTutorialMarker();
     this.ui.setTutorialTarget(null);
@@ -466,7 +467,7 @@ export class Game {
 
   private showScannerBreakCard(): void {
     this.scannerBreakCardOpen = true;
-    this.modalOpen = true;
+    this.encounter.openModal();
     this.movement.clearPath();
     this.pendingAction = null;
     this.marker.visible = false;
@@ -487,7 +488,7 @@ export class Game {
     const order = this.service.active?.order;
 
     if (step === 'click_client') {
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.tutorialOpen = true;
       this.ui.setTutorialTarget(null);
       this.ui.showTutorial({
@@ -508,7 +509,7 @@ export class Game {
         this.clearTutorialMarker();
       }
     } else if (step === 'scan') {
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.tutorialOpen = true;
       this.ui.setTutorialTarget(null);
       this.ui.showTutorial({
@@ -521,7 +522,7 @@ export class Game {
       });
       this.setTutorialMarker(SERVICE_POINT, 1.7);
     } else if (step === 'shelf') {
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.tutorialOpen = true;
       this.ui.setTutorialTarget(null);
       const letter = order ? SHELF_LETTERS[order.shelf] : 'A';
@@ -540,7 +541,7 @@ export class Game {
         this.clearTutorialMarker();
       }
     } else if (step === 'cell') {
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.tutorialOpen = true;
       this.clearTutorialMarker();
       this.ui.showTutorial({
@@ -553,7 +554,7 @@ export class Game {
       });
       this.ui.setTutorialTarget('cell', order?.cellId);
     } else if (step === 'deliver') {
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.tutorialOpen = true;
       this.ui.setTutorialTarget(null);
       this.ui.showTutorial({
@@ -566,7 +567,7 @@ export class Game {
       });
       this.setTutorialMarker(SERVICE_POINT, 1.7);
     } else if (step === 'done') {
-      this.modalOpen = true;
+      this.encounter.openModal();
       this.tutorialOpen = true;
       this.clearTutorialMarker();
       this.ui.setTutorialTarget(null);
@@ -659,7 +660,7 @@ export class Game {
     this.mechanicCardPending = null;
     this.mechanicCardTimer = 0;
     this.mechanicCardOpen = true;
-    this.modalOpen = true;
+    this.encounter.openModal();
     this.movement.clearPath();
     this.pendingAction = null;
     this.marker.visible = false;
@@ -710,8 +711,8 @@ export class Game {
     this.tutorialActive = false;
     this.tutorialOpen = false;
     this.tutorialPending = false;
-    this.modalOpen = false;
-    this.helpOpen = false;
+    this.encounter.closeModal();
+    this.encounter.closeHelp();
     this.clearTutorialMarker();
     this.ui.setTutorialTarget(null);
     this.ui.hideTutorial();
@@ -728,15 +729,15 @@ export class Game {
 
   debugBoss(): void {
     if (this.isGameOver()) return;
-    this.modalOpen = false;
+    this.encounter.closeModal();
     this.ui.hideAllModals();
     if (this.run.shift >= 5) {
-      this.phase = 'playing';
+      this.encounter.enterPlaying();
       this.spawnFinalBoss();
       return;
     }
     if (this.run.shift >= 4) {
-      this.phase = 'playing';
+      this.encounter.enterPlaying();
       this.spawnQueen();
       return;
     }
@@ -777,7 +778,7 @@ export class Game {
     this.mechanicCardTimer = 0;
     if (this.mechanicCardOpen) {
       this.mechanicCardOpen = false;
-      this.modalOpen = false;
+      this.encounter.closeModal();
       this.ui.hideTutorial();
       this.updatePrompt();
     }
@@ -785,7 +786,7 @@ export class Game {
     this.tutorialActive = false;
     this.tutorialOpen = false;
     this.tutorialStep = 'welcome';
-    this.modalOpen = false;
+    this.encounter.closeModal();
     this.clearTutorialMarker();
     this.ui.setTutorialTarget(null);
     this.ui.hideTutorial();
@@ -934,7 +935,7 @@ export class Game {
 
   startNewGame(): void {
     // An explicit new run is allowed to leave the terminal state.
-    this.phase = 'menu';
+    this.encounter.enterMenu();
     this.clearClients();
     this.run.reset();
     this.ownedDecor = this.createRunDecor();
@@ -973,9 +974,9 @@ export class Game {
     this.director.begin(getShiftSteps(shift), mechanicCard ? 3.4 : 1.2);
     this.spawnQueue = [];
     this.spawnTimer = 0;
-    this.phase = 'break';
-    this.modalOpen = false;
-    this.helpOpen = false;
+    this.encounter.enterBreak();
+    this.encounter.closeModal();
+    this.encounter.closeHelp();
     this.bossClient = null;
     this.boss.reset();
     this.argumentSystem.clear();
@@ -1074,7 +1075,7 @@ export class Game {
 
     this.spawnTimer = plan.spawnDelay;
     this.spawnInterval = plan.spawnInterval;
-    this.phase = 'playing';
+    this.encounter.enterPlaying();
     this.service.resetSignal();
     this.restockCells();
     this.ui.closePanels();
@@ -1279,7 +1280,7 @@ export class Game {
 
   private startBreak(seconds: number, nextStepIndex: number): void {
     if (this.isGameOver()) return;
-    this.phase = 'break';
+    this.encounter.enterBreak();
     this.director.startBreak(seconds, nextStepIndex);
     this.ui.closePanels();
     this.ui.banner('Передышка', '🧸 Потапай антистресс на стойке', 2);
@@ -1305,7 +1306,7 @@ export class Game {
       return;
     }
     this.clearClients();
-    this.phase = 'boss';
+    this.encounter.enterBoss();
     this.boss.begin(kind);
     this.argumentSystem.clear();
     this.zina.reset();
@@ -1349,7 +1350,7 @@ export class Game {
     // clearClients releases all reservations/carry, then allocation restocks.
     const order = this.createOrder(false, 4);
     if (!order) return;
-    this.phase = 'boss';
+    this.encounter.enterBoss();
     this.boss.begin('sanya');
     this.boss.trigger();
     this.argumentSystem.clear();
@@ -1394,7 +1395,7 @@ export class Game {
   private triggerBossModal(): void {
     if (!this.bossClient) return;
     this.boss.trigger();
-    this.modalOpen = true;
+    this.encounter.openModal();
     this.movement.clearPath();
     this.pendingAction = null;
     this.marker.visible = false;
@@ -1515,7 +1516,7 @@ export class Game {
     client.argueTriggered = true;
     this.argumentSystem.open('client');
     this.argueClient = client;
-    this.modalOpen = true;
+    this.encounter.openModal();
     this.movement.clearPath();
     this.pendingAction = null;
     this.marker.visible = false;
@@ -1757,7 +1758,7 @@ export class Game {
     const context = this.argumentSystem.context;
     const client = this.argueClient;
     this.ui.hideBoss();
-    this.modalOpen = false;
+    this.encounter.closeModal();
     this.bossClient?.hideBubble();
     client?.hideBubble();
     this.argumentSystem.clear();
@@ -1906,8 +1907,8 @@ export class Game {
     this.fittingOccupied = [false, false];
     this.fittingFull = false;
     this.fittingTimers = [5, 9];
-    this.phase = 'boss';
-    this.modalOpen = false;
+    this.encounter.enterBoss();
+    this.encounter.closeModal();
     this.bossClient = null;
     this.boss.begin('final');
     this.boss.trigger();
@@ -1971,7 +1972,7 @@ export class Game {
     lines: BossDialogueLine[],
     button: string,
   ): void {
-    this.modalOpen = true;
+    this.encounter.openModal();
     this.movement.clearPath();
     this.pendingAction = null;
     this.marker.visible = false;
@@ -1982,7 +1983,7 @@ export class Game {
   onFinalBossDialogueDone(): void {
     if (!this.finalBoss.active || !this.modalOpen) return;
     this.ui.hideBoss();
-    this.modalOpen = false;
+    this.encounter.closeModal();
 
     if (this.finalBoss.stage === 'entrance') {
       this.startFinalBossCollect();
@@ -2241,8 +2242,8 @@ export class Game {
 
   private endShift(): void {
     if (this.isGameOver()) return;
-    this.phase = 'results';
-    this.modalOpen = true;
+    this.encounter.enterResults();
+    this.encounter.openModal();
     this.run.totalServed += this.run.served;
 
     // Королева и примерочные не должны оставаться на экране итогов.
@@ -2337,7 +2338,7 @@ export class Game {
   nextShift(): void {
     if (this.phase !== 'results') return;
     this.ui.hideResults();
-    this.modalOpen = false;
+    this.encounter.closeModal();
     if (this.run.shift >= 5) {
       this.restartGame();
       return;
@@ -2391,10 +2392,10 @@ export class Game {
 
   private gameOver(): void {
     if (this.phase === 'gameover') return;
-    this.phase = 'gameover';
+    this.encounter.enterGameOver();
     this.pendingGameOver = false;
     this.zina.reset();
-    this.modalOpen = true;
+    this.encounter.openModal();
     this.run.stress = 100;
     this.tutorialActive = false;
     this.tutorialOpen = false;
@@ -2463,14 +2464,14 @@ export class Game {
     this.zina.reset();
     this.bossClient = null;
     this.pendingGameOver = false;
-    this.modalOpen = false;
+    this.encounter.closeModal();
     this.tutorialActive = false;
     this.tutorialOpen = false;
     this.tutorialPending = !loadTutorialDone();
     this.tutorialStep = 'welcome';
     this.clearTutorialMarker();
     this.ui.setTutorialTarget(null);
-    this.phase = 'menu';
+    this.encounter.enterMenu();
     this.movement.clearPath();
     this.pendingAction = null;
     this.ui.hideAllModals();
@@ -2487,8 +2488,7 @@ export class Game {
   openHelp(): void {
     if (this.modalOpen) return;
     if (this.phase === 'menu' || this.phase === 'results' || this.phase === 'gameover') return;
-    this.modalOpen = true;
-    this.helpOpen = true;
+    this.encounter.openHelp();
     this.movement.clearPath();
     this.pendingAction = null;
     this.marker.visible = false;
@@ -2497,8 +2497,7 @@ export class Game {
 
   closeHelp(): void {
     if (!this.helpOpen) return;
-    this.helpOpen = false;
-    this.modalOpen = false;
+    this.encounter.closeHelp();
     this.ui.hideHelp();
   }
 
@@ -2947,9 +2946,9 @@ export class Game {
     this.ui.setFittingRooms(0, 2, false);
     this.ui.setFinalBossStatus(false, 0, '');
     this.ui.setFinalBossDebuff(false);
-    this.phase = 'menu';
-    this.modalOpen = false;
-    this.helpOpen = false;
+    this.encounter.enterMenu();
+    this.encounter.closeModal();
+    this.encounter.closeHelp();
     this.director.reset();
     this.argumentSystem.clear();
     this.argueClient = null;

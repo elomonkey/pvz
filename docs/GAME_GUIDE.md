@@ -646,6 +646,7 @@
 | `src/domain/orders.ts` | Данные заказа и его позиций, без отдельного флага переноски |
 | `src/systems/serviceSystem.ts` | Единственный владелец активного обслуживания: picked, стопка/цвета, carrying, readyToDeliver и снимок clear() |
 | `src/systems/warehouseSystem.ts` | Складское состояние: stock ячеек, резервы заказов, доступность активных полок и restock |
+| `src/systems/encounterCoordinator.ts` | Верхнеуровневый phase, modal/help и единая pause-политика |
 | `src/systems/playerMovement.ts` | Позиция, путь, направление и прибытие игрока |
 | `src/view/scene.ts` | Сборка сцены и применение оформления |
 | `src/view/kit.ts` | Палитра, материалы, скруглённые примитивы и merge-утилиты low-poly кита |
@@ -671,6 +672,8 @@
 Складским состоянием владеет `WarehouseState`: `stock` показывает, есть ли посылка в ячейке, `reserved` — занята ли она заказом. `available(activeShelfCount)` отдаёт только доступные ячейки, `reserve`/`release` меняют резервы, `consume`/`restock` — наличие посылок. Game синхронизирует `parcel.visible` только для отображения; генерация заказов, Zina и финальные штрихкоды больше не читают графическое состояние.
 
 Позиция заказа (`currentItem`, `cellId`, `shelf`, `actual*`, `mixed`) вычисляется из `items`. `createOrderRecord()` создаёт getter-поля, поэтому после взятия посылки UI и сканер автоматически переходят к следующему item; ручной `syncOrderTarget()` не нужен.
+
+`EncounterCoordinator` хранит phase и общие pause-состояния (`modalOpen`, `helpOpen`). Переходы идут через `enterMenu/enterBreak/enterPlaying/enterBoss/enterResults/enterGameOver`, а ввод блокируется через `inputBlocked` в menu/results/gameover и при открытой модалке/help. Сценарии боссов и обучение пока остаются в Game — это следующий срез AUD-07.
 
 ### Запуск
 

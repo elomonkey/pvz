@@ -12,6 +12,7 @@ import {
 import { BossEncounter } from '../src/systems/bossEncounter.ts';
 import { FinalBossSystem } from '../src/systems/finalBossSystem.ts';
 import { QueenSystem } from '../src/systems/queenSystem.ts';
+import { EncounterCoordinator } from '../src/systems/encounterCoordinator.ts';
 import { PlayerMovement } from '../src/systems/playerMovement.ts';
 import { ZinaPuzzleSystem, isZinaSolved } from '../src/systems/zinaPuzzleSystem.ts';
 import { WarehouseState } from '../src/systems/warehouseSystem.ts';
@@ -157,6 +158,58 @@ test('warehouse: restock keeps carried cells empty and reset clears all state', 
     'B-1-1',
     'C-1-1',
   ]);
+});
+
+test('encounter coordinator: phase transitions and input blocking', () => {
+  const encounter = new EncounterCoordinator();
+  assert.equal(encounter.phase, 'menu');
+  assert.equal(encounter.inputBlocked, true);
+
+  encounter.enterPlaying();
+  assert.equal(encounter.phase, 'playing');
+  assert.equal(encounter.inputBlocked, false);
+
+  encounter.enterBreak();
+  assert.equal(encounter.phase, 'break');
+  assert.equal(encounter.inputBlocked, false);
+
+  encounter.enterBoss();
+  assert.equal(encounter.phase, 'boss');
+  encounter.enterResults();
+  assert.equal(encounter.phase, 'results');
+  assert.equal(encounter.inputBlocked, true);
+  encounter.enterGameOver();
+  assert.equal(encounter.phase, 'gameover');
+  assert.equal(encounter.inputBlocked, true);
+  encounter.enterMenu();
+  assert.equal(encounter.phase, 'menu');
+});
+
+test('encounter coordinator: modal/help pause and reset', () => {
+  const encounter = new EncounterCoordinator();
+  encounter.enterPlaying();
+
+  encounter.openModal();
+  assert.equal(encounter.modalOpen, true);
+  assert.equal(encounter.paused, true);
+  assert.equal(encounter.inputBlocked, true);
+  encounter.closeModal();
+  assert.equal(encounter.paused, false);
+
+  encounter.openHelp();
+  assert.equal(encounter.modalOpen, true);
+  assert.equal(encounter.helpOpen, true);
+  encounter.closeHelp();
+  assert.equal(encounter.modalOpen, false);
+  assert.equal(encounter.helpOpen, false);
+
+  encounter.openModal();
+  encounter.openHelp();
+  encounter.reset();
+  assert.equal(encounter.phase, 'menu');
+  assert.equal(encounter.modalOpen, false);
+  assert.equal(encounter.helpOpen, false);
+  assert.equal(encounter.inputBlocked, true);
 });
 
 test('shift director: старт, передышка и шаги', () => {
