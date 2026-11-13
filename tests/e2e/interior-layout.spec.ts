@@ -42,6 +42,8 @@ test('expanded warehouse keeps every A/B/C column and the return cabinet reachab
     return { routes, facing, cInFrame: Math.abs(projected.x) < 0.96,
       cabins: g.scene.children.filter((o: any) => o.name === 'fitting-room').length,
       floorFront: d.STORAGE.minZ === d.ROOM.minZ, capacity: d.FITTING_CAPACITY,
+      topLetters: g.world.shelves.filter((s: any) => s.group.getObjectByName('shelf-top-letter')).length,
+      floatingLetters: document.querySelectorAll('.shelf-letter').length,
       toy: g.world.toy.visible, shadowMaps: g.renderer.shadowMap.enabled };
   });
   for (const route of state.routes) {
@@ -50,7 +52,7 @@ test('expanded warehouse keeps every A/B/C column and the return cabinet reachab
     expect(route.distance, JSON.stringify(route)).toBeLessThan(0.06);
   }
   expect(state.facing).toBeGreaterThan(0.4);
-  expect(state).toMatchObject({ cInFrame: true, cabins: 1, capacity: 1, floorFront: true, toy: true, shadowMaps: false });
+  expect(state).toMatchObject({ cInFrame: true, cabins: 1, capacity: 1, floorFront: true, topLetters: 3, floatingLetters: 0, toy: true, shadowMaps: false });
   await page.screenshot({ path: testInfo.outputPath('three-shelf-interior.png') });
   expect(errors).toEqual([]);
 });

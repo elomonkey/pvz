@@ -149,11 +149,11 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
 
 function createRug(scene: THREE.Scene): THREE.Mesh {
   const rug = new THREE.Mesh(
-    new THREE.BoxGeometry(2.55, 0.018, 2.5),
+    new THREE.BoxGeometry(2.2, 0.018, 1.85),
     new THREE.MeshLambertMaterial({ map: makeRugTexture() }),
   );
   rug.name = 'client-rug';
-  rug.position.set(0.35, 0.012, 2.12);
+  rug.position.set(0.4, 0.012, 1.9);
   rug.userData = { type: 'floor' };
   scene.add(rug);
 
@@ -175,14 +175,14 @@ function createRug(scene: THREE.Scene): THREE.Mesh {
     path.lineTo(x, y + r); path.quadraticCurveTo(x, y, x + r, y);
   };
   const border = new THREE.Shape();
-  rounded(border, -3.3, -0.61, 6.6, 1.22, 0.14);
+  rounded(border, -2.65, -0.45, 5.3, 0.9, 0.12);
   const inner = new THREE.Path();
-  rounded(inner, -3.25, -0.56, 6.5, 1.12, 0.1);
+  rounded(inner, -2.61, -0.41, 5.22, 0.82, 0.08);
   border.holes.push(inner);
   const aisle = new THREE.Mesh(new THREE.ShapeGeometry(border), new THREE.MeshLambertMaterial({ color: '#d5ac52' }));
   aisle.name = 'storage-clear-aisle';
   aisle.rotation.x = -Math.PI / 2;
-  aisle.position.set(-5.35, 0.014, -1.02);
+  aisle.position.set(-4.95, 0.014, -1.05);
   aisle.raycast = () => {};
   scene.add(aisle);
   return rug;
@@ -545,133 +545,6 @@ function createWindow(scene: THREE.Scene): WindowVisual {
   return { setPhase, update: courtyard.update };
 }
 
-function createQueueLine(scene: THREE.Scene): void {
-  for (let index = 0; index < 9; index++) {
-    const dash = box(0.055, 0.012, 0.22, '#f0b44c');
-    dash.position.set(0.85, 0.02, 0.9 + index * 0.3);
-    dash.raycast = () => {};
-    scene.add(dash);
-  }
-}
-
-function createStorageProps(scene: THREE.Scene): void {
-  const addBasket = (x: number, z: number): void => {
-    const basket = new THREE.Group();
-    basket.position.set(x, 0, z);
-    const wire = '#6f8f7a';
-    const metal = '#2f3d4c';
-
-    for (const [wx, wz] of [
-      [-0.26, -0.17],
-      [0.26, -0.17],
-      [-0.26, 0.17],
-      [0.26, 0.17],
-    ] as const) {
-      const wheel = cylinder(0.06, 0.06, 0.05, metal, 8);
-      wheel.rotation.x = Math.PI / 2;
-      wheel.position.set(wx, 0.07, wz);
-      basket.add(wheel);
-    }
-
-    const base = box(0.72, 0.04, 0.54, wire);
-    base.position.y = 0.12;
-    basket.add(base);
-
-    for (const [px, pz] of [
-      [-0.32, -0.22],
-      [0.32, -0.22],
-      [-0.32, 0.22],
-      [0.32, 0.22],
-    ] as const) {
-      const post = box(0.035, 0.5, 0.035, wire);
-      post.position.set(px, 0.39, pz);
-      basket.add(post);
-    }
-
-    for (const y of [0.24, 0.36]) {
-      const front = box(0.68, 0.024, 0.024, wire);
-      front.position.set(0, y, -0.22);
-      basket.add(front);
-      const back = front.clone();
-      back.position.z = 0.22;
-      basket.add(back);
-      const left = box(0.024, 0.024, 0.48, wire);
-      left.position.set(-0.32, y, 0);
-      basket.add(left);
-      const right = left.clone();
-      right.position.x = 0.32;
-      basket.add(right);
-    }
-
-    for (const x of [-0.24, -0.08, 0.08, 0.24]) {
-      const frontWire = box(0.018, 0.5, 0.018, wire);
-      frontWire.position.set(x, 0.39, -0.22);
-      basket.add(frontWire);
-      const backWire = frontWire.clone();
-      backWire.position.z = 0.22;
-      basket.add(backWire);
-    }
-    for (const z of [-0.14, 0, 0.14]) {
-      const leftWire = box(0.018, 0.5, 0.018, wire);
-      leftWire.position.set(-0.32, 0.39, z);
-      basket.add(leftWire);
-      const rightWire = leftWire.clone();
-      rightWire.position.x = 0.32;
-      basket.add(rightWire);
-    }
-
-    const rimFront = box(0.72, 0.04, 0.04, wire);
-    rimFront.position.set(0, 0.64, -0.22);
-    basket.add(rimFront);
-    const rimBack = rimFront.clone();
-    rimBack.position.z = 0.22;
-    basket.add(rimBack);
-    const rimLeft = box(0.04, 0.04, 0.48, wire);
-    rimLeft.position.set(-0.32, 0.64, 0);
-    basket.add(rimLeft);
-    const rimRight = rimLeft.clone();
-    rimRight.position.x = 0.32;
-    basket.add(rimRight);
-
-    for (const side of [-1, 1]) {
-      const handlePost = box(0.035, 0.34, 0.035, wire);
-      handlePost.position.set(side * 0.24, 0.79, 0.22);
-      basket.add(handlePost);
-    }
-    const handle = box(0.55, 0.04, 0.04, wire);
-    handle.position.set(0, 0.96, 0.22);
-    basket.add(handle);
-
-    const parcelColors = ['#d98b72', '#8fae9b', '#e0a36f'];
-    const parcels: Array<[number, number, number, number, number, number]> = [
-      [-0.15, 0.27, 0.0, 0.38, 0.28, 0.32],
-      [0.17, 0.27, 0.05, 0.3, 0.24, 0.3],
-      [0.0, 0.52, -0.02, 0.3, 0.22, 0.28],
-    ];
-    parcels.forEach(([px, py, pz, w, h, d], index) => {
-      const parcel = roundedBox(w, h, d, parcelColors[index % parcelColors.length], {
-        radius: 0.03,
-      });
-      parcel.position.set(px, py, pz);
-      parcel.rotation.y = index * 0.12;
-      basket.add(parcel);
-      const tape = box(w * 0.24, 0.012, d * 0.82, CREAM);
-      tape.position.set(px, py + h / 2 + 0.005, pz);
-      basket.add(tape);
-    });
-
-    mergeStaticMeshesToVertexColor(
-      basket.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh),
-      basket,
-      VERTEX_COLOR_MATERIAL,
-    );
-    scene.add(basket);
-  };
-
-  addBasket(-8.82, -1.52);
-
-}
-
 function createWalls(scene: THREE.Scene): {
   clock: THREE.Mesh;
   clockSecondHand: THREE.Object3D;
@@ -699,7 +572,7 @@ function createWalls(scene: THREE.Scene): {
   };
 
   // Клиентская зона: фронтальная стена с проёмом под окно.
-  addWall(0.14, 3.2, 0.2, -1.53, 1.6, 3.7);
+  addWall(0.34, 3.2, 0.2, -1.63, 1.6, 3.7);
   addWall(0.14, 3.2, 0.2, 1.33, 1.6, 3.7);
   addWall(2.72, 0.54, 0.2, -0.1, 2.93, 3.7);
   addWall(2.72, 1.16, 0.2, -0.1, 0.58, 3.7);
@@ -723,16 +596,16 @@ function createWalls(scene: THREE.Scene): {
 
   // Восточное расширение зала: теперь оно общее для клиентской зоны,
   // зоны сотрудника и примерочных.
-  addWall(2.6, 3.2, 0.2, 3.7, 1.6, 3.7);
-  addWall(0.2, 3.2, 5.7, 5.0, 1.6, 0.85);
+  addWall(2.7, 3.2, 0.2, 3.75, 1.6, 3.7);
+  addWall(0.2, 3.2, 5.6, 5.0, 1.6, 0.8);
 
   // Западная и северная стены склада.
   const sw = STORAGE.maxX - STORAGE.minX;
   const sd = STORAGE.maxZ - STORAGE.minZ;
   const sx = (STORAGE.minX + STORAGE.maxX) / 2;
   const sz = (STORAGE.minZ + STORAGE.maxZ) / 2;
-  addWall(0.2, 3.2, sd, STORAGE.minX, 1.6, sz);
-  addWall(sw, 3.2, 0.2, sx, 1.6, STORAGE.maxZ);
+  addWall(0.2, 3.2, sd - 0.1, STORAGE.minX, 1.6, sz - 0.05);
+  addWall(sw, 3.2, 0.2, sx - 0.1, 1.6, STORAGE.maxZ);
 
   // Западная стена клиентской зоны (внешний угол).
   addWall(0.2, 3.2, 3.05, -1.7, 1.6, 2.075);
@@ -1017,8 +890,6 @@ export function createEnvironment(scene: THREE.Scene): EnvironmentVisuals {
   const neon = createNeonSign(scene);
   createEntranceMat(scene);
   const windowVisual = createWindow(scene);
-  createQueueLine(scene);
-  createStorageProps(scene);
   createLamps(scene);
   createFittingRooms(scene);
   createPlant(scene, 2.15, 3.25, 0.85);
