@@ -149,11 +149,11 @@ function createFloor(scene: THREE.Scene): THREE.Mesh[] {
 
 function createRug(scene: THREE.Scene): THREE.Mesh {
   const rug = new THREE.Mesh(
-    new THREE.BoxGeometry(2.55, 0.018, 2.5),
+    new THREE.BoxGeometry(2.2, 0.018, 1.85),
     new THREE.MeshLambertMaterial({ map: makeRugTexture() }),
   );
   rug.name = 'client-rug';
-  rug.position.set(0.35, 0.012, 2.12);
+  rug.position.set(0.4, 0.012, 1.9);
   rug.userData = { type: 'floor' };
   scene.add(rug);
 
@@ -545,15 +545,6 @@ function createWindow(scene: THREE.Scene): WindowVisual {
   return { setPhase, update: courtyard.update };
 }
 
-function createQueueLine(scene: THREE.Scene): void {
-  for (let index = 0; index < 9; index++) {
-    const dash = box(0.055, 0.012, 0.22, '#f0b44c');
-    dash.position.set(0.85, 0.02, 0.9 + index * 0.3);
-    dash.raycast = () => {};
-    scene.add(dash);
-  }
-}
-
 function createWalls(scene: THREE.Scene): {
   clock: THREE.Mesh;
   clockSecondHand: THREE.Object3D;
@@ -899,7 +890,6 @@ export function createEnvironment(scene: THREE.Scene): EnvironmentVisuals {
   const neon = createNeonSign(scene);
   createEntranceMat(scene);
   const windowVisual = createWindow(scene);
-  createQueueLine(scene);
   createLamps(scene);
   createFittingRooms(scene);
   createPlant(scene, 2.15, 3.25, 0.85);

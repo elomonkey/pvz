@@ -63,7 +63,7 @@ export function createDecorState(): DecorOwnership {
 
 // L-образная комната: основной зал справа, склад-крыло слева.
 export const ROOM = {
-  minX: -9.6,
+  minX: -9.2,
   maxX: 5.0,
   minZ: -2.0,
   maxZ: 3.8,
@@ -104,7 +104,7 @@ export const SHELF_DEFS: ShelfDef[] = [
   },
   {
     x: -8.6,
-    z: -1.0,
+    z: -1.1,
     rotation: Math.PI / 2,
     face: -Math.PI / 2,
     columns: 3,
@@ -159,7 +159,7 @@ export const FRONT_DOOR = { x: 1.8, z: 3.6, width: 0.8 };
 export const SHELF_POINTS: Vec2[] = [
   { x: -3.2, z: -0.55 },
   { x: -5.7, z: -0.55 },
-  { x: -7.7, z: -1.0 },
+  { x: -7.7, z: -1.1 },
 ];
 
 // Тот же угол 3/4; кадр расширен и сдвинут вместе с новым складским крылом.
