@@ -56,7 +56,8 @@ test('итоги первой смены один раз объясняют за
     await expect(page.locator('#results-intro')).toContainText('Разбитый сканер');
 
     // The callout must not block the shop underneath it.
-    await page.getByRole('button', { name: 'Оформление ПВЗ', exact: true }).click();
+    await page.locator('#results-to-shop').click();
+    await page.getByRole('tab', { name: 'Оформление ПВЗ', exact: true }).click();
     await expect(page.locator('#shop-decor-panel')).toBeVisible();
 
     await page.locator('#results-intro-close').focus();

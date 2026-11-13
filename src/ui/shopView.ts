@@ -55,6 +55,13 @@ export class ShopView {
       tab.addEventListener('click', () => {
         this.setTab(tab.dataset.tab === 'decor' ? 'decor' : 'upgrades');
       });
+      tab.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const next = this.tabs.find(other => other !== tab)!;
+        this.setTab(next.dataset.tab === 'decor' ? 'decor' : 'upgrades');
+        next.focus();
+      });
     }
   }
 
@@ -77,8 +84,14 @@ export class ShopView {
     ownedDecor: DecorOwnership,
     scannerBroken = false,
   ): void {
+    const focusedOffer = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-offer]')?.dataset.offer;
     this.renderShop(upgrades, money, ownedDecor, scannerBroken);
     this.renderCharacterCard(upgrades, ownedDecor, scannerBroken);
+    if (focusedOffer) {
+      const replacement = byId('results-modal').querySelector<HTMLButtonElement>(`[data-offer="${focusedOffer}"] button`);
+      const target = replacement && !replacement.disabled ? replacement : this.tabs.find(tab => tab.classList.contains('active'));
+      target?.focus({ preventScroll: true });
+    }
   }
 
   setTab(tab: 'upgrades' | 'decor'): void {
@@ -87,6 +100,9 @@ export class ShopView {
     this.decorPanel.classList.toggle('hidden', !decor);
     for (const button of this.tabs) {
       button.classList.toggle('active', (button.dataset.tab === 'decor') === decor);
+      const selected = (button.dataset.tab === 'decor') === decor;
+      button.setAttribute('aria-selected', String(selected));
+      button.tabIndex = selected ? 0 : -1;
     }
   }
 
@@ -135,6 +151,7 @@ export class ShopView {
       this.upgradesGrid.appendChild(
         createOfferCard({
           icon: definition.icon,
+          artId: definition.id,
           name: definition.name,
           description: definition.desc,
           status:
@@ -167,6 +184,7 @@ export class ShopView {
         createOfferCard({
           cardClass: 'decor-card',
           icon: definition.icon,
+          artId: definition.id,
           name: definition.name,
           description: definition.desc,
           status: owned ? 'В ПВЗ' : definition.permanent ? 'Навсегда' : 'До конца забега',

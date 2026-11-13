@@ -73,9 +73,12 @@ test('старт → клиент → сканер → ячейка → выда
     await expect(page.locator('#results-kicker')).toHaveText('СМЕНА 1 ЗАВЕРШЕНА');
     await expect(page.locator('#results-served')).toHaveText('1');
     await expect(page.locator('#results-earned')).toHaveText(/[1-9]\d* ₽/);
+    await expect(page.locator('#intermission-results')).toBeVisible();
+    await expect(page.locator('#intermission-shop')).toBeHidden();
+    await page.locator('#results-to-shop').click();
     await expect(page.locator('#shop-upgrades-panel')).toBeVisible();
     await expect(page.locator('#shop-grid button').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Оформление ПВЗ', exact: true }).click();
+    await page.getByRole('tab', { name: 'Оформление ПВЗ', exact: true }).click();
     await expect(page.locator('#shop-decor-panel')).toBeVisible();
     await expect(page.locator('#decor-grid button').first()).toBeVisible();
   } finally {

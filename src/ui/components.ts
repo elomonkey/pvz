@@ -9,6 +9,7 @@ export function byId(id: string): HTMLElement {
 export interface OfferCardOptions {
   cardClass?: string;
   icon: string;
+  artId?: string;
   name: string;
   description: string;
   status: string;
@@ -73,6 +74,11 @@ export function createOfferCard(options: OfferCardOptions): HTMLDivElement {
   if (options.maxed) card.classList.add('maxed');
 
   const icon = el('div', 'upgrade-icon', options.icon);
+  if (options.artId) {
+    card.dataset.offer = options.artId;
+    icon.dataset.art = options.artId;
+    icon.setAttribute('aria-hidden', 'true');
+  }
   const name = el('div', 'upgrade-name', options.name);
   const description = el('div', 'upgrade-desc', options.description);
   const status = el('div', 'upgrade-levels', options.status);

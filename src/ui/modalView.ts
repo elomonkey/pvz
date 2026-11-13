@@ -1,5 +1,6 @@
 import type { QuestDisplay } from './hudView';
 import { byId, clear, createResultsQuestRow } from './components';
+import './intermission.css';
 
 export interface ResultsData {
   shift: number;
@@ -68,6 +69,17 @@ export class ModalView {
   private readonly questBonus = byId('quest-bonus');
   private readonly resultsSalary = byId('results-salary');
   private readonly nextShift = byId('next-shift') as HTMLButtonElement;
+  private readonly intermission = this.resultsModal.querySelector<HTMLElement>('.intermission')!;
+  private readonly intermissionTitle = byId('intermission-title');
+  private readonly resultsStage = byId('intermission-results');
+  private readonly shopStage = byId('intermission-shop');
+  private readonly resultsToShop = byId('results-to-shop');
+  private readonly shopToResults = byId('shop-to-results');
+  private readonly stepResults = byId('intermission-step-results');
+  private readonly stepShop = byId('intermission-step-shop');
+  private readonly portrait = byId('results-portrait') as HTMLImageElement;
+  private stage: 'results' | 'shop' = 'results';
+  private nextShiftUnlock: number | null = null;
 
   private readonly gameoverModal = byId('gameover-modal');
   private readonly gameoverShift = byId('gameover-shift');
@@ -90,7 +102,34 @@ export class ModalView {
     this.tutorialNext.addEventListener('click', () => actions.onTutorialNext());
     this.tutorialSkip.addEventListener('click', () => actions.onTutorialSkip());
     this.resultsIntroClose.addEventListener('click', () => this.hideResultsIntro());
-    this.nextShift.addEventListener('click', () => actions.onNextShift());
+    this.resultsToShop.addEventListener('click', () => this.setResultsStage('shop'));
+    this.shopToResults.addEventListener('click', () => this.setResultsStage('results'));
+    this.stepResults.addEventListener('click', () => { if (this.stage !== 'results') this.setResultsStage('results'); });
+    this.stepShop.addEventListener('click', () => { if (this.stage !== 'shop') this.setResultsStage('shop'); });
+    this.nextShift.addEventListener('click', () => {
+      if (this.stage !== 'shop' || this.nextShift.disabled) return;
+      this.nextShift.disabled = true;
+      actions.onNextShift();
+    });
+    document.addEventListener('keydown', event => {
+      if (this.resultsModal.classList.contains('hidden') || !this.helpModal.classList.contains('hidden')) return;
+      if (event.key === 'Escape' && this.stage === 'shop') {
+        event.preventDefault();
+        event.stopPropagation();
+        this.setResultsStage('results');
+      }
+      if (event.key !== 'Tab') return;
+      const buttons = [...this.resultsModal.querySelectorAll<HTMLElement>('button:not(:disabled), summary')]
+        .filter(button => button.getClientRects().length > 0);
+      const first = buttons[0], last = buttons.at(-1);
+      if (!this.resultsModal.contains(document.activeElement)) {
+        event.preventDefault(); first?.focus();
+      } else if (event.shiftKey && (document.activeElement === first || document.activeElement === this.intermissionTitle)) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first?.focus();
+      }
+    }, true);
     this.restartBtn.addEventListener('click', () => actions.onRestart());
   }
 
@@ -151,6 +190,8 @@ export class ModalView {
   }
 
   renderResults(data: ResultsData): void {
+    this.resultsModal.classList.toggle('failed-shift', data.failed);
+    byId('shop-next-label').textContent = data.shift >= 5 ? 'ЗАБЕГ ЗАВЕРШЁН' : `ПОДГОТОВКА К СМЕНЕ ${data.shift + 1}`;
     this.resultsKicker.textContent = `СМЕНА ${data.shift} ЗАВЕРШЕНА`;
     this.resultsStars.textContent = '★'.repeat(data.stars) + '☆'.repeat(3 - data.stars);
     this.resultsTitle.textContent = data.title;
@@ -183,7 +224,12 @@ export class ModalView {
 
   showResults(): void {
     this.hideResultsIntro();
+    this.setResultsStage('results', false);
+    this.resultsModal.querySelectorAll('.intermission-scroll').forEach(panel => { panel.scrollTop = 0; });
+    this.resultsModal.querySelectorAll<HTMLDetailsElement>('details').forEach(panel => { panel.open = false; });
+    if (!this.portrait.getAttribute('src')) this.portrait.src = new URL('../assets/intermission/employee.webp', import.meta.url).href;
     this.resultsModal.classList.remove('hidden');
+    this.intermissionTitle.focus({ preventScroll: true });
   }
 
   showResultsIntro(): void {
@@ -195,8 +241,30 @@ export class ModalView {
   }
 
   hideResults(): void {
+    if (this.nextShiftUnlock !== null) window.clearTimeout(this.nextShiftUnlock);
+    this.nextShiftUnlock = null;
     this.hideResultsIntro();
     this.resultsModal.classList.add('hidden');
+  }
+
+  private setResultsStage(stage: 'results' | 'shop', focus = true): void {
+    if (this.nextShiftUnlock !== null) window.clearTimeout(this.nextShiftUnlock);
+    this.nextShiftUnlock = null;
+    this.stage = stage;
+    this.intermission.dataset.stage = stage;
+    this.resultsStage.classList.toggle('hidden', stage !== 'results');
+    this.shopStage.classList.toggle('hidden', stage !== 'shop');
+    this.intermissionTitle.textContent = stage === 'results' ? 'Итоги смены' : 'Магазин между сменами';
+    this.stepResults.removeAttribute('aria-current');
+    this.stepShop.removeAttribute('aria-current');
+    (stage === 'results' ? this.stepResults : this.stepShop).setAttribute('aria-current', 'step');
+    // Prevent a double tap on the same corner from skipping the shop.
+    this.nextShift.disabled = true;
+    if (stage === 'shop') this.nextShiftUnlock = window.setTimeout(() => {
+      this.nextShift.disabled = false;
+      this.nextShiftUnlock = null;
+    }, 350);
+    if (focus) this.intermissionTitle.focus({ preventScroll: true });
   }
 
   setNextShiftFinal(final: boolean): void {

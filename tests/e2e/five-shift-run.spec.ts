@@ -242,7 +242,8 @@ test('непрерывный забег: 5 смен → боссы → мага�
           final: { active: false, stage: 'idle', debuff: false, galya: false, valera: false },
         });
         expect(result.served).toBeGreaterThan(0);
-        await page.getByRole('button', { name: 'Оформление ПВЗ', exact: true }).click();
+        await page.locator('#results-to-shop').click();
+        await page.getByRole('tab', { name: 'Оформление ПВЗ', exact: true }).click();
         await expect(page.locator('#shop-decor-panel')).toBeVisible();
         if (shift < 5) {
           await expect(page.locator('#next-shift')).toHaveText('Следующая смена →');
