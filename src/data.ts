@@ -103,8 +103,8 @@ export const SHELF_DEFS: ShelfDef[] = [
     activeFromShift: 1,
   },
   {
-    x: -9.0,
-    z: -0.45,
+    x: -8.6,
+    z: -1.0,
     rotation: Math.PI / 2,
     face: -Math.PI / 2,
     columns: 3,
@@ -123,9 +123,9 @@ export function shelfWidth(def: ShelfDef): number {
 }
 
 export const COUNTER = {
-  x: 1.3,
+  x: 1.39,
   z: 0.25,
-  w: 5.8,
+  w: 5.62,
   d: 0.6,
   h: 1.08,
 };
@@ -159,7 +159,7 @@ export const FRONT_DOOR = { x: 1.8, z: 3.6, width: 0.8 };
 export const SHELF_POINTS: Vec2[] = [
   { x: -3.2, z: -0.55 },
   { x: -5.7, z: -0.55 },
-  { x: -8.15, z: -0.55 },
+  { x: -7.7, z: -1.0 },
 ];
 
 // Тот же угол 3/4; кадр расширен и сдвинут вместе с новым складским крылом.

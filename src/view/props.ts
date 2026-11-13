@@ -235,14 +235,20 @@ export function createShelf(index: number, scene: THREE.Scene): ShelfVisual {
   group.add(shadow);
 
   const labels: CSS2DObject[] = [];
-  const letterEl = document.createElement('div');
-  letterEl.className = 'shelf-letter';
-  letterEl.textContent = SHELF_LETTERS[index];
-  const letter = new CSS2DObject(letterEl);
-  letter.position.set(0, SHELF_H + 0.35, 0);
-  letter.center.set(0.5, 1);
+  // Printed directly on the wooden top; it follows the shelf and its visibility.
+  const letter = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.56, 0.4),
+    new THREE.MeshLambertMaterial({
+      map: makeTextTexture(SHELF_LETTERS[index], { width: 256, height: 192, fontSize: 168, bg: 'transparent', color: '#34453a' }),
+      transparent: true, depthWrite: false,
+    }),
+  );
+  letter.name = 'shelf-top-letter';
+  letter.rotation.x = -Math.PI / 2;
+  letter.position.set(0, SHELF_H + 0.033, 0);
+  // C runs across the room: keep its printed letter facing the same camera side.
+  letter.rotation.z = index === 2 ? Math.PI / 2 : 0;
   group.add(letter);
-  labels.push(letter);
 
   for (let column = 0; column < def.columns; column++) {
     const x = (column - (def.columns - 1) / 2) * def.cellW;
