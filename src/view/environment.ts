@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { PALETTE, ROOM, STORAGE, STORAGE_DOOR } from '../data';
 import { createPlant } from './props';
+import { createStreet } from './street';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   box,
   cone,
@@ -247,266 +249,40 @@ function createNeonSign(scene: THREE.Scene): {
   return { group, glowMaterial };
 }
 
-function makeCourtyardBackdrop(phase: WindowPhase): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 800;
-  canvas.height = 360;
-  const ctx = canvas.getContext('2d');
-
-  if (ctx) {
-    const evening = phase === 3;
-    const day = phase === 2;
-    const skyTop = evening ? '#3f3f6e' : day ? '#6fc3ee' : '#a6d4ea';
-    const skyMid = evening ? '#b76b8e' : day ? '#c9e9fa' : '#dceff4';
-    const skyBottom = evening ? '#ffd6a0' : day ? '#eef9ff' : '#ffe5c6';
-
-    const gradient = ctx.createLinearGradient(0, 0, 0, 280);
-    gradient.addColorStop(0, skyTop);
-    gradient.addColorStop(0.58, skyMid);
-    gradient.addColorStop(1, skyBottom);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 800, 280);
-
-    // Солнце остаётся в левой части окна; дверь получает свой кусок панорамы.
-    const sunX = evening ? 520 : day ? 470 : 280;
-    const sunY = evening ? 176 : day ? 154 : 168;
-    const sunRadius = evening ? 28 : day ? 24 : 26;
-    const sunColor = evening ? '#ff9b62' : day ? '#fff3b0' : '#ffd48a';
-    ctx.save();
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = sunColor;
-    ctx.beginPath();
-    ctx.arc(sunX, sunY, sunRadius * 2.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = sunColor;
-    ctx.beginPath();
-    ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    const cloudAlpha = evening ? 0.3 : 0.68;
-    const drawCloud = (x: number, y: number, scale: number): void => {
-      ctx.save();
-      ctx.globalAlpha = cloudAlpha;
-      ctx.fillStyle = evening ? '#ffd9d0' : '#ffffff';
-      for (const [dx, dy, rx, ry] of [
-        [-28, 4, 28, 11],
-        [0, 0, 34, 14],
-        [32, 5, 25, 10],
-      ] as const) {
-        ctx.beginPath();
-        ctx.ellipse(x + dx * scale, y + dy * scale, rx * scale, ry * scale, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    };
-    drawCloud(120, 180, 0.8);
-    drawCloud(360, 148, 0.85);
-    drawCloud(560, 194, 0.75);
-    drawCloud(700, 158, 0.7);
-
-    if (evening) {
-      ctx.fillStyle = 'rgba(255, 255, 235, 0.8)';
-      for (const [x, y, r] of [
-        [60, 118, 1.1],
-        [186, 96, 0.9],
-        [320, 122, 1.1],
-        [458, 100, 1.0],
-        [612, 116, 1.1],
-        [742, 92, 1.0],
-      ] as const) {
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // Дальняя зелень на горизонте — плоский фон за 3D-кустами и дорогой.
-    // Панорама шире окна, поэтому кусты и холмы продолжаются до двери.
-    const farGreen = evening ? '#3f5e4d' : day ? '#5f8f63' : '#6f9f6a';
-    const farGreenLight = evening ? '#4d6f59' : '#7fb27a';
-    ctx.fillStyle = farGreen;
-    ctx.beginPath();
-    ctx.moveTo(0, 268);
-    ctx.quadraticCurveTo(70, 238, 160, 262);
-    ctx.quadraticCurveTo(260, 288, 360, 252);
-    ctx.quadraticCurveTo(470, 224, 570, 256);
-    ctx.quadraticCurveTo(670, 280, 800, 248);
-    ctx.lineTo(800, 360);
-    ctx.lineTo(0, 360);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = farGreenLight;
-    for (const [x, y, r] of [
-      [70, 270, 26],
-      [168, 266, 21],
-      [264, 274, 28],
-      [370, 260, 24],
-      [478, 268, 26],
-      [588, 260, 22],
-      [700, 270, 24],
-      [772, 256, 19],
-    ] as const) {
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-  return texture;
-}
-
-interface CourtyardVisual {
-  setPhase: (phase: WindowPhase) => void;
-  update: (time: number) => void;
-}
-
-function createCourtyard(scene: THREE.Scene): CourtyardVisual {
-  const group = new THREE.Group();
-  const bushes: THREE.Group[] = [];
-
-  const addBox = (
-    width: number,
-    height: number,
-    depth: number,
-    color: string,
-    x: number,
-    y: number,
-    z: number,
-  ): void => {
-    const mesh = box(width, height, depth, color);
-    mesh.position.set(x, y, z);
-    group.add(mesh);
-  };
-
-  // Боковая наружная стена: закрывает левый край фона.
-  addBox(0.08, 2.6, 1.2, '#c9c1b3', -1.62, 1.3, 4.3);
-
-  // Тротуар у фасада, дорога и подход к двери.
-  addBox(4.8, 0.04, 0.36, '#d7d2c5', -0.35, 0.02, 4.1);
-  addBox(4.8, 0.06, 0.04, '#b1aa9d', -0.35, 0.03, 4.3);
-  addBox(4.8, 0.03, 0.48, '#5d6671', -0.35, 0.015, 4.56);
-  addBox(1.1, 0.04, 0.82, '#d7d2c5', 1.8, 0.025, 4.03);
-  for (const x of [-2.4, -1.6, -0.8, 0.0, 0.8, 1.6]) {
-    addBox(0.24, 0.012, 0.04, '#f2e3b0', x, 0.04, 4.56);
-  }
-
-  const bushMaterial = new THREE.MeshLambertMaterial({ color: '#5f9b63' });
-  const bushTopMaterial = new THREE.MeshLambertMaterial({ color: '#75ad72' });
-
-  const addBush = (x: number, z: number, scale: number, phase: number): void => {
-    const bush = new THREE.Group();
-    bush.position.set(x, 0.02, z);
-    bush.userData.phase = phase;
-
-    const crown = sphere(0.3 * scale, '#5f9b63');
-    crown.position.set(0, 0.28 * scale, 0);
-    crown.scale.set(0.3 * scale, 0.24 * scale, 0.3 * scale);
-    crown.material = bushMaterial;
-    bush.add(crown);
-
-    const top = sphere(0.2 * scale, '#75ad72');
-    top.position.set(0.06 * scale, 0.44 * scale, -0.02 * scale);
-    top.material = bushTopMaterial;
-    bush.add(top);
-
-    bushes.push(bush);
-    group.add(bush);
-  };
-
-  addBush(-1.4, 4.72, 1.0, 0.2);
-  addBush(0.55, 4.72, 0.85, 1.4);
-  // Куст у входа: виден через дверной проём и не мешает маршруту клиентов.
-  addBush(1.35, 4.86, 1.0, 2.6);
-
-  const coloredParts = group.children.filter(
-    (child): child is THREE.Mesh => child instanceof THREE.Mesh,
-  );
-  const courtyardMaterial = new THREE.MeshLambertMaterial({
-    vertexColors: true,
-    color: '#ffffff',
-  });
-  mergeStaticMeshesToVertexColor(coloredParts, group, courtyardMaterial);
-
-  const backdropTextures: Record<WindowPhase, THREE.CanvasTexture> = {
-    1: makeCourtyardBackdrop(1),
-    2: makeCourtyardBackdrop(2),
-    3: makeCourtyardBackdrop(3),
-  };
-  const backdropMaterial = new THREE.MeshBasicMaterial({
-    map: backdropTextures[1],
-  });
-  const backdrop = new THREE.Mesh(
-    // Панорама шире проёма: закрывает и окно, и вид через входную дверь.
-    new THREE.PlaneGeometry(4.1, 1.85),
-    backdropMaterial,
-  );
-  backdrop.position.set(-0.2, 0.925, 4.9);
-  backdrop.rotation.y = Math.PI;
-  group.add(backdrop);
-
-  scene.add(group);
-
-  const tints: Record<WindowPhase, string> = {
-    1: '#fff0dc',
-    2: '#ffffff',
-    3: '#ffc196',
-  };
-  const bushTints: Record<WindowPhase, { main: string; top: string }> = {
-    1: { main: '#6fae72', top: '#86c182' },
-    2: { main: '#5f9b63', top: '#75ad72' },
-    3: { main: '#4f7a5a', top: '#5f8b68' },
-  };
-
-  const setPhase = (phase: WindowPhase): void => {
-    backdropMaterial.map = backdropTextures[phase];
-    backdropMaterial.needsUpdate = true;
-    courtyardMaterial.color.set(tints[phase]);
-    bushMaterial.color.set(bushTints[phase].main);
-    bushTopMaterial.color.set(bushTints[phase].top);
-  };
-  setPhase(1);
-
-  const update = (time: number): void => {
-    for (const bush of bushes) {
-      const phase = Number(bush.userData.phase ?? 0);
-      bush.rotation.z = Math.sin(time * 1.6 + phase) * 0.025;
-      bush.rotation.x = Math.cos(time * 1.25 + phase) * 0.016;
-    }
-  };
-
-  return { setPhase, update };
-}
-
 function createWindow(scene: THREE.Scene): WindowVisual {
-  const courtyard = createCourtyard(scene);
+  const courtyard = createStreet(scene);
   const group = new THREE.Group();
+  group.name = 'shop-window';
   group.position.set(-0.1, 1.91, 3.7);
   group.rotation.y = Math.PI;
 
   const glassMaterial = new THREE.MeshBasicMaterial({
     color: '#e8f4ff',
     transparent: true,
-    opacity: 0.06,
+    opacity: 0.035,
     depthWrite: false,
   });
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.34), glassMaterial);
+  const glassParts = [new THREE.PlaneGeometry(2.5, 1.34)];
+  for (const x of [-.75, .8]) {
+    const reflection = new THREE.PlaneGeometry(.06, .88);
+    reflection.rotateZ(-.25); reflection.translate(x, .04, .003);
+    glassParts.push(reflection);
+  }
+  const glass = new THREE.Mesh(mergeGeometries(glassParts)!, glassMaterial);
+  for (const part of glassParts) part.dispose();
   group.add(glass);
 
   for (const y of [-0.72, 0.72]) {
-    const bar = box(2.65, 0.08, 0.08, WOOD);
+    const bar = roundedBox(2.65, 0.08, 0.08, WOOD, { radius: .014 });
     bar.position.set(0, y, 0.04);
     group.add(bar);
   }
   for (const x of [-1.3, 1.3]) {
-    const bar = box(0.08, 1.46, 0.08, WOOD);
+    const bar = roundedBox(0.08, 1.46, 0.08, WOOD, { radius: .014 });
     bar.position.set(x, 0, 0.04);
     group.add(bar);
   }
-  const centerBar = box(0.05, 1.4, 0.06, WOOD);
+  const centerBar = roundedBox(0.05, 1.4, 0.06, WOOD, { radius: .01 });
   centerBar.position.set(0, 0, 0.04);
   group.add(centerBar);
 
@@ -534,15 +310,27 @@ function createWindow(scene: THREE.Scene): WindowVisual {
     3: '#ffe3cf',
   };
 
+  const glassColors = { 1: new THREE.Color(glassTints[1]), 2: new THREE.Color(glassTints[2]), 3: new THREE.Color(glassTints[3]) };
+  const lightColors = { 1: new THREE.Color(lightSettings[1].color), 2: new THREE.Color(lightSettings[2].color), 3: new THREE.Color(lightSettings[3].color) };
+  let target: WindowPhase = 1;
+  let previous: number | null = null;
+  light.color.set(lightSettings[1].color);
+  light.intensity = lightSettings[1].intensity;
   const setPhase = (phase: WindowPhase): void => {
+    target = phase;
     courtyard.setPhase(phase);
-    glassMaterial.color.set(glassTints[phase]);
-    light.color.set(lightSettings[phase].color);
-    light.intensity = lightSettings[phase].intensity;
+  };
+  const update = (time: number): void => {
+    const dt = previous === null ? 0 : Math.max(0, time - previous);
+    previous = time;
+    const mix = 1 - Math.exp(-dt * 1.8);
+    glassMaterial.color.lerp(glassColors[target], mix);
+    light.color.lerp(lightColors[target], mix);
+    light.intensity += (lightSettings[target].intensity - light.intensity) * mix;
+    courtyard.update(time);
   };
   setPhase(1);
-
-  return { setPhase, update: courtyard.update };
+  return { setPhase, update };
 }
 
 function createWalls(scene: THREE.Scene): {
