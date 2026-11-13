@@ -63,7 +63,7 @@ export function createDecorState(): DecorOwnership {
 
 // L-образная комната: основной зал справа, склад-крыло слева.
 export const ROOM = {
-  minX: -8.2,
+  minX: -9.6,
   maxX: 5.0,
   minZ: -2.0,
   maxZ: 3.8,
@@ -82,7 +82,7 @@ export interface ShelfDef {
 
 export const SHELF_LETTERS = ['A', 'B', 'C'] as const;
 
-// Два стеллажа в складском крыле. Со второй смены появляется компактный C.
+// A/B вдоль задней стены; C со второй смены стоит у расширенной боковой стены.
 export const SHELF_DEFS: ShelfDef[] = [
   {
     x: -3.8,
@@ -103,8 +103,8 @@ export const SHELF_DEFS: ShelfDef[] = [
     activeFromShift: 1,
   },
   {
-    x: -7.55,
-    z: -0.85,
+    x: -9.0,
+    z: -0.45,
     rotation: Math.PI / 2,
     face: -Math.PI / 2,
     columns: 3,
@@ -132,8 +132,8 @@ export const COUNTER = {
 
 export const SERVICE_POINT: Vec2 = { x: 0.4, z: -0.55 };
 // Шкафчик возвратов в расширенной зоне сотрудника.
-export const STAFF_SHELF = { x: 3.45, z: -1.15, w: 1.35, d: 0.42, h: 1.65 };
-export const RETURN_POINT: Vec2 = { x: 2.75, z: -0.6 };
+export const STAFF_SHELF = { x: 3.6, z: -0.48, w: 1.3, d: 0.62, h: 1.1 };
+export const RETURN_POINT: Vec2 = { x: 2.55, z: -0.95 };
 export const QUEUE_X = 0.4;
 export const QUEUE_SPOTS: Vec2[] = [
   { x: QUEUE_X, z: 1.15 },
@@ -151,21 +151,23 @@ export const PLAYER_START = SERVICE_POINT;
 export const TOY = { x: -0.55, z: 0.07, y: 1.245 };
 export const TV = { x: -1.56, z: 2.45, y: 2.2 };
 export const STORAGE_WALL_X = -1.7;
-export const STORAGE_DOOR = { x: -1.6, z: -0.6, width: 1.2 };
+export const STORAGE_DOOR = { x: -1.6, z: -0.7, width: 1.65 };
+export const STORAGE = { minX: ROOM.minX + 0.1, maxX: STORAGE_WALL_X, minZ: ROOM.minZ, maxZ: 0.65 };
+export const FITTING_CAPACITY = 1;
 export const FRONT_DOOR = { x: 1.8, z: 3.6, width: 0.8 };
 
 export const SHELF_POINTS: Vec2[] = [
   { x: -3.2, z: -0.55 },
   { x: -5.7, z: -0.55 },
-  { x: -6.05, z: -0.77 },
+  { x: -8.15, z: -0.55 },
 ];
 
-// Статичная камера из второй версии: общий 3/4-вид на L-образную комнату.
+// Тот же угол 3/4; кадр расширен и сдвинут вместе с новым складским крылом.
 export const CAMERA = {
-  pos: { x: 3.2, y: 8.8, z: -7.0 },
-  target: { x: -0.8, y: 0.6, z: 0.75 },
-  viewHeight: 11.0,
-  minAspectWidth: 15.0,
+  pos: { x: 2.65, y: 8.8, z: -7.0 },
+  target: { x: -1.35, y: 0.6, z: 0.75 },
+  viewHeight: 11.4,
+  minAspectWidth: 16.7,
 };
 
 export const MAX_STRESS = 100;

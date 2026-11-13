@@ -64,7 +64,7 @@ test('первый старт 4-й смены объясняет примеро�
     await expect(page.locator('#tutorial-kicker')).toHaveText('НОВОЕ · СМЕНА 4');
     await expect(page.locator('#tutorial-title')).toHaveText('Четвёртая смена: что нового');
     await expect(page.locator('#tutorial-text')).toContainText('нескольких ячеек');
-    await expect(page.locator('#tutorial-text')).toContainText('две примерочные');
+    await expect(page.locator('#tutorial-text')).toContainText('открылась примерочная');
     await expect(page.locator('#tutorial-text')).toContainText('Королева');
     expect(
       await page.evaluate(() => ({

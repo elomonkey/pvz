@@ -5,6 +5,7 @@ import {
   SHELF_DEFS,
   STAFF_SHELF,
   STORAGE_DOOR,
+  STORAGE,
   STORAGE_WALL_X,
   shelfWidth,
   type Vec2,
@@ -137,20 +138,20 @@ export class NavGrid {
       });
     }
 
-    // Перегородка склад/наша зона. Дверной проём: z от -1.2 до 0.0.
+    // Перегородка и проём используют те же размеры, что и видимая сцена.
     const doorZ1 = STORAGE_DOOR.z - STORAGE_DOOR.width / 2;
     const doorZ2 = STORAGE_DOOR.z + STORAGE_DOOR.width / 2;
     rects.push({
       x1: STORAGE_WALL_X - 0.1 - inflate,
       x2: STORAGE_WALL_X + 0.1 + inflate,
-      z1: -1.55 - inflate,
+      z1: STORAGE.minZ - inflate,
       z2: doorZ1 + inflate,
     });
     rects.push({
       x1: STORAGE_WALL_X - 0.1 - inflate,
       x2: STORAGE_WALL_X + 0.1 + inflate,
       z1: doorZ2 - inflate,
-      z2: 0.55 + inflate,
+      z2: STORAGE.maxZ + inflate,
     });
 
     for (let r = 0; r < this.rows; r++) {

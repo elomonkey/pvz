@@ -14,6 +14,7 @@ import {
   CLIENT_ARGUE_TAUNTS,
   CLIENT_ARGUE_WIN_LINES,
   DECOR_ITEMS,
+  FITTING_CAPACITY,
   FINAL_BOSS_ENTRANCE_LINES,
   FINAL_BOSS_FITTING_LINES,
   FINAL_BOSS_MID_LINES,
@@ -256,8 +257,8 @@ export class Game {
     return this.queenScenario.walkingToFitting;
   }
   private fittingActive = false;
-  private fittingOccupied = [false, false];
-  private fittingTimers = [0, 0];
+  private fittingOccupied = [false];
+  private fittingTimers = [0];
   private fittingFull = false;
 
   private readonly finalBoss = new FinalBossSystem();
@@ -327,7 +328,7 @@ export class Game {
       sound: this.sound,
       points: {
         queueFront: QUEUE_SPOTS[0],
-        fitting: { x: 3.15, z: 2.8 },
+        fitting: { x: 3.55, z: 2.8 },
       },
       shift: () => this.run.shift,
       isGameOver: () => this.isGameOver(),
@@ -928,7 +929,7 @@ export class Game {
         id: 'shift4',
         kicker: 'НОВОЕ · СМЕНА 4',
         title: 'Четвёртая смена: что нового',
-        text: 'Заказы теперь могут состоять из нескольких ячеек: соберите все посылки и только потом идите к клиенту. В зале открылись две примерочные: занятые кабинки злят очередь, а Королева может занять обе.',
+        text: 'Заказы теперь могут состоять из нескольких ячеек: соберите все посылки и только потом идите к клиенту. В зале открылась примерочная: занятая кабинка злит очередь, а Королева может надолго её занять.',
       };
     }
     return null;
@@ -1315,8 +1316,8 @@ export class Game {
 
     this.queenScenario.reset();
     this.fittingActive = isFittingActive(shift);
-    this.fittingOccupied = [false, false];
-    this.fittingTimers = [5, 9];
+    this.fittingOccupied = [false];
+    this.fittingTimers = [5];
     this.fittingFull = false;
     this.updateShelfProgression(shift);
     this.eventUsed = false;
@@ -1359,7 +1360,7 @@ export class Game {
     this.ui.setToyRelief(0);
     this.world.applyDecor(this.ownedDecor);
     this.ui.setReputation(this.run.reputation);
-    this.ui.setFittingRooms(0, 2, this.fittingActive);
+    this.ui.setFittingRooms(0, FITTING_CAPACITY, this.fittingActive);
     this.ui.setQueenStatus(false, 0);
     this.ui.setFinalBossStatus(false, 0, '');
     this.ui.setFinalBossDebuff(false);
@@ -1826,9 +1827,9 @@ export class Game {
   private prepareFinalBossEncounter(): void {
     this.clearClients();
     this.world.setDayPhase(3);
-    this.fittingOccupied = [false, false];
+    this.fittingOccupied = [false];
     this.fittingFull = false;
-    this.fittingTimers = [5, 9];
+    this.fittingTimers = [5];
     this.encounter.enterBoss();
     this.encounter.closeModal();
     this.bossScenario.reset();
@@ -1839,7 +1840,7 @@ export class Game {
     this.pendingGameOver = false;
     this.service.carryingReturn = false;
     this.player.setCarry(false);
-    this.ui.setFittingRooms(0, 2, true);
+    this.ui.setFittingRooms(0, FITTING_CAPACITY, true);
   }
 
   private createFinalBossClient(kind: FinalBossClientKind): Client {
@@ -1884,15 +1885,16 @@ export class Game {
   }
 
   private setFinalBossFittingState(
-    occupied: [boolean, boolean],
+    occupied: [boolean],
     full: boolean,
     resetTimers: boolean,
     active: boolean,
   ): void {
     this.fittingOccupied = [...occupied];
     this.fittingFull = full;
-    if (resetTimers) this.fittingTimers = [5, 9];
-    this.ui.setFittingRooms(occupied.filter(Boolean).length, 2, active);
+    this.updatePatienceMultipliers();
+    if (resetTimers) this.fittingTimers = [5];
+    this.ui.setFittingRooms(occupied.filter(Boolean).length, FITTING_CAPACITY, active);
   }
 
   private completeFinalBossDelivery(client: Client, order: Order): void {
@@ -1953,16 +1955,16 @@ export class Game {
 
     // Королева и примерочные не должны оставаться на экране итогов.
     this.queenScenario.clearForResults();
-    this.fittingOccupied = [false, false];
+    this.fittingOccupied = [false];
     this.fittingFull = false;
-    this.fittingTimers = [5, 9];
+    this.fittingTimers = [5];
     this.finalBoss.reset();
     this.finalBossScenario.reset();
     // Results must not retain leaving/final clients until the next reset.
     this.clearClients();
     this.service.carryingReturn = false;
     this.player.setCarry(false);
-    this.ui.setFittingRooms(0, 2, false);
+    this.ui.setFittingRooms(0, FITTING_CAPACITY, false);
     this.ui.setQueenStatus(false, 0);
     this.ui.setFinalBossStatus(false, 0, '');
     this.ui.setFinalBossDebuff(false);
@@ -2118,9 +2120,9 @@ export class Game {
     this.player.setCarry(false);
     this.queenScenario.stop();
     this.finalBossScenario.clearForGameOver();
-    this.fittingOccupied = [false, false];
+    this.fittingOccupied = [false];
     this.fittingFull = false;
-    this.ui.setFittingRooms(0, 2, false);
+    this.ui.setFittingRooms(0, FITTING_CAPACITY, false);
     this.ui.setQueenStatus(false, 0);
     this.ui.setFinalBossStatus(false, 0, '');
     this.ui.setFinalBossDebuff(false);
@@ -2620,8 +2622,8 @@ export class Game {
     this.queenScenario.reset();
     this.ui.setQueenStatus(false, 0);
     this.fittingActive = false;
-    this.fittingOccupied = [false, false];
-    this.fittingTimers = [0, 0];
+    this.fittingOccupied = [false];
+    this.fittingTimers = [0];
     this.fittingFull = false;
     this.finalBoss.reset();
     this.finalBossScenario.reset();
@@ -2629,7 +2631,7 @@ export class Game {
     this.announcedQuests.clear();
     this.shiftFailed = false;
     this.ui.setQuests([], false);
-    this.ui.setFittingRooms(0, 2, false);
+    this.ui.setFittingRooms(0, FITTING_CAPACITY, false);
     this.ui.setFinalBossStatus(false, 0, '');
     this.ui.setFinalBossDebuff(false);
     this.encounter.enterMenu();
@@ -2827,29 +2829,29 @@ export class Game {
     if (!this.fittingActive) return;
     if (this.queen.inFitting) {
       if (!this.fittingFull) {
-        this.fittingOccupied = [true, true];
+        this.fittingOccupied = [true];
         this.fittingFull = true;
         this.updatePatienceMultipliers();
-        this.ui.setFittingRooms(2, 2, true);
+        this.ui.setFittingRooms(FITTING_CAPACITY, FITTING_CAPACITY, true);
       }
       return;
     }
     if (this.finalBoss.valeraInFitting) {
-      if (!this.fittingOccupied[0] || this.fittingOccupied[1]) {
-        this.fittingOccupied = [true, false];
-        this.fittingFull = false;
+      if (!this.fittingOccupied[0]) {
+        this.fittingOccupied = [true];
+        this.fittingFull = true;
         this.updatePatienceMultipliers();
-        this.ui.setFittingRooms(1, 2, true);
+        this.ui.setFittingRooms(1, FITTING_CAPACITY, true);
       }
       return;
     }
     if (this.finalBoss.active) {
       // Во время финального босса примерочные заняты по сюжету, а не случайно.
-      if (this.fittingOccupied[0] || this.fittingOccupied[1]) {
-        this.fittingOccupied = [false, false];
+      if (this.fittingOccupied[0]) {
+        this.fittingOccupied = [false];
         this.fittingFull = false;
         this.updatePatienceMultipliers();
-        this.ui.setFittingRooms(0, 2, true);
+        this.ui.setFittingRooms(0, FITTING_CAPACITY, true);
       }
       return;
     }
@@ -2868,14 +2870,14 @@ export class Game {
       this.fittingFull = full;
       this.updatePatienceMultipliers();
       this.ui.toast(
-        full ? 'Обе примерочные заняты — очередь раздражается!' : 'Примерочная освободилась.',
+        full ? 'Примерочная занята — очередь раздражается!' : 'Примерочная освободилась.',
         full ? 'error' : 'info',
       );
       changed = true;
     }
 
     if (changed) {
-      this.ui.setFittingRooms(this.fittingOccupied.filter(Boolean).length, 2, true);
+      this.ui.setFittingRooms(this.fittingOccupied.filter(Boolean).length, FITTING_CAPACITY, true);
     }
   }
 
@@ -2945,16 +2947,16 @@ export class Game {
   }
 
   private clearFittingRooms(resetTimers: boolean): void {
-    this.fittingOccupied = [false, false];
+    this.fittingOccupied = [false];
     this.fittingFull = false;
-    if (resetTimers) this.fittingTimers = [5, 9];
-    this.ui.setFittingRooms(0, 2, true);
+    if (resetTimers) this.fittingTimers = [5];
+    this.ui.setFittingRooms(0, FITTING_CAPACITY, true);
   }
 
   private occupyQueenFitting(): void {
-    this.fittingOccupied = [true, true];
+    this.fittingOccupied = [true];
     this.fittingFull = true;
-    this.ui.setFittingRooms(2, 2, true);
+    this.ui.setFittingRooms(FITTING_CAPACITY, FITTING_CAPACITY, true);
   }
 
   private depositReturn(): void {

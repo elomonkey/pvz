@@ -4,7 +4,8 @@ import type { Sound } from '../sound';
 import type { UI } from '../ui';
 import type { QueenSystem } from './queenSystem';
 
-const FITTING_POINT = { x: 3.15, z: 2.8 };
+// Centre of the single cabin opening in view/environment.ts.
+const FITTING_POINT = { x: 3.55, z: 2.8 };
 
 /**
  * Host operations for the Queen scenario. Game owns the shared world, orders,
@@ -77,7 +78,7 @@ export class QueenScenario {
     queen.showBubble(this.host.queenLine(), 999);
     this.host.ui.banner(
       'Королева примерочной',
-      'Она занимает примерочные, злит очередь и приносит возвраты.',
+      'Она занимает примерочную, злит очередь и приносит возвраты.',
       3,
     );
     this.host.ui.toast('Королева примерочной уже здесь!', 'boss');
@@ -148,7 +149,7 @@ export class QueenScenario {
     this.host.occupyFitting();
     this.host.refreshPatience();
     this.host.ui.toast(
-      'Королева заняла обе примерочные. Она может вернуться с возвратом.',
+      'Королева заняла примерочную. Она может вернуться с возвратом.',
       'boss',
     );
   }
@@ -224,7 +225,7 @@ export class QueenScenario {
     this.host.refreshPatience();
     this.host.ui.banner(
       'Королева ушла',
-      'Примерочные открыты. Обычные клиенты тоже могут ими пользоваться.',
+      'Примерочная открыта. Обычные клиенты тоже могут ею пользоваться.',
       3,
     );
     this.host.addReputation(0.5);

@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const banners = [
-  ['Королева примерочной', 'Она занимает примерочные, злит очередь и приносит возвраты.', 'demanding'],
+  ['Королева примерочной', 'Она занимает примерочную, злит очередь и приносит возвраты.', 'demanding'],
   ['Королева вернулась', 'Она снова впереди и с новыми товарами.', 'demanding'],
   ['Королева вернулась с возвратом', 'Заберите возврат и отнесите его в шкафчик «Возврат».', 'annoyed'],
-  ['Королева ушла', 'Примерочные открыты. Обычные клиенты тоже могут ими пользоваться.', 'satisfied'],
+  ['Королева ушла', 'Примерочная открыта. Обычные клиенты тоже могут ею пользоваться.', 'satisfied'],
 ] as const;
 
 for (const viewport of [{ width: 1400, height: 900 }, { width: 390, height: 844 }]) {
@@ -132,11 +132,11 @@ test('Королева: исходные заказы, примерка, воз�
     count: 3,
     budget: budget - 3,
     fitting: false,
-    occupied: [false, false],
+    occupied: [false],
     state: 'entering',
     position: expect.any(Object),
   });
-  expect(Math.hypot(delivered.position.x - 3.15, delivered.position.z - 2.8)).toBeGreaterThan(1);
+  expect(Math.hypot(delivered.position.x - 3.55, delivered.position.z - 2.8)).toBeGreaterThan(1);
   expect(
     await page.evaluate(() => {
       const g = (window as any).game;
@@ -165,9 +165,9 @@ test('Королева: исходные заказы, примерка, воз�
   });
   expect(arrived.frames).toBeGreaterThan(20);
   expect(arrived.fitting).toBe(true);
-  expect(arrived.occupied).toEqual([true, true]);
+  expect(arrived.occupied).toEqual([true]);
   expect(arrived.state).toBe('gone');
-  expect(Math.hypot(arrived.position.x - 3.15, arrived.position.z - 2.8)).toBeLessThan(0.01);
+  expect(Math.hypot(arrived.position.x - 3.55, arrived.position.z - 2.8)).toBeLessThan(0.01);
   await page.evaluate(() => (window as any).game.updateQueen(5.9));
   expect(await page.evaluate(() => (window as any).game.queen.inFitting)).toBe(true);
   await page.evaluate(() => (window as any).game.updateQueen(.11));
@@ -246,7 +246,7 @@ test('Королева: все заголовки читаются на mobile, 
   expect(await page.locator('#banner').evaluate(el => el.getAnimations({ subtree: true }).length)).toBe(0);
   expect(await page.locator('#banner *').count()).toBe(count);
   await page.evaluate(() => {
-    (window as any).ui.banner('Королева примерочной', 'Она занимает примерочные, злит очередь и приносит возвраты.', 30);
+    (window as any).ui.banner('Королева примерочной', 'Она занимает примерочную, злит очередь и приносит возвраты.', 30);
     (window as any).ui.openScanner('Королева примерочной');
   });
   await expect(page.locator('#scanner-panel')).toBeVisible();
