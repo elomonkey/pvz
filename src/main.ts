@@ -29,6 +29,8 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setPixelRatio(targetPixelRatio());
 renderer.setSize(window.innerWidth, window.innerHeight);
+// The exterior diorama is clipped to the window/door facade; other materials are unaffected.
+renderer.localClippingEnabled = true;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;

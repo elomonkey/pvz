@@ -1,0 +1,23 @@
+{
+  "entrance": {
+    "start": {
+      "x": -0.9,
+      "z": 4.68
+    },
+    "hiddenLabel": true,
+    "waiting": true,
+    "position": {
+      "x": 0.40645606123863,
+      "z": 1.8567658249363752
+    }
+  },
+  "exit": {
+    "state": "gone",
+    "position": {
+      "x": 2.479911046747265,
+      "z": 4.63945654148158
+    },
+    "visible": false
+  },
+  "errors": []
+}
