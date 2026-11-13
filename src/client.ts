@@ -127,6 +127,7 @@ export class Client {
 
     const el = document.createElement('div');
     el.className = 'client-label';
+    el.style.setProperty('--queue-position', String(this.queueIndex));
     if (this.isBoss) el.classList.add('boss');
     if (this.isMenu) el.classList.add('menu');
 
@@ -176,6 +177,7 @@ export class Client {
 
   setQueueIndex(index: number): void {
     this.queueIndex = index;
+    this.label.element.style.setProperty('--queue-position', String(index));
     const spot = QUEUE_SPOTS[Math.min(index, QUEUE_SPOTS.length - 1)];
     if (this.state === 'leaving' || this.state === 'gone') return;
     if (this.isMenu) {
