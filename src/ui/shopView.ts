@@ -159,7 +159,7 @@ export class ShopView {
               ? maxed
                 ? 'Заменён'
                 : 'Разбит'
-              : '●'.repeat(level) + '○'.repeat(definition.max - level),
+              : maxed ? `Уровень ${level} / ${definition.max}` : `Уровень ${level} → ${level + 1}`,
           maxed,
           buttonTone: maxed || !affordable ? 'ghost' : 'gold',
           buttonDisabled: maxed || !affordable,

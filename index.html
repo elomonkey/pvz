@@ -373,15 +373,15 @@
             </div>
             <section id="intermission-results" class="intermission-stage" aria-label="Итоги и характеристики">
               <header class="intermission-heading"><h2 id="results-kicker">СМЕНА 1 ЗАВЕРШЕНА</h2></header>
+              <svg class="intermission-frame" viewBox="0 0 1200 600" preserveAspectRatio="none" aria-hidden="true"><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-shadow" transform="translate(12 12)"/><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-paper" vector-effect="non-scaling-stroke"/></svg><span class="intermission-tape" aria-hidden="true"></span><svg class="intermission-slashes" viewBox="0 0 120 22" aria-hidden="true"><path d="M0 22 18 0H44L26 22ZM39 22 57 0H83L65 22ZM78 22 96 0H120L104 22Z"/></svg>
               <div class="results-surface">
-                <svg class="intermission-frame" viewBox="0 0 1200 600" preserveAspectRatio="none" aria-hidden="true"><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 552L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-shadow" transform="translate(12 12)"/><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 552L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-paper" vector-effect="non-scaling-stroke"/></svg><span class="intermission-tape" aria-hidden="true"></span><svg class="intermission-slashes" viewBox="0 0 120 22" aria-hidden="true"><path d="M0 22 18 0H44L26 22ZM39 22 57 0H83L65 22ZM78 22 96 0H120L104 22Z"/></svg>
                 <div class="intermission-scroll results-layout">
                 <aside class="results-hero" aria-label="Сотрудник">
                   <img id="results-portrait" alt="" width="512" height="683" decoding="async" />
                   <div class="employee-pass"><b>СОТРУДНИК</b><span>СМЕНА <b id="char-shift">1</b></span><span class="employee-pass-lines" aria-hidden="true">▰ ▰ ▰</span></div>
                 </aside>
                 <div class="results-summary">
-                  <div class="results-stars" id="results-stars" aria-label="Звёзды за смену">★★☆</div>
+                  <div class="results-stars" id="results-stars" role="img" aria-label="Звёзды за смену">★★☆</div>
                   <h3 id="results-title">Неплохая смена</h3>
                   <dl class="shift-stat-list">
                     <div><dt>Обслужено</dt><dd id="results-served">0</dd></div>
@@ -398,12 +398,12 @@
                 <div class="character-card" id="character-card">
                   <h3>ХАРАКТЕРИСТИКИ</h3>
                   <dl class="character-primary">
-                    <div><dt>Скорость</dt><dd id="char-speed">+0%</dd></div>
-                    <div><dt>Обаяние</dt><dd id="char-charm">—</dd></div>
-                    <div><dt>Терпимость</dt><dd id="char-tolerance">0%</dd></div>
-                    <div><dt>Антистресс</dt><dd id="char-toy">+0,2 за тап</dd></div>
-                    <div><dt>Сканер</dt><dd id="char-scanner">исправен</dd></div>
-                    <div class="reputation-highlight"><dt>Репутация ПВЗ</dt><dd id="char-rep">3,0 / 5</dd></div>
+                    <div><dt><span class="stat-icon" data-art="speed" aria-hidden="true"></span>Скорость</dt><dd id="char-speed">+0%</dd></div>
+                    <div><dt><span class="stat-icon" data-art="charm" aria-hidden="true"></span>Обаяние</dt><dd id="char-charm">—</dd></div>
+                    <div><dt><span class="stat-icon" data-art="tolerance" aria-hidden="true"></span>Терпимость</dt><dd id="char-tolerance">0%</dd></div>
+                    <div><dt><span class="stat-icon" data-art="toy" aria-hidden="true"></span>Антистресс</dt><dd id="char-toy">+0,2 за тап</dd></div>
+                    <div><dt><span class="stat-icon" data-art="scanner" aria-hidden="true"></span>Сканер</dt><dd id="char-scanner">исправен</dd></div>
+                    <div class="reputation-highlight"><dt><span class="stat-icon" data-art="reputation" aria-hidden="true"></span>Репутация ПВЗ</dt><dd id="char-rep">3,0 / 5</dd></div>
                   </dl>
                   <details class="employee-history"><summary>Статистика забега</summary><dl>
                     <div><dt>Обслужено всего</dt><dd id="char-served">0</dd></div>
@@ -417,7 +417,7 @@
               <footer class="intermission-footer results-footer"><span>Улучшения — на следующем экране</span><button id="results-to-shop" class="intermission-button primary" type="button">В магазин →</button></footer>
             </section>
             <section id="intermission-shop" class="intermission-stage hidden" aria-label="Магазин между сменами">
-              <svg class="intermission-frame" viewBox="0 0 1200 600" preserveAspectRatio="none" aria-hidden="true"><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 552L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-shadow" transform="translate(12 12)"/><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 552L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-paper" vector-effect="non-scaling-stroke"/></svg><span class="intermission-tape" aria-hidden="true"></span><svg class="intermission-slashes" viewBox="0 0 120 22" aria-hidden="true"><path d="M0 22 18 0H44L26 22ZM39 22 57 0H83L65 22ZM78 22 96 0H120L104 22Z"/></svg>
+              <svg class="intermission-frame" viewBox="0 0 1200 600" preserveAspectRatio="none" aria-hidden="true"><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-shadow" transform="translate(12 12)"/><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-paper" vector-effect="non-scaling-stroke"/></svg><span class="intermission-tape" aria-hidden="true"></span><svg class="intermission-slashes" viewBox="0 0 120 22" aria-hidden="true"><path d="M0 22 18 0H44L26 22ZM39 22 57 0H83L65 22ZM78 22 96 0H120L104 22Z"/></svg>
               <header class="intermission-heading shop-heading"><div><h2>МАГАЗИН</h2><p id="shop-next-label">ПОДГОТОВКА К СМЕНЕ 2</p></div>
                 <div class="intermission-wallet">БАЛАНС <strong><span id="shop-money">0</span> ₽</strong></div>
               </header>

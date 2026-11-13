@@ -13,6 +13,8 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await page.addInitScript(() => {
+    let seed = 78;
+    Math.random = () => ((seed = (Math.imul(1664525, seed) + 1013904223) >>> 0) / 4294967296);
     for (const key of ['tutorial_done', 'results_intro_seen', 'argue_intro_seen', 'shift4_intro_seen', 'scanner_break_seen']) localStorage.setItem(`pvz_tycoon_${key}`, '1');
   });
   await page.goto('http://127.0.0.1:4189');
@@ -24,6 +26,8 @@ try {
     g.run.served = 18; g.run.money = 950; g.run.stress = 12;
     for (const id of ['speed', 'charm', 'tolerance', 'toy']) g.run.upgrades[id] = 1;
     g.endShift();
+    // Do not capture the transient toast produced by debugSetShift's fixture setup.
+    document.getElementById('toasts').replaceChildren();
     g.renderer.render(g.scene, g.camera); window.labelRenderer.render(g.scene, g.camera);
   });
   await page.locator('#results-portrait').evaluate(img => img.decode());
@@ -35,9 +39,17 @@ try {
       g.renderer.render(g.scene, g.camera); window.labelRenderer.render(g.scene, g.camera);
     });
     await page.locator('#intermission-step-results').click();
+    await page.mouse.move(0, 0);
+    await page.locator('.employee-pass').evaluate(pass => {
+      if (!pass.checkVisibility()) return;
+      const rect = pass.getBoundingClientRect();
+      const scroll = pass.closest('.intermission-scroll').getBoundingClientRect();
+      if (rect.left < scroll.left || rect.right > scroll.right || rect.top < scroll.top || rect.bottom > scroll.bottom) throw new Error('Employee pass is clipped by the scroll viewport');
+    });
     await page.screenshot({ animations: 'disabled', path: `${output}/${name}-results.png` });
     await page.locator('#results-to-shop').click();
     await page.waitForFunction(() => !document.getElementById('next-shift').disabled);
+    await page.mouse.move(0, 0);
     await page.evaluate(async () => {
       const url = getComputedStyle(document.querySelector('.upgrade-icon')).backgroundImage.slice(5, -2);
       const image = new Image(); image.src = url; await image.decode();
@@ -45,6 +57,7 @@ try {
     await page.screenshot({ animations: 'disabled', path: `${output}/${name}-shop.png` });
     if (name === 'desktop' || name === 'landscape') {
       await page.getByRole('tab', { name: 'Оформление ПВЗ', exact: true }).click();
+      await page.mouse.move(0, 0);
       await page.screenshot({ animations: 'disabled', path: `${output}/${name}-decor.png` });
       await page.getByRole('tab', { name: 'Улучшения', exact: true }).click();
     }

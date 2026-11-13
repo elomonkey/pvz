@@ -193,7 +193,8 @@ export class ModalView {
     this.resultsModal.classList.toggle('failed-shift', data.failed);
     byId('shop-next-label').textContent = data.shift >= 5 ? 'ЗАБЕГ ЗАВЕРШЁН' : `ПОДГОТОВКА К СМЕНЕ ${data.shift + 1}`;
     this.resultsKicker.textContent = `СМЕНА ${data.shift} ЗАВЕРШЕНА`;
-    this.resultsStars.textContent = '★'.repeat(data.stars) + '☆'.repeat(3 - data.stars);
+    this.resultsStars.setAttribute('aria-label', `Звёзды за смену: ${data.stars} из 3`);
+    this.resultsStars.innerHTML = Array.from({ length: 3 }, (_, index) => `<svg class="results-star${index < data.stars ? '' : ' empty'}" viewBox="0 0 100 100" aria-hidden="true"><path class="star-depth" d="m50 9 14 28 31 5-23 23 5 32-27-15-28 15 5-32L4 42l32-5Z"/><path d="m50 3 14 28 31 5-23 23 5 32-27-15-28 15 5-32L4 36l32-5Z"/><path class="star-light" d="m50 3 14 28 31 5-33 1-12-26-12 26-34-1 32-5Z"/></svg>`).join('');
     this.resultsTitle.textContent = data.title;
     this.resultsServed.textContent = String(data.served);
     this.resultsLost.textContent = String(data.lost);

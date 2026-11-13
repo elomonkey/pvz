@@ -86,7 +86,13 @@ export function createOfferCard(options: OfferCardOptions): HTMLDivElement {
   const button = el('button', `btn small ${options.buttonTone}`);
   button.type = 'button';
   button.disabled = options.buttonDisabled;
-  button.textContent = options.buttonLabel;
+  if (options.artId && options.buttonLabel.endsWith(' ₽')) {
+    const coins = el('span', 'offer-price-icon');
+    coins.setAttribute('aria-hidden', 'true');
+    button.append(coins, document.createTextNode(options.buttonLabel));
+  } else {
+    button.textContent = options.buttonLabel;
+  }
   button.addEventListener('click', options.onClick);
 
   card.append(icon, name, description, status, button);

@@ -7,6 +7,10 @@ Generated with the built-in `image_gen` tool using the two owner-approved result
 
 PNG outputs were encoded to WebP at quality 0.9 and downscaled with Chromium canvas for delivery. No content retouching, extra 3D context, shadows or postprocessing were added. Original generated PNGs remain in the generation library; the app uses only these two WebP files. [Implementation and screenshots](../../../docs/screenshots/78-intermission/REPORT.md).
 
+## Owner review: vector icons
+
+The approved shoe and scanner illustrations are unchanged. Three atlas slots are now replaced in CSS by small code-native SVG illustrations: [meditation.svg](meditation.svg) (seated silhouette for tolerance), [smile.svg](smile.svg) (charm), [duck.svg](duck.svg) (the yellow anti-stress toy from the game). The same icons appear beside the character stats. [wallet.svg](wallet.svg) and [coins.svg](coins.svg) add outlined currency symbols. These five SVGs were drawn directly as vector paths, not generated or edited as bitmaps. Vite inlines them into the UI stylesheet; they add no WebGL resources. The old atlas remains shared by shoes, scanner and decor.
+
 ## Final portrait prompt
 
 Extract/recreate ONLY the smiling employee illustration from the left side of this approved game UI concept as a clean production-ready transparent PNG cutout. Same exact character identity, yellow cap, short dark faceted hair, cheerful eyes closed and wide open smiling mouth, blue work jacket with small cream badge, hands on hips, proud relieved stance, waist-up ending at hips. Same warm faceted low-poly illustration, NOT realistic. Preserve his silhouette and the cream cut-paper outline with a narrow offset burgundy backing. Portrait centered on a tall 3:4 transparent canvas, complete cap, elbows and hips visible, 5% padding, no cropping. Remove all text, identity card/plaque, boxes, background shop, interface, icons, yellow exclamation strokes, and all other objects. Transparent alpha everywhere outside the outlined character. This is an actual sprite asset for the results UI, not a new mockup. No checkerboard painted into the artwork.

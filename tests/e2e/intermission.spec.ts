@@ -2,6 +2,33 @@ import { expect, test, type Page } from '@playwright/test';
 
 test.use({ hasTouch: true });
 
+/** Check the actual SVG paper, rather than its larger rectangular bounding box. */
+async function expectInsidePaper(page: Page, stage: string, selectors: string[]) {
+  const escaped = await page.locator(stage).evaluate((root, selectors) => {
+    const paper = root.querySelector<SVGPathElement>('.intermission-frame-paper')!;
+    const toPaper = paper.getScreenCTM()!.inverse();
+    const scroll = root.querySelector<HTMLElement>('.intermission-scroll')!;
+    const viewport = scroll.getBoundingClientRect();
+    const escaped: string[] = [];
+    for (const selector of selectors) {
+      for (const element of root.querySelectorAll<HTMLElement>(selector)) {
+        const rect = element.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        const top = scroll.contains(element) ? Math.max(rect.top, viewport.top) : rect.top;
+        const bottom = scroll.contains(element) ? Math.min(rect.bottom, viewport.bottom) : rect.bottom;
+        if (bottom <= top) continue; // Offscreen catalog items are reached by scrolling.
+        for (const x of [rect.left, rect.right]) {
+          for (const y of [top, bottom]) {
+            if (!paper.isPointInFill(new DOMPoint(x, y).matrixTransform(toPaper))) escaped.push(`${selector} (${Math.round(x)}, ${Math.round(y)})`);
+          }
+        }
+      }
+    }
+    return escaped;
+  }, selectors);
+  expect(escaped, 'Visible controls/cards must stay inside the paper silhouette').toEqual([]);
+}
+
 async function setup(page: Page, shift = 2, failed = false) {
   const errors: string[] = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
@@ -32,11 +59,13 @@ for (const viewport of [{ width: 1600, height: 1000 }, { width: 844, height: 390
     await expect(page.locator('#next-shift')).toBeHidden();
     await expect(page.locator('#results-earned')).toHaveText(`${initial.salary} ₽`);
     await expect(page.locator('#results-to-shop')).toBeInViewport();
+    await expectInsidePaper(page, '#intermission-results', ['#results-to-shop', '.results-star', '.character-primary > div']);
     await page.locator('#results-to-shop').tap();
     await expect(page.locator('#intermission-results')).toBeHidden();
     await expect(page.locator('#intermission-step-shop')).toHaveAttribute('aria-current', 'step');
     await expect(page.locator('#shop-next-label')).toHaveText('ПОДГОТОВКА К СМЕНЕ 3');
     await expect(page.locator('#shop-money')).toHaveText(String(initial.money));
+    await expectInsidePaper(page, '#intermission-shop', ['.intermission-wallet', '.shop-tab', '.upgrade-card', '#next-shift', '#shop-to-results']);
     const speed = page.locator('[data-offer="speed"]');
     await speed.locator('button').tap();
     await expect(speed.locator('button')).toHaveText('1350 ₽');
