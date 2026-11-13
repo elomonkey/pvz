@@ -1,7 +1,7 @@
 // npm run build && node tests/visual/gameplay-hud.mjs
 import { chromium } from '@playwright/test';
 import { preview } from 'vite';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const output = 'docs/screenshots/76-hud';
 await mkdir(output, { recursive: true });
@@ -38,6 +38,16 @@ try {
       g.renderer.render(g.scene, g.camera); window.labelRenderer.render(g.scene, g.camera);
     });
     await page.screenshot({ path: `${output}/${name}.png` });
+    if (name === 'desktop') {
+      const bounds = await page.evaluate(() => Object.fromEntries([
+        ['shift', '.hud-shift'], ['money', '.hud-money'], ['quests', '#quest-panel'],
+        ['stress', '#stress-card'], ['help', '#btn-help'], ['client', '.client-tag'], ['cell', '#order-chip'],
+      ].map(([name, selector]) => {
+        const r = document.querySelector(selector).getBoundingClientRect();
+        return [name, { x: r.x - 4, y: r.y - 4, w: r.width + 10, h: r.height + 10 }];
+      })));
+      await writeFile(`${output}/geometry-bounds.json`, JSON.stringify(bounds, null, 2) + '\n');
+    }
     if (name === 'landscape') {
       await page.locator('#quest-panel summary').tap();
       await page.screenshot({ path: `${output}/landscape-quests.png` });

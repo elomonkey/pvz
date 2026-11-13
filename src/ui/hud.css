@@ -11,20 +11,25 @@
   --hud-bottom: max(var(--hud-edge), env(safe-area-inset-bottom));
 }
 
-.hud-paper {
+.hud-paper, .client-tag {
   --paper-face: var(--hud-paper);
   --paper-outline: var(--hud-ink);
-  --paper-cut: polygon(8px 0, calc(100% - 10px) 0, 100% 9px, calc(100% - 2px) 55%, 100% calc(100% - 8px), calc(100% - 9px) 100%, 6px 100%, 0 calc(100% - 9px), 2px 48%, 0 8px);
+  --paper-shadow: var(--hud-burgundy);
+  /* The concept uses straight, sloping sides; no concave mid-edge bites.
+     Inner cuts compensate for the inset so diagonal borders stay even. */
+  --paper-cut: polygon(11px 0, calc(100% - 13px) 0, 100% 13px, calc(100% - 4px) calc(100% - 9px), calc(100% - 11px) 100%, 10px 100%, 0 calc(100% - 10px), 3px 11px);
+  --paper-inner-cut: polygon(10px 0, calc(100% - 12px) 0, 100% 12px, calc(100% - 4px) calc(100% - 8px), calc(100% - 10px) 100%, 9px 100%, 0 calc(100% - 9px), 3px 10px);
   position: relative;
   isolation: isolate;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--hud-ink);
-  filter: drop-shadow(2px 3px 0 var(--hud-burgundy));
+  filter: drop-shadow(2px 3px 0 var(--paper-shadow));
 }
 
-.hud-paper::before, .hud-paper::after {
+.hud-paper::before, .hud-paper::after,
+.client-tag::before, .client-tag::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -34,10 +39,39 @@
   pointer-events: none;
 }
 
-.hud-paper::after {
+.hud-paper::after, .client-tag::after {
   inset: 1.5px;
   z-index: -1;
   background: var(--paper-face);
+  clip-path: var(--paper-inner-cut);
+}
+
+/* Broad paper tickets: angled top, long tapered sides, an asymmetric
+   bottom-left cut. They share a family, not the counter/button silhouette. */
+.hud-shift, .quest-panel, .stress-card {
+  --paper-cut: polygon(13px 2px, calc(100% - 8px) 0, 100% 12px, calc(100% - 5px) calc(100% - 4px), 18px 100%, 0 calc(100% - 13px), 2px 17px);
+  --paper-inner-cut: polygon(12px 2px, calc(100% - 7px) 0, 100% 11px, calc(100% - 5px) calc(100% - 4px), 17px 100%, 0 calc(100% - 12px), 2px 16px);
+}
+
+.hud-shift {
+  /* The burgundy shift tab projects above the paper, as in the concept. */
+  --paper-cut: polygon(13px 14px, calc(100% - 8px) 12px, 100% 24px, calc(100% - 5px) calc(100% - 4px), 8px 100%, 0 calc(100% - 10px), 2px 26px);
+  --paper-inner-cut: polygon(12px 14px, calc(100% - 7px) 12px, 100% 23px, calc(100% - 5px) calc(100% - 4px), 7px 100%, 0 calc(100% - 9px), 2px 25px);
+}
+
+.quest-panel:not([open]) {
+  --paper-cut: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, calc(100% - 3px) calc(100% - 6px), calc(100% - 9px) 100%, 8px 100%, 0 calc(100% - 8px), 2px 9px);
+  --paper-inner-cut: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, calc(100% - 3px) calc(100% - 5px), calc(100% - 8px) 100%, 7px 100%, 0 calc(100% - 7px), 2px 8px);
+}
+
+.icon-btn {
+  --paper-cut: polygon(11px 0, calc(100% - 10px) 0, 100% 11px, calc(100% - 2px) calc(100% - 9px), calc(100% - 11px) 100%, 10px 100%, 0 calc(100% - 11px), 2px 10px);
+  --paper-inner-cut: polygon(10px 0, calc(100% - 9px) 0, 100% 10px, calc(100% - 2px) calc(100% - 8px), calc(100% - 10px) 100%, 9px 100%, 0 calc(100% - 10px), 2px 9px);
+}
+
+.order-chip {
+  --paper-cut: polygon(22px 3px, calc(100% - 16px) 0, 100% 8px, calc(100% - 4px) calc(100% - 2px), 3px 100%, 0 calc(100% - 11px));
+  --paper-inner-cut: polygon(21px 3px, calc(100% - 15px) 0, 100% 7px, calc(100% - 4px) calc(100% - 2px), 2px 100%, 0 calc(100% - 10px));
 }
 
 #hud {
@@ -58,7 +92,7 @@
   padding: 3px 12px 3px 9px;
   background: var(--hud-burgundy);
   color: var(--hud-paper);
-  clip-path: polygon(6px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
   font-size: 11px;
   font-style: italic;
   font-weight: 950;
@@ -212,6 +246,14 @@
   pointer-events: none;
 }
 .order-chip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 7px; max-width: 100%; padding: 8px 14px; font-weight: 900; --paper-face: #ffe3a0; }
+.order-chip.cell {
+  --paper-cut: polygon(20% 4px, calc(100% - 12px) 0, 100% 9px, calc(100% - 3px) calc(100% - 2px), 3px 100%, 0 calc(100% - 11px));
+  --paper-inner-cut: polygon(20% 4px, calc(100% - 11px) 0, 100% 8px, calc(100% - 3px) calc(100% - 2px), 2px 100%, 0 calc(100% - 10px));
+  --paper-face: linear-gradient(var(--hud-paper) 0 36%, var(--hud-gold) 36% 100%);
+  flex-direction: column;
+  gap: 1px;
+}
+.order-chip.cell .order-value { max-width: 100%; text-align: center; }
 .order-label { font-size: 10px; text-transform: uppercase; }
 .order-value { font-size: 18px; font-style: italic; overflow-wrap: anywhere; }
 .order-chip.carry { --paper-face: #e0eed4; }
@@ -243,18 +285,20 @@
 .final-boss-debuff { top: calc(var(--hud-top) + 92px); font-size: 9px; }
 
 .client-tag {
+  --paper-cut: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, calc(100% - 2px) calc(100% - 5px), calc(100% - 7px) 100%, 6px 100%, 0 calc(100% - 6px), 1px 6px);
+  --paper-inner-cut: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, calc(100% - 2px) calc(100% - 4px), calc(100% - 6px) 100%, 5px 100%, 0 calc(100% - 5px), 1px 5px);
   padding: 4px 8px 5px;
-  border: 1.5px solid var(--hud-ink);
-  border-radius: 3px 8px 3px 7px;
-  background: var(--hud-paper);
-  box-shadow: 2px 2px 0 var(--hud-burgundy);
+  /* Preserve the old layout box while painting the polygon over its border. */
+  border: 1.5px solid transparent;
   text-align: center;
 }
+.client-tag::before { inset: -1.5px; }
+.client-tag::after { inset: 0; }
 .client-name { display: block; color: var(--hud-ink); font-size: 10px; font-weight: 850; font-style: italic; line-height: 1.2; white-space: nowrap; }
 .client-patience { width: 48px; height: 4px; margin: 3px auto 0; overflow: hidden; border-radius: 3px; background: #dcd0b9; }
 .client-patience-fill { width: 100%; height: 100%; background: var(--green); transition: width .15s linear, background .2s ease; }
-.client-label.target .client-tag { border-color: #2d8149; box-shadow: 2px 2px 0 #2d8149; }
-.client-label.boss .client-tag { background: var(--hud-burgundy); border-color: var(--hud-ink); }
+.client-label.target .client-tag { --paper-outline: #2d8149; --paper-shadow: #2d8149; }
+.client-label.boss .client-tag { --paper-face: var(--hud-burgundy); }
 .client-label.boss .client-name { color: var(--hud-paper); }
 .client-label.boss .client-patience, .client-label.menu .client-patience, .client-label.leaving .client-patience { display: none; }
 .client-label.impatient .client-patience-fill { animation: bar-blink .5s ease-in-out infinite alternate; }
