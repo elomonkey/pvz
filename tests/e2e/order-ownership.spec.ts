@@ -25,6 +25,14 @@ async function setup(page: Page) {
 async function takeCurrentItem(page: Page) {
   const id = await page.evaluate(() => (window as any).game.service.active.order.cellId);
   await page.locator(`[data-cell-id="${id}"]`).click();
+  await page.evaluate((cellId) => {
+    const game = (window as any).game;
+    for (let step = 0; step < 400; step++) {
+      const item = game.service.active?.order.items.find((value: any) => value.cellId === cellId);
+      if (item?.picked) return;
+      game.update(0.05);
+    }
+  }, id);
   return id;
 }
 

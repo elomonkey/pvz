@@ -143,6 +143,7 @@ interface MechanicCard {
 type PendingAction =
   | { type: 'service'; client: Client }
   | { type: 'shelf'; shelfIndex: number }
+  | { type: 'cell'; cellId: string; shelfIndex: number }
   | { type: 'return-shelf' }
   | { type: 'toy' };
 
@@ -2364,6 +2365,17 @@ export class Game {
       }
       this.scannerPanel.focusShelf(action.shelfIndex);
       this.openCellPanelFor(active.order);
+    } else if (action.type === 'cell') {
+      const active = this.service.active;
+      if (!active || !active.order.scanned || this.service.readyToDeliver) return;
+      if (active.order.shelf !== action.shelfIndex) return;
+      const expected = active.order.searchMode
+        ? active.order.actualCellId
+        : active.order.cellId;
+      if (expected !== action.cellId) return;
+      const cell = this.world.cells.find((value) => value.id === action.cellId);
+      if (!cell) return;
+      this.takeParcel(cell, active.order);
     } else if (action.type === 'return-shelf') {
       this.depositReturn();
     } else if (action.type === 'toy') {
@@ -2416,7 +2428,7 @@ export class Game {
     if (order.searchMode) {
       if (order.checkedCells.includes(id)) return;
       if (id === order.actualCellId) {
-        this.takeParcel(cell, order);
+        this.moveToCell(cell);
         return;
       }
 
@@ -2456,7 +2468,7 @@ export class Game {
         this.openCellPanelFor(order);
         return;
       }
-      this.takeParcel(cell, order);
+      this.moveToCell(cell);
       return;
     }
 
@@ -2466,6 +2478,16 @@ export class Game {
     this.sound.error();
     this.ui.shakeCell(id);
     this.ui.toast(`Не та ячейка. Нужна ${order.cellId}.`, 'error');
+  }
+
+  private moveToCell(cell: World['cells'][number]): void {
+    this.ui.closeCellPanel();
+    this.scannerPanel.clearPanel();
+    this.moveTo(this.cellApproachPoint(cell), {
+      type: 'cell',
+      cellId: cell.id,
+      shelfIndex: cell.shelfIndex,
+    });
   }
 
   private takeParcel(
@@ -2743,11 +2765,13 @@ export class Game {
       return;
     }
 
+    if (this.pendingAction?.type === 'cell') return;
+
     const order = active.order;
-    const shelf = this.world.shelves[order.shelf];
+    const center = this.shelfCenterPoint(order.shelf);
     const distance = Math.hypot(
-      this.movement.position.x - shelf.interaction.x,
-      this.movement.position.z - shelf.interaction.z,
+      this.movement.position.x - center.x,
+      this.movement.position.z - center.z,
     );
 
     if (distance < 1.35) {
@@ -2787,7 +2811,7 @@ export class Game {
   }
 
   private faceAction(action: PendingAction): void {
-    if (action.type === 'shelf') {
+    if (action.type === 'shelf' || action.type === 'cell') {
       this.playerRoot.rotation.y = this.world.shelves[action.shelfIndex]?.faceRotation ?? 0;
       return;
     }
@@ -3180,16 +3204,41 @@ export class Game {
       this.ui.toast(`Вам нужен стеллаж ${SHELF_LETTERS[active.order.shelf]}`, 'error');
       return;
     }
-    this.moveTo(this.world.shelves[shelfIndex].interaction, { type: 'shelf', shelfIndex });
+    const target = active.order.searchMode
+      ? null
+      : this.world.cells.find((cell) => cell.id === active.order.cellId);
+    const point = target
+      ? this.cellApproachPoint(target)
+      : this.shelfCenterPoint(shelfIndex);
+    this.moveTo(point, { type: 'shelf', shelfIndex });
+  }
+
+  private cellApproachPoint(cell: World['cells'][number]): Vec2 {
+    const shelf = this.world.shelves[cell.shelfIndex];
+    const definition = SHELF_DEFS[cell.shelfIndex];
+    const alongX = Math.abs(Math.sin(definition.rotation)) < 0.5;
+    return alongX
+      ? { x: cell.center.x, z: shelf.interaction.z }
+      : { x: shelf.interaction.x, z: cell.center.z };
+  }
+
+  private shelfCenterPoint(shelfIndex: number): Vec2 {
+    const shelf = this.world.shelves[shelfIndex];
+    const definition = SHELF_DEFS[shelfIndex];
+    const alongX = Math.abs(Math.sin(definition.rotation)) < 0.5;
+    return alongX
+      ? { x: definition.x, z: shelf.interaction.z }
+      : { x: shelf.interaction.x, z: definition.z };
   }
 
   private playerNearShelf(shelfIndex: number): boolean {
     const shelf = this.world.shelves[shelfIndex];
     if (!shelf) return false;
+    const center = this.shelfCenterPoint(shelfIndex);
     return (
       Math.hypot(
-        this.movement.position.x - shelf.interaction.x,
-        this.movement.position.z - shelf.interaction.z,
+        this.movement.position.x - center.x,
+        this.movement.position.z - center.z,
       ) < 1.35
     );
   }
