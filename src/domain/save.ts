@@ -1,17 +1,10 @@
-import type { UpgradeId } from '../data';
+import { UPGRADE_IDS, UPGRADE_MAX } from '../data.ts';
 import type { UpgradeLevels } from './run';
 
 export type ProgressStage = 'shift' | 'results';
 
 export const PROGRESS_VERSION = 1;
 const MAX_SHIFT = 5;
-const UPGRADE_IDS: readonly UpgradeId[] = [
-  'speed',
-  'charm',
-  'tolerance',
-  'toy',
-  'scanner',
-];
 
 export interface ProgressSnapshot {
   version: 1;
@@ -67,7 +60,9 @@ function normalizeUpgrades(value: unknown): UpgradeLevels {
       ? (value as Record<string, unknown>)
       : {};
   const result = {} as UpgradeLevels;
-  for (const id of UPGRADE_IDS) result[id] = nonNegativeInt(raw[id]);
+  for (const id of UPGRADE_IDS) {
+    result[id] = Math.min(UPGRADE_MAX[id], nonNegativeInt(raw[id]));
+  }
   return result;
 }
 

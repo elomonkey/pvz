@@ -85,6 +85,70 @@ test('прогресс продолжается после reload: results → �
   expect(errors).toEqual([]);
 });
 
+test('повреждённые upgrades ограничиваются игровыми максимумами при continue', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.addInitScript(() => {
+    for (const key of [
+      'tutorial_done',
+      'results_intro_seen',
+      'argue_intro_seen',
+      'shift4_intro_seen',
+      'scanner_break_seen',
+    ]) {
+      localStorage.setItem(`pvz_tycoon_${key}`, '1');
+    }
+    localStorage.setItem('pvz_tycoon_progress', JSON.stringify({
+      version: 1,
+      stage: 'results',
+      shift: 1,
+      money: 5000,
+      totalServed: 5,
+      totalEarned: 5000,
+      reputation: 3,
+      upgrades: { speed: 1000000, charm: 11, tolerance: -1, toy: '4', scanner: 9 },
+      scannerBroken: false,
+      decor: [],
+      savedAt: 123456789,
+    }));
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => window.game);
+  await page.evaluate(() => {
+    (window as any).game.renderer.setAnimationLoop(null);
+  });
+  await expect(page.locator('#continue-btn')).toHaveText('Продолжить · смена 2');
+  await page.locator('#continue-btn').click();
+
+  const restored = await page.evaluate(() => {
+    const g = (window as any).game;
+    return {
+      shift: g.run.shift,
+      phase: g.phase,
+      money: g.run.money,
+      upgrades: { ...g.run.upgrades },
+      saved: JSON.parse(localStorage.getItem('pvz_tycoon_progress')!),
+    };
+  });
+  expect(restored).toMatchObject({
+    shift: 2,
+    phase: 'break',
+    money: 5000,
+    upgrades: { speed: 3, charm: 3, tolerance: 0, toy: 3, scanner: 1 },
+  });
+  expect(restored.saved.upgrades).toEqual({
+    speed: 3,
+    charm: 3,
+    tolerance: 0,
+    toy: 3,
+    scanner: 1,
+  });
+  expect(errors).toEqual([]);
+});
+
 test('новая игра очищает старый забег, game over не оставляет продолжение', async ({
   page,
 }) => {

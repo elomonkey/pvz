@@ -45,6 +45,7 @@ import {
   targetOrderItem,
   type OrderItem,
 } from '../src/domain/orders.ts';
+import { UPGRADE_IDS, UPGRADE_MAX, UPGRADES } from '../src/data.ts';
 
 test('экономика: идеальная смена', () => {
   const result = evaluateShift({
@@ -93,6 +94,14 @@ test('экономика: стоимость улучшений', () => {
   assert.equal(upgradeCost(definition, 0), 850);
   assert.equal(upgradeCost(definition, 1), 1350);
   assert.equal(upgradeCost(definition, 2), null);
+});
+
+test('улучшения: магазин и сохранение используют один источник максимумов', () => {
+  assert.deepEqual([...UPGRADE_IDS], Object.keys(UPGRADE_MAX));
+  for (const definition of UPGRADES) {
+    assert.equal(definition.max, UPGRADE_MAX[definition.id]);
+    assert.equal(definition.costs.length, definition.max);
+  }
 });
 
 test('споры: формулы стресса и шанс старта', () => {
@@ -385,7 +394,7 @@ test('progress save: невалидные данные отклоняются, �
     totalServed: Number.NaN,
     totalEarned: '120',
     reputation: 99,
-    upgrades: { speed: -1, charm: '3' },
+    upgrades: { speed: -1, charm: '3', tolerance: 11, toy: Number.POSITIVE_INFINITY, scanner: 4 },
     scannerBroken: 1,
     decor: ['x', 2, 'x'],
     savedAt: -1,
@@ -398,13 +407,62 @@ test('progress save: невалидные данные отклоняются, �
   assert.deepEqual(sanitized.upgrades, {
     speed: 0,
     charm: 3,
-    tolerance: 0,
+    tolerance: 3,
     toy: 0,
-    scanner: 0,
+    scanner: 1,
   });
   assert.equal(sanitized.scannerBroken, false);
   assert.deepEqual(sanitized.decor, ['x']);
   assert.equal(sanitized.savedAt, 0);
+});
+
+test('progress save: upgrades ограничиваются максимумами и при чтении, и при записи', () => {
+  const parsed = parseProgressSnapshot({
+    version: 1,
+    stage: 'shift',
+    shift: 2,
+    money: 100,
+    totalServed: 1,
+    totalEarned: 250,
+    reputation: 3,
+    upgrades: {
+      speed: Number.NaN,
+      charm: 99,
+      tolerance: Number.NEGATIVE_INFINITY,
+      toy: '7',
+      scanner: 2,
+    },
+    scannerBroken: false,
+    decor: [],
+    savedAt: 0,
+  });
+  assert.ok(parsed);
+  assert.deepEqual(parsed.upgrades, {
+    speed: 0,
+    charm: 3,
+    tolerance: 0,
+    toy: 3,
+    scanner: 1,
+  });
+
+  const created = createProgressSnapshot({
+    stage: 'results',
+    shift: 2,
+    money: 0,
+    totalServed: 0,
+    totalEarned: 0,
+    reputation: 3,
+    upgrades: { speed: 99, charm: 4, tolerance: -2, toy: 7, scanner: 2 },
+    scannerBroken: false,
+    decor: [],
+  });
+  assert.deepEqual(created.upgrades, {
+    speed: 3,
+    charm: 3,
+    tolerance: 0,
+    toy: 3,
+    scanner: 1,
+  });
 });
 
 function orderItem(id: string, shelf: number, column: number, level = 0): OrderItem {
