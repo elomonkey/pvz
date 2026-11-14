@@ -905,6 +905,29 @@ button {
   letter-spacing: -0.03em;
 }
 
+.boss-load-error {
+  width: min(460px, 94vw);
+  text-align: left;
+}
+
+.boss-load-error-kicker {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.boss-load-error p {
+  margin: 8px 0 16px;
+  color: var(--slate);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.boss-load-error .btn {
+  width: 100%;
+}
+
 .modal-close {
   position: absolute;
   top: 12px;
