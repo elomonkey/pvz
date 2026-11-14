@@ -35,6 +35,23 @@ export interface Archetype {
 
 export type UpgradeId = 'speed' | 'charm' | 'tolerance' | 'toy' | 'scanner';
 
+export const UPGRADE_IDS = [
+  'speed',
+  'charm',
+  'tolerance',
+  'toy',
+  'scanner',
+] as const satisfies readonly UpgradeId[];
+
+/** Game-level maximums. The shop and save normalization share this table. */
+export const UPGRADE_MAX = {
+  speed: 3,
+  charm: 3,
+  tolerance: 3,
+  toy: 3,
+  scanner: 1,
+} as const satisfies Record<UpgradeId, number>;
+
 export interface UpgradeDef {
   id: UpgradeId;
   name: string;
@@ -572,7 +589,7 @@ export const UPGRADES: UpgradeDef[] = [
     name: 'Кроссовки',
     icon: '👟',
     desc: '+8% скорость передвижения за уровень',
-    max: 3,
+    max: UPGRADE_MAX.speed,
     costs: [850, 1350, 1900],
   },
   {
@@ -580,7 +597,7 @@ export const UPGRADES: UpgradeDef[] = [
     name: 'Обаяние',
     icon: '🙂',
     desc: 'Легче договариваться: −5 к стрессу за обслуживание тётки, меньше стресса и фора в спорах с клиентами',
-    max: 3,
+    max: UPGRADE_MAX.charm,
     costs: [950, 1500, 2100],
   },
   {
@@ -588,7 +605,7 @@ export const UPGRADES: UpgradeDef[] = [
     name: 'Терпимость',
     icon: '🧘',
     desc: '−10% к росту желания уволиться за уровень',
-    max: 3,
+    max: UPGRADE_MAX.tolerance,
     costs: [900, 1450, 2000],
   },
   {
@@ -596,7 +613,7 @@ export const UPGRADES: UpgradeDef[] = [
     name: 'Антистресс',
     icon: '🧸',
     desc: 'Базовый тап: 0,2 стресса, +0,1 за уровень. Максимум −30% за смену',
-    max: 3,
+    max: UPGRADE_MAX.toy,
     costs: [700, 1100, 1600],
   },
   {
@@ -604,7 +621,7 @@ export const UPGRADES: UpgradeDef[] = [
     name: 'Сканер',
     icon: '📡',
     desc: 'Заменяет разбитый сканер: ячейки снова подсвечиваются',
-    max: 1,
+    max: UPGRADE_MAX.scanner,
     costs: [5000],
   },
 ];
