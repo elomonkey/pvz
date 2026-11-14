@@ -27,11 +27,20 @@ for (const viewport of [{ width: 1600, height: 1000 }, { width: 844, height: 390
     expect(await page.locator('#quest-panel').evaluate(el => (el as HTMLDetailsElement).open)).toBe(!compact);
     if (compact) {
       await expect(page.locator('#quest-list')).toBeHidden();
-      await page.locator('#quest-panel summary').tap();
-      await expect(page.locator('#quest-list')).toBeVisible();
-      // Native summary keyboard support, with no custom duplicate click handler.
-      await page.locator('#quest-panel summary').focus();
+      const questSummary = page.locator('#quest-panel summary');
+      // Keyboard first: a delayed compatibility click from tap() can otherwise
+      // reopen the details right after Space and make this assertion flaky.
+      await questSummary.focus();
+      await expect(questSummary).toBeFocused();
       await page.keyboard.press('Space');
+      await expect(page.locator('#quest-list')).toBeVisible();
+      await page.keyboard.press('Space');
+      await expect(page.locator('#quest-list')).toBeHidden();
+      // Native pointer support still opens the compact panel. Keep it last:
+      // no keyboard toggle follows, so a delayed click cannot invert it.
+      await questSummary.click();
+      await expect(page.locator('#quest-list')).toBeVisible();
+      await questSummary.click();
       await expect(page.locator('#quest-list')).toBeHidden();
     }
     const mutedBefore = await page.locator('#btn-mute').getAttribute('aria-pressed');
