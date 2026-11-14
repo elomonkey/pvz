@@ -9,6 +9,7 @@ export function byId(id: string): HTMLElement {
 export interface OfferCardOptions {
   cardClass?: string;
   icon: string;
+  artId?: string;
   name: string;
   description: string;
   status: string;
@@ -73,6 +74,11 @@ export function createOfferCard(options: OfferCardOptions): HTMLDivElement {
   if (options.maxed) card.classList.add('maxed');
 
   const icon = el('div', 'upgrade-icon', options.icon);
+  if (options.artId) {
+    card.dataset.offer = options.artId;
+    icon.dataset.art = options.artId;
+    icon.setAttribute('aria-hidden', 'true');
+  }
   const name = el('div', 'upgrade-name', options.name);
   const description = el('div', 'upgrade-desc', options.description);
   const status = el('div', 'upgrade-levels', options.status);
@@ -80,7 +86,13 @@ export function createOfferCard(options: OfferCardOptions): HTMLDivElement {
   const button = el('button', `btn small ${options.buttonTone}`);
   button.type = 'button';
   button.disabled = options.buttonDisabled;
-  button.textContent = options.buttonLabel;
+  if (options.artId && options.buttonLabel.endsWith(' ₽')) {
+    const coins = el('span', 'offer-price-icon');
+    coins.setAttribute('aria-hidden', 'true');
+    button.append(coins, document.createTextNode(options.buttonLabel));
+  } else {
+    button.textContent = options.buttonLabel;
+  }
   button.addEventListener('click', options.onClick);
 
   card.append(icon, name, description, status, button);

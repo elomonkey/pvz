@@ -357,73 +357,80 @@
           </div>
         </div>
 
-        <div id="results-modal" class="overlay hidden">
-          <div class="modal results-modal">
-            <div class="results-kicker" id="results-kicker">СМЕНА 1 ЗАВЕРШЕНА</div>
-            <div class="results-stars" id="results-stars">★★☆</div>
-            <h2 id="results-title">Неплохая смена</h2>
-            <div class="results-stats">
-              <div><b id="results-served">0</b><span>обслужено</span></div>
-              <div><b id="results-lost">0</b><span>ушли</span></div>
-              <div><b id="results-earned">0 ₽</b><span>зарплата</span></div>
-              <div><b id="results-stress">0%</b><span>стресс</span></div>
-            </div>
-
+        <div id="results-modal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="intermission-title">
+          <div class="intermission" data-stage="results">
+            <nav class="intermission-steps" aria-label="Этапы между сменами">
+              <button id="intermission-step-results" type="button" aria-current="step"><span>1</span> ИТОГИ</button>
+              <span aria-hidden="true">→</span>
+              <button id="intermission-step-shop" type="button"><span>2</span> МАГАЗИН</button>
+            </nav>
+            <h1 id="intermission-title" class="sr-only" tabindex="-1">Итоги смены</h1>
             <div class="results-intro hidden" id="results-intro" role="note">
-              <div class="results-intro-kicker">ПЕРВАЯ СМЕНА · РАЗБОР</div>
+              <div><div class="results-intro-kicker">ПЕРВАЯ СМЕНА · РАЗБОР</div>
               <div class="results-intro-title">Как читать итоги и магазин</div>
-              <p>Звёзды зависят от обслуженных клиентов, ушедших и стресса. Зарплата уже начислена: база плюс бонусы мини-квестов. Ниже — магазин: улучшения действуют до конца забега, оформление меняет ПВЗ. Разбитый сканер тоже заменяется здесь.</p>
-              <button id="results-intro-close" class="btn primary" type="button">Понятно</button>
+              <p>Звёзды зависят от обслуженных клиентов, ушедших и стресса. Зарплата уже начислена: база плюс бонусы мини-квестов. Далее — магазин: улучшения действуют до конца забега, оформление меняет ПВЗ. Разбитый сканер тоже заменяется здесь.</p></div>
+              <button id="results-intro-close" class="intermission-button" type="button">Понятно</button>
             </div>
-
-            <div class="results-quests" id="results-quests">
-              <div class="results-quests-head">
-                <span>МИНИ-КВЕСТЫ</span>
-                <b id="quest-bonus">+0 ₽</b>
+            <section id="intermission-results" class="intermission-stage" aria-label="Итоги и характеристики">
+              <header class="intermission-heading"><h2 id="results-kicker">СМЕНА 1 ЗАВЕРШЕНА</h2></header>
+              <svg class="intermission-frame" viewBox="0 0 1200 600" preserveAspectRatio="none" aria-hidden="true"><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-shadow" transform="translate(12 12)"/><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-paper" vector-effect="non-scaling-stroke"/></svg><span class="intermission-tape" aria-hidden="true"></span><svg class="intermission-slashes" viewBox="0 0 120 22" aria-hidden="true"><path d="M0 22 18 0H44L26 22ZM39 22 57 0H83L65 22ZM78 22 96 0H120L104 22Z"/></svg>
+              <div class="results-surface">
+                <div class="intermission-scroll results-layout">
+                <aside class="results-hero" aria-label="Сотрудник">
+                  <img id="results-portrait" alt="" width="512" height="683" decoding="async" />
+                  <div class="employee-pass"><b>СОТРУДНИК</b><span>СМЕНА <b id="char-shift">1</b></span><span class="employee-pass-lines" aria-hidden="true">▰ ▰ ▰</span></div>
+                </aside>
+                <div class="results-summary">
+                  <div class="results-stars" id="results-stars" role="img" aria-label="Звёзды за смену">★★☆</div>
+                  <h3 id="results-title">Неплохая смена</h3>
+                  <dl class="shift-stat-list">
+                    <div><dt>Обслужено</dt><dd id="results-served">0</dd></div>
+                    <div><dt>Ушли</dt><dd id="results-lost">0</dd></div>
+                    <div class="salary-highlight"><dt>Зарплата</dt><dd id="results-earned">0 ₽</dd></div>
+                    <div><dt>Стресс</dt><dd id="results-stress">0%</dd></div>
+                  </dl>
+                  <div class="results-quests" id="results-quests">
+                    <div class="results-quests-head"><span>ЗАДАНИЯ СМЕНЫ</span><b id="quest-bonus">+0 ₽</b></div>
+                    <div class="results-quest-list" id="results-quest-list"></div>
+                    <div class="results-salary" id="results-salary">База: 2000 ₽ · Квесты: 0 ₽</div>
+                  </div>
+                </div>
+                <div class="character-card" id="character-card">
+                  <h3>ХАРАКТЕРИСТИКИ</h3>
+                  <dl class="character-primary">
+                    <div><dt><span class="stat-icon" data-art="speed" aria-hidden="true"></span>Скорость</dt><dd id="char-speed">+0%</dd></div>
+                    <div><dt><span class="stat-icon" data-art="charm" aria-hidden="true"></span>Обаяние</dt><dd id="char-charm">—</dd></div>
+                    <div><dt><span class="stat-icon" data-art="tolerance" aria-hidden="true"></span>Терпимость</dt><dd id="char-tolerance">0%</dd></div>
+                    <div><dt><span class="stat-icon" data-art="toy" aria-hidden="true"></span>Антистресс</dt><dd id="char-toy">+0,2 за тап</dd></div>
+                    <div><dt><span class="stat-icon" data-art="scanner" aria-hidden="true"></span>Сканер</dt><dd id="char-scanner">исправен</dd></div>
+                    <div class="reputation-highlight"><dt><span class="stat-icon" data-art="reputation" aria-hidden="true"></span>Репутация ПВЗ</dt><dd id="char-rep">3,0 / 5</dd></div>
+                  </dl>
+                  <details class="employee-history"><summary>Статистика забега</summary><dl>
+                    <div><dt>Обслужено всего</dt><dd id="char-served">0</dd></div>
+                    <div><dt>Заработано всего</dt><dd id="char-earned">0 ₽</dd></div>
+                    <div><dt>Телевизор</dt><dd id="char-tv">нет</dd></div>
+                    <div><dt>Рекорд</dt><dd id="char-best">0 ₽</dd></div>
+                  </dl></details>
+                </div>
               </div>
-              <div class="results-quest-list" id="results-quest-list"></div>
-              <div class="results-salary" id="results-salary">База: 2000 ₽ · Квесты: 0 ₽</div>
-            </div>
-
-            <div class="character-card" id="character-card">
-              <div class="character-card-head">
-                <span>СОТРУДНИК</span>
-                <span>СМЕНА <b id="char-shift">1</b></span>
               </div>
-              <div class="character-card-grid">
-                <div><span>Обслужено всего</span><b id="char-served">0</b></div>
-                <div><span>Заработано всего</span><b id="char-earned">0 ₽</b></div>
-                <div><span>Репутация ПВЗ</span><b id="char-rep">3,0 / 5</b></div>
-                <div><span>Скорость</span><b id="char-speed">+0%</b></div>
-                <div><span>Обаяние</span><b id="char-charm">—</b></div>
-                <div><span>Терпимость</span><b id="char-tolerance">0%</b></div>
-                <div><span>Антистресс</span><b id="char-toy">+0,2 за тап</b></div>
-                <div><span>Телевизор</span><b id="char-tv">нет</b></div>
-                <div><span>Сканер</span><b id="char-scanner">исправен</b></div>
-                <div><span>Рекорд</span><b id="char-best">0 ₽</b></div>
+              <footer class="intermission-footer results-footer"><span>Улучшения — на следующем экране</span><button id="results-to-shop" class="intermission-button primary" type="button">В магазин →</button></footer>
+            </section>
+            <section id="intermission-shop" class="intermission-stage hidden" aria-label="Магазин между сменами">
+              <svg class="intermission-frame" viewBox="0 0 1200 600" preserveAspectRatio="none" aria-hidden="true"><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-shadow" transform="translate(12 12)"/><path d="M28 54L265 37L291 8L1176 0L1150 148L1186 272L1162 574L74 582L15 542L33 413L0 350L28 288L11 164Z" class="intermission-frame-paper" vector-effect="non-scaling-stroke"/></svg><span class="intermission-tape" aria-hidden="true"></span><svg class="intermission-slashes" viewBox="0 0 120 22" aria-hidden="true"><path d="M0 22 18 0H44L26 22ZM39 22 57 0H83L65 22ZM78 22 96 0H120L104 22Z"/></svg>
+              <header class="intermission-heading shop-heading"><div><h2>МАГАЗИН</h2><p id="shop-next-label">ПОДГОТОВКА К СМЕНЕ 2</p></div>
+                <div class="intermission-wallet">БАЛАНС <strong><span id="shop-money">0</span> ₽</strong></div>
+              </header>
+              <div class="shop-tabs" id="shop-tabs" role="tablist" aria-label="Отдел магазина">
+                <button class="shop-tab active" id="shop-tab-upgrades" role="tab" aria-controls="shop-upgrades-panel" aria-selected="true" type="button" data-tab="upgrades">Улучшения</button>
+                <button class="shop-tab" id="shop-tab-decor" role="tab" aria-controls="shop-decor-panel" aria-selected="false" type="button" data-tab="decor">Оформление ПВЗ</button>
               </div>
-            </div>
-
-            <div class="shop-tabs" id="shop-tabs">
-              <button class="shop-tab active" type="button" data-tab="upgrades">Улучшения</button>
-              <button class="shop-tab" type="button" data-tab="decor">Оформление ПВЗ</button>
-            </div>
-            <div id="shop-upgrades-panel">
-              <div class="shop-head">
-                <span>Улучшения сотрудника</span>
-                <span class="shop-balance">Баланс: <b id="shop-money">0</b> ₽</span>
+              <div class="intermission-scroll shop-scroll">
+                <div id="shop-upgrades-panel" role="tabpanel" aria-labelledby="shop-tab-upgrades"><div class="shop-grid" id="shop-grid"></div></div>
+                <div id="shop-decor-panel" class="hidden" role="tabpanel" aria-labelledby="shop-tab-decor"><span class="sr-only">Баланс: <span id="shop-money-decor">0</span> ₽</span><div class="decor-grid" id="decor-grid"></div></div>
               </div>
-              <div class="shop-grid" id="shop-grid"></div>
-            </div>
-            <div id="shop-decor-panel" class="hidden">
-              <div class="shop-head decor-head">
-                <span>Оформление ПВЗ</span>
-                <span class="shop-balance">Баланс: <b id="shop-money-decor">0</b> ₽</span>
-              </div>
-              <div class="decor-grid" id="decor-grid"></div>
-            </div>
-            <button id="next-shift" class="btn primary big" type="button">Следующая смена →</button>
-            <div class="results-hint">Улучшения действуют сразу. Со второй смены на складе появляется третий стеллаж C.</div>
+              <footer class="intermission-footer shop-footer"><button id="shop-to-results" class="intermission-button secondary" type="button">← Итоги</button><span>Улучшения действуют сразу</span><button id="next-shift" class="intermission-button primary" type="button">Следующая смена →</button></footer>
+            </section>
           </div>
         </div>
 
