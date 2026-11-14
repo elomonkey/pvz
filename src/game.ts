@@ -199,6 +199,9 @@ export class Game {
   private get scannerBreakCardOpen(): boolean {
     return this.encounter.scannerBreakCardOpen;
   }
+  isInputBlocked(): boolean {
+    return this.encounter.inputBlocked;
+  }
   private tutorialActive = false;
   private tutorialPending = false;
   private tutorialStep: TutorialStep = 'welcome';
