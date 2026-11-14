@@ -59,6 +59,10 @@ test('almost empty stock allocates its only parcel and the order can be collecte
   expect(result).toEqual([{ id: 'B-4-1', actual: 'B-4-1', shelf: 1, valid: true, reserved: true }]);
   await expect(page.locator('#cell-panel')).toBeVisible();
   await page.locator('[data-cell-id="B-4-1"]').click();
+  await page.evaluate(() => {
+    const game = (window as any).game;
+    for (let step = 0; step < 400 && !game.service.readyToDeliver; step++) game.update(0.05);
+  });
   expect(await page.evaluate(() => (window as any).game.service.readyToDeliver)).toBe(true);
   await page.evaluate(() => {
     const g = (window as any).game;

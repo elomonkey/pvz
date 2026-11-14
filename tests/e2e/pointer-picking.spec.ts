@@ -96,7 +96,7 @@ test('visible shelf opens cells; a picked parcel no longer receives canvas click
   await expect(page.locator('#cell-panel')).toBeVisible();
   await page.locator(`[data-cell-id="${id}"]`).click();
   await expect(page.locator('#cell-panel')).toBeHidden();
-  expect(await page.evaluate(id => {
+  await expect.poll(() => page.evaluate(id => {
     const g = (window as any).game;
     return !g.world.cells.find((c: any) => c.id === id).parcel.visible && g.service.carrying;
   }, id)).toBe(true);
