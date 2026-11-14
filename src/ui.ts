@@ -3,6 +3,7 @@ import type { Game } from './game';
 import type { Sound } from './sound';
 import type { CellPanelModel } from './systems/scannerPanelSystem';
 import type { BossActions, BossView } from './ui/bossView';
+import { byId } from './ui/components';
 import type { DevConsole } from './ui/devConsole';
 import { HudView, type HudData, type QuestDisplay } from './ui/hudView';
 import {
@@ -28,6 +29,8 @@ export class UI {
   private bossActions!: BossActions;
   private bossLoading: Promise<void> | null = null;
   private pendingBossCalls: Array<(view: BossView) => void> = [];
+  private readonly bossLoadError = byId('boss-load-error');
+  private readonly bossLoadRetry = byId('boss-load-retry') as HTMLButtonElement;
 
   constructor(sound: Sound) {
     this.sound = sound;
@@ -72,13 +75,13 @@ export class UI {
       onStart: () => {
         this.sound.init();
         this.sound.click();
-        this.preloadBoss();
+        void this.preloadBoss();
         this.game.startNewGame();
       },
       onContinue: () => {
         this.sound.init();
         this.sound.click();
-        this.preloadBoss();
+        void this.preloadBoss();
         this.game.continueGame();
       },
       onOpenHelp: () => this.game.openHelp(),
@@ -98,6 +101,8 @@ export class UI {
         this.scanner.setTutorialTarget(target, cellId),
     });
 
+    this.bossLoadRetry.addEventListener('click', () => this.retryBossLoad());
+
     this.bossActions = {
       onServe: () => this.game.onBossServe(),
       onArgue: () => this.game.onBossArgue(),
@@ -110,26 +115,50 @@ export class UI {
     };
   }
 
-  private preloadBoss(): void {
-    this.bossLoading ??= import('./ui/bossView').then(({ BossView }) => {
-      this.boss = new BossView();
-      this.boss.bind(this.bossActions);
+  private preloadBoss(): Promise<void> {
+    const loading = this.bossLoading ??= import('./ui/bossView').then(({ BossView }) => {
+      const view = new BossView();
+      view.bind(this.bossActions);
+      this.boss = view;
+      this.hideBossLoadError();
       const calls = this.pendingBossCalls;
       this.pendingBossCalls = [];
-      for (const call of calls) call(this.boss);
+      for (const call of calls) call(view);
     }).catch(error => {
       this.bossLoading = null;
-      this.pendingBossCalls = [];
+      if (this.pendingBossCalls.length > 0) this.showBossLoadError();
       console.error('Не удалось загрузить диалоги', error);
     });
+    return loading;
   }
 
   private withBoss(call: (view: BossView) => void): void {
     if (this.boss) call(this.boss);
     else {
       this.pendingBossCalls.push(call);
-      this.preloadBoss();
+      void this.preloadBoss();
     }
+  }
+
+  private retryBossLoad(): void {
+    if (this.bossLoading) return;
+    this.bossLoadRetry.disabled = true;
+    this.bossLoadRetry.textContent = 'Загрузка…';
+    void this.preloadBoss().finally(() => {
+      this.bossLoadRetry.disabled = false;
+      this.bossLoadRetry.textContent = 'Повторить';
+    });
+  }
+
+  private showBossLoadError(): void {
+    this.bossLoadError.classList.remove('hidden');
+    this.bossLoadRetry.disabled = false;
+    this.bossLoadRetry.textContent = 'Повторить';
+    this.bossLoadRetry.focus({ preventScroll: true });
+  }
+
+  private hideBossLoadError(): void {
+    this.bossLoadError.classList.add('hidden');
   }
 
   update(dt: number): void {
@@ -334,6 +363,7 @@ export class UI {
 
   hideBoss(): void {
     this.pendingBossCalls = [];
+    this.hideBossLoadError();
     this.boss?.hideBoss();
   }
 
