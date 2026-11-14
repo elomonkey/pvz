@@ -46,6 +46,7 @@ export class ScannerView {
   private scanHolding = false;
   private scanProgress = 0;
   private scanSpeed = 1;
+  private scanPointerId: number | null = null;
   private tutorialCellTarget: string | null = null;
   private actions: ScannerActions | null = null;
 
@@ -66,6 +67,7 @@ export class ScannerView {
       if (!this.scanActive || this.scanComplete) return;
       actions.onSoundInit();
       this.scanHolding = true;
+      this.scanPointerId = event.pointerId;
       this.scanHold.classList.add('holding');
       this.scanText.textContent = 'Сканирую...';
       try {
@@ -75,32 +77,11 @@ export class ScannerView {
       }
     });
 
-    const release = (event?: PointerEvent): void => {
-      if (!this.scanHolding) return;
-      this.scanHolding = false;
-      this.scanHold.classList.remove('holding');
-      if (!this.scanComplete) {
-        this.scanProgress = 0;
-        setProgressFill(this.scanFill, 0);
-        this.scanText.textContent = 'Сканировать заказ';
-        this.barcodeLine.classList.remove('scanning');
-      }
-      if (event) {
-        try {
-          this.scanHold.releasePointerCapture(event.pointerId);
-        } catch {
-          /* noop */
-        }
-      }
-    };
-
-    this.scanHold.addEventListener('pointerup', release);
-    this.scanHold.addEventListener('pointercancel', release);
-    this.scanHold.addEventListener('lostpointercapture', () => {
-      if (this.scanHolding) release();
-    });
-    window.addEventListener('pointerup', () => release());
-    window.addEventListener('pointercancel', () => release());
+    this.scanHold.addEventListener('pointerup', (event) => this.releaseHold(event));
+    this.scanHold.addEventListener('pointercancel', (event) => this.releaseHold(event));
+    this.scanHold.addEventListener('lostpointercapture', () => this.releaseHold());
+    window.addEventListener('pointerup', () => this.releaseHold());
+    window.addEventListener('pointercancel', () => this.releaseHold());
 
     this.cellClose.addEventListener('click', () => {
       this.closeCellPanel();
@@ -116,7 +97,11 @@ export class ScannerView {
     });
   }
 
-  update(dt: number): void {
+  update(dt: number, inputBlocked = false): void {
+    if (inputBlocked) {
+      this.cancelHold();
+      return;
+    }
     if (this.scanHolding && this.scanActive && !this.scanComplete) {
       this.scanProgress = Math.min(
         1,
@@ -125,6 +110,31 @@ export class ScannerView {
       setProgressFill(this.scanFill, this.scanProgress);
       this.barcodeLine.classList.add('scanning');
       if (this.scanProgress >= 1) this.finishScan();
+    }
+  }
+
+  private cancelHold(): void {
+    this.releaseHold();
+  }
+
+  private releaseHold(event?: PointerEvent): void {
+    if (!this.scanHolding) return;
+    this.scanHolding = false;
+    this.scanHold.classList.remove('holding');
+    if (!this.scanComplete) {
+      this.scanProgress = 0;
+      setProgressFill(this.scanFill, 0);
+      this.scanText.textContent = 'Сканировать заказ';
+      this.barcodeLine.classList.remove('scanning');
+    }
+    const pointerId = event?.pointerId ?? this.scanPointerId;
+    this.scanPointerId = null;
+    if (pointerId !== null) {
+      try {
+        this.scanHold.releasePointerCapture(pointerId);
+      } catch {
+        /* noop */
+      }
     }
   }
 
@@ -158,6 +168,7 @@ export class ScannerView {
     this.scanActive = true;
     this.scanComplete = false;
     this.scanHolding = false;
+    this.scanPointerId = null;
     this.scanProgress = 0;
     setProgressFill(this.scanFill, 0);
     this.scanText.textContent = 'Сканировать заказ';
@@ -193,6 +204,7 @@ export class ScannerView {
     this.scanActive = false;
     this.scanComplete = false;
     this.scanHolding = false;
+    this.scanPointerId = null;
     this.scanProgress = 0;
     setProgressFill(this.scanFill, 0);
     this.scanHold.classList.remove('holding');
@@ -265,6 +277,7 @@ export class ScannerView {
     this.scanHolding = false;
     this.scanComplete = true;
     this.scanActive = false;
+    this.scanPointerId = null;
     setProgressFill(this.scanFill, 1);
     this.scanHold.classList.remove('holding');
     this.barcodeLine.classList.remove('scanning');

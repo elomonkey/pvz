@@ -162,7 +162,7 @@ export class UI {
   }
 
   update(dt: number): void {
-    this.scanner.update(dt);
+    this.scanner.update(dt, this.game.isInputBlocked());
   }
 
   setBest(best: number): void {
