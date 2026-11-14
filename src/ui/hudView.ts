@@ -1,6 +1,7 @@
 import type { Sound } from '../sound';
 import { byId, clear, createQuestRow, setProgressFill } from './components';
 import './bossEntrance.css';
+import './hud.css';
 
 // Presentation for the existing Queen banners; titles, text and timing stay in Game.
 const QUEEN_EXPRESSIONS = new Map<string, 'demanding' | 'annoyed' | 'satisfied'>([
@@ -39,6 +40,7 @@ export class HudView {
   private readonly progress = byId('hud-progress-fill');
   private readonly questPanel = byId('quest-panel');
   private readonly questList = byId('quest-list');
+  private readonly questCount = byId('quest-summary-count');
   private readonly queenStatus = byId('queen-status');
   private readonly queenRemaining = byId('queen-remaining');
   private readonly finalBossStatus = byId('final-boss-status');
@@ -64,6 +66,11 @@ export class HudView {
   private bannerTimer: number | null = null;
 
   constructor() {
+    const compact = window.matchMedia('(max-width: 640px), (max-height: 520px) and (orientation: landscape)');
+    const syncQuests = () => { (this.questPanel as HTMLDetailsElement).open = !compact.matches; };
+    syncQuests();
+    compact.addEventListener('change', syncQuests);
+
     for (const source of [
       new URL('../assets/sanya-portrait.webp', import.meta.url).href,
       new URL('../assets/queen-expressions-v2.webp', import.meta.url).href,
@@ -122,6 +129,7 @@ export class HudView {
   setQuests(quests: QuestDisplay[], active = true): void {
     this.questPanel.classList.toggle('hidden', !active || quests.length === 0);
     if (!active || quests.length === 0) return;
+    this.questCount.textContent = `${quests.filter(quest => quest.completed).length}/${quests.length}`;
     clear(this.questList);
     for (const quest of quests) {
       this.questList.appendChild(createQuestRow(quest));
@@ -179,6 +187,7 @@ export class HudView {
     this.orderChip.classList.remove('hidden');
     this.orderLabel.textContent = label;
     this.orderValue.textContent = value;
+    this.orderChip.classList.toggle('cell', state === 'cell');
     this.orderChip.classList.toggle('carry', state === 'carry');
     this.orderChip.classList.toggle('search', state === 'search');
     this.orderChip.classList.toggle('return', state === 'return');
@@ -223,7 +232,8 @@ export class HudView {
   }
 
   private updateMute(muted: boolean): void {
-    this.muteBtn.textContent = muted ? '🔇' : '🔊';
+    this.muteBtn.setAttribute('aria-label', muted ? 'Включить звук' : 'Выключить звук');
+    this.muteBtn.setAttribute('aria-pressed', String(muted));
     this.muteBtn.classList.toggle('muted', muted);
   }
 }
